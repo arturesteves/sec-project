@@ -1,4 +1,4 @@
-package pt.ulisboa.tecnico.sec.g19.hdscoin;
+package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import static spark.Spark.*;
 
@@ -7,5 +7,11 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("Hello World!");
         get("/hello", (req, res) -> "Hello World");
+
+
+
+
+
+
     }
 }
