@@ -2,8 +2,6 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import java.security.PublicKey;
 
-import static spark.Spark.*;
-
 
 //todo - Add the exception that will be thrown in case of errors
 public interface IClient {
