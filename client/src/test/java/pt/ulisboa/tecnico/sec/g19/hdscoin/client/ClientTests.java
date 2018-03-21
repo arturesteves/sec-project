@@ -1,6 +1,5 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 import org.junit.Test;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.IClient;
 
 
 public class ClientTests {

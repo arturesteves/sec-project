@@ -1,11 +1,12 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.server;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.util.RandomString;
+
 import static spark.Spark.post;
 import static spark.Spark.get;
 
 public class Main {
 
     public static void main(String[] args) {
-
         post("/register", "application/json", (req, res) -> {
 
             Serialization.RegisterRequest request = Serialization.parse(req, Serialization.RegisterRequest.class);
