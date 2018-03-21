@@ -1,5 +1,4 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.server;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.server.util.RandomString;
 
 import static spark.Spark.post;
 import static spark.Spark.get;
