@@ -1,32 +1,117 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.server;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.util.Utils;
+
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
+import java.security.*;
+import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
+import java.util.Arrays;
+import java.util.Base64;
+
 import static spark.Spark.post;
 import static spark.Spark.get;
 
 public class Main {
 
-    public static void main(String[] args) {
+    //Hardcoded for testing purposes
+    private static final String serverPrivateKeyBase64 = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgBG/UwLmbiIGWOH7lzLQT5f7cR9pN3dCpzhc2uqX74y+gCgYIKoZIzj0DAQehRANCAARIzlEm/PgIvhpfOmjU25aEiR9hbVBYAbl2uhzuhq856JbKEGyOfEP5n5ZngWbdHz7XOaXXhogkA7uCsKdd7S4a";
+    private static final String serverPublicKeyBase64 = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESM5RJvz4CL4aXzpo1NuWhIkfYW1QWAG5droc7oavOeiWyhBsjnxD+Z+WZ4Fm3R8+1zml14aIJAO7grCnXe0uGg==";
+
+
+    public static void main(String[] args) throws KeyException {
+        Security.addProvider(new BouncyCastleProvider());
+        //Server keys for signing
+        ECPublicKey serverPublicKey = Utils.base64toPublicKey(serverPublicKeyBase64);
+        ECPrivateKey serverPrivateKey = Utils.base64toPrivateKey(serverPrivateKeyBase64);
+
         post("/register", "application/json", (req, res) -> {
 
-            Serialization.RegisterRequest request = Serialization.parse(req, Serialization.RegisterRequest.class);
-            //Todo - Validate data received.
-            //Todo - Do Something with the data.
-            System.out.println("Received Public key: " + request.key);
+            try {
+                Serialization.RegisterRequest request = Serialization.parse(req, Serialization.RegisterRequest.class);
 
-            res.status(200);
-            return "Success";
+                System.out.println("SIG: " + req.headers("SIGNATURE"));
+                System.out.println("NONCE: " + req.headers("NONCE"));
+                System.out.println("Key: " + request.key);
+                System.out.println("Amount: " + request.amount);
+
+                //Recreate the hash with the data received
+                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"),
+                        req.headers("NONCE") + request.key + request.amount,
+                        request.key);
+
+                if (!result) {
+                    res.status(401);
+                    return "Hash does not match";
+                }
+
+                ///////////////////////////////////////////////////
+                //We now know that the public key was sent by the owner of its respective private key.
+                ///////////////////////////////////////////////////
+
+                //todo - DO stuff with the data
+
+                ///////////////////////////////////////////////////
+
+                String signature = Utils.generateSignature(req.headers("NONCE"), serverPrivateKey);
+                res.status(200);
+                res.header("SIGNATURE", signature);
+                res.header("NONCE", req.headers("NONCE"));
+
+                return "success";
+
+            } catch(Exception ex) {
+                res.status(200);
+                res.type("application/json");
+                throw ex;
+            }
         });
 
         post("/sendAmount", "application/json", (req, res) -> {
-            Serialization.SendAmountRequest request = Serialization.parse(req, Serialization.SendAmountRequest.class);
 
-            //Todo - Do Something with the data.
-            System.out.println("Received Source Public key: " + request.source);
-            System.out.println("Received Source Public key: " + request.destination);
-            System.out.println("Received amount: " + request.amount);
+            try {
+                Serialization.SendAmountRequest request = Serialization.parse(req, Serialization.SendAmountRequest.class);
 
-            res.status(200);
-            return "Success";
+                System.out.println("SIG: " + req.headers("SIGNATURE"));
+                System.out.println("NONCE: " + req.headers("NONCE"));
+                System.out.println("Source: " + request.source);
+                System.out.println("Destination: " + request.destination);
+                System.out.println("Amount: " + request.amount);
+
+                //Recreate the hash with the data received
+                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"),
+                        req.headers("NONCE") + request.source + request.destination + request.amount,
+                        request.source);
+
+                if (!result) {
+                    res.status(401);
+                    return "Hash does not match";
+                }
+
+                ///////////////////////////////////////////////////
+                //We now know that the public key was sent by the owner of its respective private key.
+                ///////////////////////////////////////////////////
+
+                //Todo - Do Something with the data.
+
+
+                ///////////////////////////////////////////////////
+
+                String signature = Utils.generateSignature(req.headers("NONCE"), serverPrivateKey);
+                res.status(200);
+                res.header("SIGNATURE", signature);
+                res.header("NONCE", req.headers("NONCE"));
+
+                return "success";
+
+            } catch(Exception ex) {
+                res.status(200);
+                res.type("application/json");
+                throw ex;
+            }
+
         });
 
         get("/checkAccount/:key", "application/json", (req, res) -> {
@@ -38,13 +123,42 @@ public class Main {
         });
 
         post("/receiveAmount", "application/json", (req, res) -> {
-            Serialization.ReceiveAmountRequest request = Serialization.parse(req, Serialization.ReceiveAmountRequest.class);
 
-            //Todo - Do Something with the data.
-            System.out.println("Received Source Public key: " + request.source);
+            try {
+                Serialization.ReceiveAmountRequest request = Serialization.parse(req, Serialization.ReceiveAmountRequest.class);
 
-            res.status(200);
-            return "Success";
+                //Recreate the hash with the data received
+                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"),
+                        req.headers("NONCE") + request.source,
+                        request.source);
+
+                if (!result) {
+                    res.status(401);
+                    return "Hash does not match";
+                }
+
+                ///////////////////////////////////////////////////
+                //We now know that the public key was sent by the owner of its respective private key.
+                ///////////////////////////////////////////////////
+
+                //Todo - Do Something with the data.
+                System.out.println("Received Source Public key: " + request.source);
+
+                ///////////////////////////////////////////////////
+
+                String signature = Utils.generateSignature(req.headers("NONCE"), serverPrivateKey);
+                res.status(200);
+                res.header("SIGNATURE", signature);
+                res.header("NONCE", req.headers("NONCE"));
+
+                return "success";
+
+            } catch(Exception ex) {
+                res.status(200);
+                res.type("application/json");
+                throw ex;
+            }
+
         });
 
         get("/audit/:key", "application/json", (req, res) -> {

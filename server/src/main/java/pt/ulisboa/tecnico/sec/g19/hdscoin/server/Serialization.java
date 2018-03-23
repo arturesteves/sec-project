@@ -16,8 +16,8 @@ public class Serialization {
     private static ObjectMapper mapper = new ObjectMapper();
 
     public static class RegisterRequest {
-        // TODO add remaining fields
         public String key;
+        public int amount;
     }
 
     public static class SendAmountRequest {
@@ -30,6 +30,7 @@ public class Serialization {
     public static class ReceiveAmountRequest {
         // TODO add remaining fields
         public String source;
+
     }
 
     /**

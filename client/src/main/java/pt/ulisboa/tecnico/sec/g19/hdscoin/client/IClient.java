@@ -1,6 +1,14 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
-import java.security.PublicKey;
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import java.io.UnsupportedEncodingException;
+import java.security.*;
+import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
 
 
 //todo - Add the exception that will be thrown in case of errors
@@ -15,7 +23,7 @@ public interface IClient {
          positive balance.
      * @param key The public key to be registered
      */
-    void register(PublicKey key);
+    void register(ECPrivateKey privateKey, ECPublicKey key, int amount) throws JsonProcessingException, KeyException, NoSuchAlgorithmException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, NoSuchProviderException, UnsupportedEncodingException, SignatureException;
 
     //todo - Maybe return the current balance for testing purposes
     /**
@@ -28,7 +36,7 @@ public interface IClient {
      * @param destination Public key of the Destination of the transfer
      * @param amount The amount to transfer as an integer
      */
-    void sendAmount(PublicKey source, PublicKey destination, int amount);
+    void sendAmount(ECPrivateKey privateKey, ECPublicKey source, PublicKey destination, int amount) throws KeyException, JsonProcessingException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException, SignatureException;
 
 
     //todo - Make sure that the return type here is integer
@@ -38,7 +46,7 @@ public interface IClient {
          approval by the account’s owner, if any.
      * @param key The Public key of the account to be checked
      */
-    int checkAccount(PublicKey key);
+    int checkAccount(ECPrivateKey privateKey, ECPublicKey key);
 
 
     /**
@@ -47,7 +55,7 @@ public interface IClient {
          source.
      * @param key Public key of the recipient
      */
-    void receiveAmount(PublicKey key);
+    void receiveAmount(ECPrivateKey privateKey, ECPublicKey key) throws KeyException, JsonProcessingException, SignatureException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException;
 
 
     //todo - Discover the return type of the audit operation
@@ -55,6 +63,6 @@ public interface IClient {
      * Obtain the full transaction history of the account associated with key.
      * @param key The public key of the account to be audited
      */
-    void audit(PublicKey key);
+    void audit(ECPrivateKey privateKey, ECPublicKey key);
 
 }
