@@ -1,4 +1,4 @@
-package pt.ulisboa.tecnico.sec.g19.hdscoin.server.util;
+package pt.ulisboa.tecnico.sec.g19.hdscoin.common;
 
 import java.security.SecureRandom;
 import java.util.Objects;

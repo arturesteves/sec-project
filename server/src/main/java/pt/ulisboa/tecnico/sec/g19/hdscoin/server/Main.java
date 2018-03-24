@@ -1,15 +1,12 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.server;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.server.util.Utils;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
-import java.util.Arrays;
-import java.util.Base64;
 
 import static spark.Spark.post;
 import static spark.Spark.get;
@@ -24,8 +21,8 @@ public class Main {
     public static void main(String[] args) throws KeyException {
         Security.addProvider(new BouncyCastleProvider());
         //Server keys for signing
-        ECPublicKey serverPublicKey = Utils.base64toPublicKey(serverPublicKeyBase64);
-        ECPrivateKey serverPrivateKey = Utils.base64toPrivateKey(serverPrivateKeyBase64);
+        ECPublicKey serverPublicKey = Serialization.base64toPublicKey(serverPublicKeyBase64);
+        ECPrivateKey serverPrivateKey = Serialization.base64toPrivateKey(serverPrivateKeyBase64);
 
         post("/register", "application/json", (req, res) -> {
 
@@ -62,7 +59,7 @@ public class Main {
 
                 return "success";
 
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 res.status(200);
                 res.type("application/json");
                 throw ex;
@@ -106,7 +103,7 @@ public class Main {
 
                 return "success";
 
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 res.status(200);
                 res.type("application/json");
                 throw ex;
@@ -153,7 +150,7 @@ public class Main {
 
                 return "success";
 
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 res.status(200);
                 res.type("application/json");
                 throw ex;

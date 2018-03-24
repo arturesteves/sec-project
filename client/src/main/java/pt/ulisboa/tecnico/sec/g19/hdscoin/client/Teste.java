@@ -4,13 +4,9 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.net.URL;
 import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.SecureRandom;
 import java.security.Security;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
-import java.security.spec.ECGenParameterSpec;
-import java.security.spec.ECParameterSpec;
 
 public class Teste {
 

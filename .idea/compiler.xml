@@ -7,11 +7,13 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="client" />
+        <module name="common" />
         <module name="server" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="client" target="1.9" />
+      <module name="common" target="1.9" />
       <module name="sec-project" target="1.9" />
       <module name="server" target="1.9" />
     </bytecodeTargetLevel>

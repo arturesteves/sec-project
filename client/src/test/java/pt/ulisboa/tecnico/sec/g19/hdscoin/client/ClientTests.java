@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Test;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 
 import java.net.URL;
 import java.security.KeyPairGenerator;
@@ -19,7 +20,7 @@ public class ClientTests {
         //TODO - actually make the test
         try {
             String ServerPublicKeyBase64 = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESM5RJvz4CL4aXzpo1NuWhIkfYW1QWAG5droc7oavOeiWyhBsjnxD+Z+WZ4Fm3R8+1zml14aIJAO7grCnXe0uGg==";
-            ECPublicKey serverPublicKey = Utils.base64toPublicKey(ServerPublicKeyBase64);
+            ECPublicKey serverPublicKey = Serialization.base64toPublicKey(ServerPublicKeyBase64);
 
             Security.addProvider(new BouncyCastleProvider());
 
