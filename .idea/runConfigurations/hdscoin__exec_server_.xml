@@ -11,6 +11,7 @@
           <option name="goals">
             <list>
               <option value="compile" />
+              <option value="install" />
               <option value="exec:java" />
             </list>
           </option>

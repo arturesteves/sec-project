@@ -33,14 +33,26 @@ public class Utils {
     }
 
     public static boolean checkSignature(String signature, String hashInput, String publicKey) throws SignatureException, KeyException, NoSuchProviderException, NoSuchAlgorithmException, UnsupportedEncodingException {
+        return checkSignature(signature, hashInput, Serialization.base64toPublicKey(publicKey));
+    }
+
+    public static boolean checkSignature(String signature, String hashInput, ECPublicKey publicKey) throws SignatureException, KeyException, NoSuchProviderException, NoSuchAlgorithmException, UnsupportedEncodingException {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         String hash = Arrays.toString(digest.digest(hashInput.getBytes(StandardCharsets.UTF_8)));
 
         byte[] signatureBytes = Base64.getDecoder().decode(signature);
         Signature ecdsaVerify = Signature.getInstance("SHA256withECDSA", "BC");
-        ecdsaVerify.initVerify(Serialization.base64toPublicKey(publicKey));
+        ecdsaVerify.initVerify(publicKey);
         ecdsaVerify.update(hash.getBytes("UTF-8"));
 
         return ecdsaVerify.verify(signatureBytes);
+    }
+
+    public static KeyPair generateKeyPair() throws InvalidAlgorithmParameterException, NoSuchProviderException, NoSuchAlgorithmException {
+        ECGenParameterSpec ecGenSpec = new ECGenParameterSpec("secp256r1");
+        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("ECDSA", "BC");
+        keyPairGenerator.initialize(ecGenSpec, new SecureRandom());
+
+        return keyPairGenerator.generateKeyPair();
     }
 }

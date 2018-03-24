@@ -1,9 +1,13 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.server;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
+import spark.Request;
+import spark.Response;
 
+import java.io.UnsupportedEncodingException;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
@@ -35,9 +39,7 @@ public class Main {
                 System.out.println("Amount: " + request.amount);
 
                 //Recreate the hash with the data received
-                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"),
-                        req.headers("NONCE") + request.key + request.amount,
-                        request.key);
+                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"), request.getSignable(), request.key);
 
                 if (!result) {
                     res.status(401);
@@ -51,14 +53,10 @@ public class Main {
                 //todo - DO stuff with the data
 
                 ///////////////////////////////////////////////////
+                Serialization.Response response = new Serialization.Response();
+                response.status = "ok";
 
-                String signature = Utils.generateSignature(req.headers("NONCE"), serverPrivateKey);
-                res.status(200);
-                res.header("SIGNATURE", signature);
-                res.header("NONCE", req.headers("NONCE"));
-
-                return "success";
-
+                return prepareResponse(serverPrivateKey, req, res, response);
             } catch (Exception ex) {
                 res.status(200);
                 res.type("application/json");
@@ -78,9 +76,7 @@ public class Main {
                 System.out.println("Amount: " + request.amount);
 
                 //Recreate the hash with the data received
-                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"),
-                        req.headers("NONCE") + request.source + request.destination + request.amount,
-                        request.source);
+                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"), request.getSignable(), request.source);
 
                 if (!result) {
                     res.status(401);
@@ -95,14 +91,10 @@ public class Main {
 
 
                 ///////////////////////////////////////////////////
+                Serialization.Response response = new Serialization.Response();
+                response.status = "ok";
 
-                String signature = Utils.generateSignature(req.headers("NONCE"), serverPrivateKey);
-                res.status(200);
-                res.header("SIGNATURE", signature);
-                res.header("NONCE", req.headers("NONCE"));
-
-                return "success";
-
+                return prepareResponse(serverPrivateKey, req, res, response);
             } catch (Exception ex) {
                 res.status(200);
                 res.type("application/json");
@@ -142,13 +134,10 @@ public class Main {
                 System.out.println("Received Source Public key: " + request.source);
 
                 ///////////////////////////////////////////////////
+                Serialization.Response response = new Serialization.Response();
+                response.status = "ok";
 
-                String signature = Utils.generateSignature(req.headers("NONCE"), serverPrivateKey);
-                res.status(200);
-                res.header("SIGNATURE", signature);
-                res.header("NONCE", req.headers("NONCE"));
-
-                return "success";
+                return prepareResponse(serverPrivateKey, req, res, response);
 
             } catch (Exception ex) {
                 res.status(200);
@@ -165,5 +154,22 @@ public class Main {
             res.status(200);
             return "Success";
         });
+    }
+
+    private static String prepareResponse(ECPrivateKey privateKey, Request sparkRequest, Response sparkResponse, Serialization.Response response) throws JsonProcessingException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException {
+        response.nonce = sparkRequest.headers("NONCE");
+        if (response.statusCode < 0) {
+            // try to guess a status code from the status string
+            if(response.status.equals("ok")) {
+                response.statusCode = 200;
+            } else {
+                response.statusCode = 400;
+            }
+        }
+        String signature = Utils.generateSignature(response.getSignable(), privateKey);
+        sparkResponse.status(response.statusCode);
+        sparkResponse.header("SIGNATURE", signature);
+        sparkResponse.type("application/json");
+        return Serialization.serialize(response);
     }
 }

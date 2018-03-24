@@ -53,8 +53,8 @@
     </dependencies>
 
     <modules>
+        <module>common</module>
         <module>server</module>
         <module>client</module>
-        <module>common</module>
     </modules>
 </project>

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
@@ -23,7 +24,7 @@ public interface IClient {
          positive balance.
      * @param key The public key to be registered
      */
-    void register(ECPrivateKey privateKey, ECPublicKey key, int amount) throws JsonProcessingException, KeyException, NoSuchAlgorithmException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, NoSuchProviderException, UnsupportedEncodingException, SignatureException;
+    void register(ECPrivateKey privateKey, ECPublicKey key, int amount) throws IOException, KeyException, NoSuchAlgorithmException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, NoSuchProviderException, UnsupportedEncodingException, SignatureException;
 
     //todo - Maybe return the current balance for testing purposes
     /**
@@ -32,11 +33,12 @@ public interface IClient {
          server responds positively to this call, it must be guaranteed that the source
          has the authority to perform the transfer. The transfer will only be finalized
          when the receiver approves it via the receive_amount() method
+     * @param privateKey Private key of the client, to sign the transaction
      * @param source Public key of the Source of the transfer
      * @param destination Public key of the Destination of the transfer
      * @param amount The amount to transfer as an integer
      */
-    void sendAmount(ECPrivateKey privateKey, ECPublicKey source, PublicKey destination, int amount) throws KeyException, JsonProcessingException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException, SignatureException;
+    void sendAmount(ECPrivateKey privateKey, ECPublicKey source, ECPublicKey destination, int amount) throws KeyException, IOException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException, SignatureException;
 
 
     //todo - Make sure that the return type here is integer
@@ -53,9 +55,10 @@ public interface IClient {
      * Used by recipient of a transfer to accept in a non-repudiable way
          a pending incoming transfer that must have been previously authorized by the
          source.
-     * @param key Public key of the recipient
+     * @param privateKey Private key of the client, to sign the transaction
+     * @param sendTxSignature Signature of the send-transaction we want to receive
      */
-    void receiveAmount(ECPrivateKey privateKey, ECPublicKey key) throws KeyException, JsonProcessingException, SignatureException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException;
+    void receiveAmount(ECPrivateKey privateKey, String sendTxSignature) throws KeyException, IOException, SignatureException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException;
 
 
     //todo - Discover the return type of the audit operation
