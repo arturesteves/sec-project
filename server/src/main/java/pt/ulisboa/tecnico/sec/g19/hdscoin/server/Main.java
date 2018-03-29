@@ -4,13 +4,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exception.InvalidAmountException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exception.InvalidLedgerException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.Ledger;
 import spark.Request;
 import spark.Response;
 
+import javax.xml.crypto.Data;
 import java.io.UnsupportedEncodingException;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 import static spark.Spark.post;
 import static spark.Spark.get;
@@ -21,12 +27,18 @@ public class Main {
     private static final String serverPrivateKeyBase64 = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgBG/UwLmbiIGWOH7lzLQT5f7cR9pN3dCpzhc2uqX74y+gCgYIKoZIzj0DAQehRANCAARIzlEm/PgIvhpfOmjU25aEiR9hbVBYAbl2uhzuhq856JbKEGyOfEP5n5ZngWbdHz7XOaXXhogkA7uCsKdd7S4a";
     private static final String serverPublicKeyBase64 = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESM5RJvz4CL4aXzpo1NuWhIkfYW1QWAG5droc7oavOeiWyhBsjnxD+Z+WZ4Fm3R8+1zml14aIJAO7grCnXe0uGg==";
 
-
     public static void main(String[] args) throws KeyException {
         Security.addProvider(new BouncyCastleProvider());
         //Server keys for signing
         ECPublicKey serverPublicKey = Serialization.base64toPublicKey(serverPublicKeyBase64);
         ECPrivateKey serverPrivateKey = Serialization.base64toPrivateKey(serverPrivateKeyBase64);
+
+        try {
+            Database.recreateSchema();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            System.exit(-1);
+        }
 
         post("/register", "application/json", (req, res) -> {
 
@@ -50,17 +62,24 @@ public class Main {
                 //We now know that the public key was sent by the owner of its respective private key.
                 ///////////////////////////////////////////////////
 
-                //todo - DO stuff with the data
-
-                ///////////////////////////////////////////////////
                 Serialization.Response response = new Serialization.Response();
-                response.status = "ok";
+                try {
+                    Connection conn = Database.getConnection();
+                    Ledger ledger = new Ledger(conn, Serialization.base64toPublicKey(request.key), request.amount);
+                    ledger.persist(conn);
+                    conn.commit();
+                    response.status = "ok";
+                } catch(InvalidLedgerException | InvalidKeyException | InvalidAmountException ex) {
+                    // these exceptions are the client's fault
+                    response.status = "error";
+                }
 
                 return prepareResponse(serverPrivateKey, req, res, response);
             } catch (Exception ex) {
-                res.status(200);
-                res.type("application/json");
-                throw ex;
+                res.status(500);
+                Serialization.Response response = new Serialization.Response();
+                response.status = "error";
+                return prepareResponse(serverPrivateKey, req, res, response);
             }
         });
 
