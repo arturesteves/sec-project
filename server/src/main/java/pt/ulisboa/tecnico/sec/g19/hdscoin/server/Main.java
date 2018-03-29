@@ -63,15 +63,19 @@ public class Main {
                 ///////////////////////////////////////////////////
 
                 Serialization.Response response = new Serialization.Response();
+                Connection conn = null;
                 try {
-                    Connection conn = Database.getConnection();
+                    conn = Database.getConnection();
                     Ledger ledger = new Ledger(conn, Serialization.base64toPublicKey(request.key), request.amount);
                     ledger.persist(conn);
                     conn.commit();
                     response.status = "ok";
-                } catch(InvalidLedgerException | InvalidKeyException | InvalidAmountException ex) {
+                } catch (InvalidLedgerException | InvalidKeyException | InvalidAmountException ex) {
                     // these exceptions are the client's fault
                     response.status = "error";
+                    if (conn != null) {
+                        conn.rollback();
+                    }
                 }
 
                 return prepareResponse(serverPrivateKey, req, res, response);
@@ -179,7 +183,7 @@ public class Main {
         response.nonce = sparkRequest.headers("NONCE");
         if (response.statusCode < 0) {
             // try to guess a status code from the status string
-            if(response.status.equals("ok")) {
+            if (response.status.equals("ok")) {
                 response.statusCode = 200;
             } else {
                 response.statusCode = 400;
