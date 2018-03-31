@@ -1,7 +1,5 @@
 SEC Project - Secure Bank
 =================
-
-breve descricacao do que e......
   
 ### Installation  
 ----------------  
