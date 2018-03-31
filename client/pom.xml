@@ -18,14 +18,39 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>1.6.0</version>
-                <configuration>
-                    <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.client.Main</mainClass>
-                    <arguments>
-
-                    </arguments>
-                </configuration>
+                <executions>
+                    <execution>
+                        <id>Main</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.client.Main</mainClass>
+                            <arguments></arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>GenerateKeyPair</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.client.GenerateKeyPair</mainClass>
+                            <arguments></arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>Register</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.client.Register</mainClass>
+                            <arguments></arguments>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
-
         </plugins>
     </build>
 

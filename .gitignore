@@ -108,3 +108,7 @@ buildNumber.properties
 # End of https://www.gitignore.io/api/java,maven,intellij
 hdscoin.iml
 sec-project.iml
+.idea/compiler.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml

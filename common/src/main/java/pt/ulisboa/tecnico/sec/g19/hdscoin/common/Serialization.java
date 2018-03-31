@@ -22,26 +22,26 @@ public class Serialization {
 
     public static class RegisterRequest implements Signable {
         public String key;
-        public int amount;
+        public double amount;
 
         @Override
         @JsonIgnore
         public String getSignable() {
-            return key + Integer.toString(amount);
+            return key + Double.toString(amount);
         }
     }
 
     private static abstract class TransactionRequest implements Signable {
         public String source;
         public String destination; // who receives the money
-        public int amount;
+        public double amount;
         public String previousSignature;
 
         @Override
         @JsonIgnore
         public String getSignable() {
             // true: because is_send = true
-            return source + destination + Boolean.toString(true) + Integer.toString(amount) + previousSignature;
+            return source + destination + Boolean.toString(true) + Double.toString(amount) + previousSignature;
         }
     }
 

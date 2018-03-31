@@ -24,7 +24,7 @@ public interface IClient {
          positive balance.
      * @param key The public key to be registered
      */
-    void register(ECPrivateKey privateKey, ECPublicKey key, int amount) throws IOException, KeyException, NoSuchAlgorithmException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, NoSuchProviderException, UnsupportedEncodingException, SignatureException;
+    void register(ECPrivateKey privateKey, ECPublicKey key, double amount) throws IOException, KeyException, NoSuchAlgorithmException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, NoSuchProviderException, UnsupportedEncodingException, SignatureException;
 
     //todo - Maybe return the current balance for testing purposes
     /**
@@ -38,7 +38,7 @@ public interface IClient {
      * @param destination Public key of the Destination of the transfer
      * @param amount The amount to transfer as an integer
      */
-    void sendAmount(ECPrivateKey privateKey, ECPublicKey source, ECPublicKey destination, int amount) throws KeyException, IOException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException, SignatureException;
+    void sendAmount(ECPrivateKey privateKey, ECPublicKey source, ECPublicKey destination, double amount) throws KeyException, IOException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException, SignatureException;
 
 
     //todo - Make sure that the return type here is integer

@@ -30,8 +30,9 @@ public class Client implements IClient {
     }
 
     @Override
-    public void register(ECPrivateKey privateKey, ECPublicKey publicKey, int amount) throws IOException, KeyException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException, SignatureException {
+    public void register(ECPrivateKey privateKey, ECPublicKey publicKey, double amount) throws IOException, KeyException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException, SignatureException {
         String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
+        System.out.println("BASE 64 PUBLIC KEY: " + b64PublicKey);
         Serialization.RegisterRequest request = new Serialization.RegisterRequest();
         request.amount = amount;
         request.key = b64PublicKey;
@@ -41,7 +42,7 @@ public class Client implements IClient {
     }
 
     @Override
-    public void sendAmount(ECPrivateKey privateKey, ECPublicKey source, ECPublicKey destination, int amount) throws KeyException, IOException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException, SignatureException {
+    public void sendAmount(ECPrivateKey privateKey, ECPublicKey source, ECPublicKey destination, double amount) throws KeyException, IOException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException, SignatureException {
         String b64SourcePublicKey = Serialization.publicKeyToBase64(source);
         String b64DestinationPublicKey = Serialization.publicKeyToBase64(destination);
 
@@ -96,6 +97,7 @@ public class Client implements IClient {
 
         if(!(response instanceof Signable && response instanceof NonceContainer)) {
             // TODO: better exceptions
+            // not a valid response from the "server"
             throw new RuntimeException("Response isn't signable or doesn't contain a nonce");
         }
 

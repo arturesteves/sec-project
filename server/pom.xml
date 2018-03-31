@@ -25,12 +25,28 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>1.6.0</version>
-                <configuration>
-                    <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.server.Main</mainClass>
-                    <arguments>
-
-                    </arguments>
-                </configuration>
+                <executions>
+                    <execution>
+                        <id>WebServer</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.server.Main</mainClass>
+                            <arguments></arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>GenerateKeyPair</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.server.GenerateKeyPair</mainClass>
+                            <arguments></arguments>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
