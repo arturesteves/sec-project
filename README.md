@@ -1,19 +1,16 @@
-SEC Project - Secure Bank
-=================
+# SEC Project - Secure Bank
+-------------------------
   
-### Installation  
-----------------  
+## Installation  
 **Maven is required**  
 Download or clone this repository.  
 Open a terminal on the project root directory and then type:  
 `$ mvn install`  
 
     
-### Usage
-========
+## Usage
 
 #### Server Side
-----------------
 1. First we need to generate a pair of keys (public and private key) which is based on the Elliptic-curve cryptography.
 2. We need to start the web server.
 
@@ -26,7 +23,6 @@ Open a terminal on the directory of the server project and then type:
 `mvn exec:java@WebServer -Dexec.args="Server_1"`
 
 #### Client Side
----------------
 1. The client also requires a pair of keys (public and private key) which is based on the Elliptic-curve cryptography.  
 2. Register his public key on the server  
 3. Use any of the other client side programs that uses the interfaces the server has made available to the public.
@@ -39,18 +35,16 @@ Open a terminal on the directory of the client project and then type:
 Open a terminal on the directory of the client project and then type:  
 `mvn exec:java@Register -Dexec.args="-n Client_1 -a 10"`
 
-### Tests
-=======
+## Tests
+
 ##### How to run tests on the server 
 Open a terminal on the directory of the server project and then type:  
 `mvn clean test`
 
-### Documentation
------------------
-The client side programs documentation can be found at [CLIENT-DOCUMENTATION](docs/CLIENT-DOCUMENTATION.md).  
+## Documentation
+The client side programs documentation can be found at [CLIENT-DOCUMENTATION](docs/CLIENT-DOCUMENTATION.md). 
 The server side programs documentation can be found at [SERVER-DOCUMENTATION](docs/SERVER-DOCUMENTATION.md).
 
 
-### License  
------------
+## License  
 Licensed under MIT. See [LICENSE](LICENSE) for more information. 

@@ -34,7 +34,7 @@ public class ClientTests {
             ECPublicKey publicKeyExpected = (ECPublicKey) pair.getPublic();
 
 
-            client.register(privateKey, publicKeyExpected, 50);
+            client.register(publicKeyExpected, privateKey, 50);
 
         } catch(Exception ex) {
             System.out.println(ex);

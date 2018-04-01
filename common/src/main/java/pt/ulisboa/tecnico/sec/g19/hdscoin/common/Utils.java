@@ -31,7 +31,6 @@ public class Utils {
         return rndGen.nextString();
     }
 
-    // TODO: THROWN ONLY 1 EXCEPTION
     //Returns a signature in base64 over an hash input
     public static String generateSignature(String hashInput, ECPrivateKey privateKey) throws CantGenerateSignatureException{
         try {
@@ -145,6 +144,5 @@ public class Utils {
         }
         log.addHandler (consoleHandler);
         log.setLevel(Level.ALL);
-        log.log (Level.CONFIG, "Logger initialized");
     }
 }

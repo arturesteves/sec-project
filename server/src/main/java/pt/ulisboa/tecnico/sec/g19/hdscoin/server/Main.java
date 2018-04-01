@@ -5,9 +5,10 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateSignatureException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.FailedToLoadKeys;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.FailedToLoadKeysException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidLedgerException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.MissingLedgerException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.Ledger;
 
 import java.io.IOException;
@@ -33,7 +34,7 @@ public class Main {
     private static ECPublicKey serverPublicKey;
     private static ECPrivateKey serverPrivateKey;
 
-    public static void main(String[] args) throws FailedToLoadKeys {
+    public static void main(String[] args) throws FailedToLoadKeysException {
         // set Logger
         Utils.initLogger (log);
         Security.addProvider(new BouncyCastleProvider());
@@ -45,7 +46,7 @@ public class Main {
 
         } catch (KeyException | IOException e) {
             log.log (Level.SEVERE, "Failed to load keys from file.");
-            throw new FailedToLoadKeys ("Failed to load keys from file. " + e.getMessage(), e);
+            throw new FailedToLoadKeysException("Failed to load keys from file. " + e.getMessage(), e);
         }
 
         try {
@@ -61,7 +62,8 @@ public class Main {
 
             try {
                 Serialization.RegisterRequest request = Serialization.parse(req, Serialization.RegisterRequest.class);
-                log.log (Level.INFO, "Request received: \n" +
+                log.log (Level.INFO, "Request received at: /register \n" +
+                        "data on the request:" +
                         "SIGNATURE: " + req.headers("SIGNATURE") + "\n" +
                         "NONCE: " + req.headers("NONCE") + "\n" +
                         "CLIENT BASE 64 PUBLIC KEY: " + request.key + "\n" +
@@ -161,6 +163,43 @@ public class Main {
         });
 
         get("/checkAccount/:key", "application/json", (req, res) -> {
+            try {
+                Serialization.CheckAccountRequest request = Serialization.parse (req, Serialization.CheckAccountRequest.class);
+                log.log (Level.INFO, "Request received at: /register \n" +
+                        "data on the request:" +
+                        "CLIENT BASE 64 PUBLIC KEY: " + req.params (":key"));
+
+                Serialization.Response response = new Serialization.Response ();
+                Connection conn = null;
+
+                try {
+                    ECPublicKey clientPublicKey = Serialization.base64toPublicKey (req.params (":key"));
+                    conn = Database.getConnection ();
+                    Ledger ledger = Ledger.load (conn, clientPublicKey);
+
+
+                } catch (SQLException e) {
+                    // servers fault
+                    log.log (Level.SEVERE, "Error related to the database. " + e.getMessage());
+                    response.status = ERROR_SERVER_ERROR;
+                }
+                // these exceptions are the client's fault
+                catch (KeyException | MissingLedgerException e) {
+                    response.status = ERROR_INVALID_KEY;
+                }
+
+                // find the ledger
+                // check the balance of the account
+                // check pending transactions
+
+            } catch (Exception ex) {
+                res.status (500);
+                Serialization.Response response = new Serialization.Response ();
+                response.status = ERROR_SERVER_ERROR;
+                log.log (Level.SEVERE, "Error on processing a check account request. " + ex.getMessage ());
+                return prepareResponse(serverPrivateKey, req, res, response);
+            }
+
             //Todo - Do Something with the data.
             System.out.println("Received account Public key: " + req.params(":key"));
 

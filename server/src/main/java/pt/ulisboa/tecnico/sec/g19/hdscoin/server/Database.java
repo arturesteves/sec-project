@@ -33,7 +33,7 @@ public class Database {
                     "ledger_id integer not null, " +
                     "other_id integer not null, " +
                     "is_send integer not null, " + // sqlite does not support booleans
-                    "amount integer not null, " +
+                    "amount double not null, " +
                     "nonce text not null, " +
                     "hash text not null, " +
                     "prev_hash text, " + // can be null (first transaction)

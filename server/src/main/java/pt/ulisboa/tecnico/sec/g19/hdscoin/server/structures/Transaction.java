@@ -1,17 +1,25 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures;
 
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidLedgerException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.InvalidValueException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidAmountException;
 
-public final class Transaction {
+import java.security.KeyException;
+import java.sql.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-    public enum TransactionType {SENDING, RECEIVING}
+public final class Transaction {
+    private final static Logger log = Logger.getLogger (Ledger.class.getName ());
+
+    public enum TransactionTypes implements TransactionType{ SENDING, RECEIVING };
+    public enum EspecialTransactionType implements TransactionType { FIRST };
 
     private int id;
     private Ledger source;
     private Ledger target;
-    private int amount;
+    private double amount;
     private String nonce;
     private String hash;
     private String previousHash;
@@ -19,7 +27,13 @@ public final class Transaction {
     private TransactionType type;
 
 
-    public Transaction(int id, Ledger source, Ledger target, int amount, String nonce, String hash, String previousHash, TransactionType type) throws InvalidLedgerException, InvalidAmountException, InvalidValueException {
+    private Transaction(Connection connection, int id, Ledger source, Ledger target, double amount, String nonce, String hash, String previousHash, TransactionType type) throws SQLException, InvalidLedgerException, InvalidAmountException, InvalidValueException {
+        Utils.initLogger (log);
+        if (type != EspecialTransactionType.FIRST) {    // the first transaction can have null on the previous hash
+            if (previousHash == null) {
+                throw new InvalidValueException("The previous hash can't be null.");
+            }
+        }
         if (source == null || target == null) {
             throw new InvalidLedgerException("Both the source and target ledgers can't be null.");
         }
@@ -29,8 +43,8 @@ public final class Transaction {
         if (nonce == null) {
             throw new InvalidValueException("The nonce can't be null.");
         }
-        if (hash == null || previousHash == null) {
-            throw new InvalidValueException("The hash and the previous hash can't be null.");
+        if (hash == null) {
+            throw new InvalidValueException("The hash can't be null.");
         }
         if (type == null) {
             throw new InvalidValueException("The type of transaction can't be null.");
@@ -44,10 +58,12 @@ public final class Transaction {
         this.previousHash = previousHash;
         this.type = type;
         this.pending = true;
+
+        setId(getNextId(connection));
     }
 
-    public Transaction(Ledger source, Ledger target, int amount, String nonce, String hash, String previousHash, TransactionType type) throws InvalidLedgerException, InvalidAmountException, InvalidValueException {
-        this(-1, source, target, amount, nonce, hash, previousHash, type);
+    public Transaction(Connection connection, Ledger source, Ledger target, double amount, String nonce, String hash, String previousHash, TransactionType type) throws SQLException, InvalidLedgerException, InvalidAmountException, InvalidValueException {
+        this(connection, -1, source, target, amount, nonce, hash, previousHash, type);
     }
 
 
@@ -67,7 +83,7 @@ public final class Transaction {
         return this.target;
     }
 
-    public int getAmount() {
+    public double getAmount() {
         return this.amount;
     }
 
@@ -94,5 +110,37 @@ public final class Transaction {
     public TransactionType getTransactionType() {
         return this.type;
     }
+
+    public void persist (Connection connection) throws SQLException, KeyException {
+        String stmt = "INSERT OR REPLACE INTO tx (id, ledger_id, other_id, is_send, amount, nonce, hash, " +
+                "prev_hash, pending) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        // get ledger references.. - criar metodo para isso
+        PreparedStatement prepStmt = connection.prepareStatement (stmt);
+        prepStmt.setInt (1, this.id);
+        prepStmt.setInt (2, this.getSourceLedger ().getId ());
+        prepStmt.setInt (3, this.getTargetLedger ().getId ());
+        prepStmt.setInt (4, type == TransactionTypes.RECEIVING ? 0 : 1);
+        prepStmt.setDouble (5, this.amount);
+        prepStmt.setString (6, this.nonce);
+        prepStmt.setString (7, this.hash);
+        prepStmt.setString (8, this.previousHash);
+        prepStmt.setInt (9, this.pending ? 1 : 0);
+
+        prepStmt.executeUpdate ();
+        log.log (Level.INFO, "The following transaction was persisted. " + this.toString ());
+    }
+
+
+    private static int getNextId(Connection connection) throws SQLException {
+        int next = 0;
+        Statement statement = connection.createStatement();
+        ResultSet rs = statement.executeQuery("select max(id) from tx");
+        while(rs.next()) {
+            next = rs.getInt(1) + 1;
+        }
+        return next;
+    }
+
 
 }

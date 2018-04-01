@@ -29,7 +29,7 @@ public class Teste {
             ECPrivateKey privateKeyB = (ECPrivateKey) pairB.getPrivate();
             ECPublicKey publicKeyExpectedB = (ECPublicKey) pairB.getPublic();
 
-            client.register(privateKeyA, publicKeyExpectedA, 50);
+            client.register(publicKeyExpectedA, privateKeyA, 50);
             System.out.println("Registered successfully");
             client.sendAmount(privateKeyA, publicKeyExpectedA, publicKeyExpectedB, 20);
             System.out.println("Amount sent successfully");

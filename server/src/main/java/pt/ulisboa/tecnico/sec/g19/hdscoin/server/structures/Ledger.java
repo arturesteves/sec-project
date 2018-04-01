@@ -6,11 +6,15 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidAmountExcept
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidLedgerException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.*;
 
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.KeyException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.ECPublicKey;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -54,6 +58,9 @@ public final class Ledger {
         }
         // generate new ID for ledger based on highest ID in the database
         setId(getNextId(connection));
+
+        // GENERATE 1st transaction (dummy, but required)
+        generateFirstTransaction (connection);
     }
 
     public int getId() {
@@ -90,6 +97,43 @@ public final class Ledger {
         log.log (Level.INFO, "A ledger was persisted. Public key of that ledger: " + getPublicKey());
     }
 
+    // useful for the audit
+    public List<Transaction> getAllTransactions () {
+        return null;
+    }
+
+    // useful for the check account
+    public List<Transaction> getPendingTransactions () {
+        String stmt = "SELECT * FROM ";
+        // a transacao inicial é do source para ele mesmo?,
+        return null;
+    }
+
+
+    private void generateFirstTransaction (Connection connection) {
+        try {
+            String base64PublicKey = Serialization.publicKeyToBase64 (this.publicKey);
+            // values to hash a transaction, true: because is_send = true, and null because the previous hash is null
+            String txValuesToHash = base64PublicKey + base64PublicKey + Boolean.toString(true) +
+                    Double.toString (this.amount) + null;
+            // hash
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            String hash = Arrays.toString(digest.digest(txValuesToHash.getBytes(StandardCharsets.UTF_8)));
+
+            Transaction tx = new Transaction (connection, this, this, this.amount, Utils.randomNonce(),
+                    hash, null, Transaction.EspecialTransactionType.FIRST);
+            tx.setPending(false);   // is not pending
+
+            tx.persist(connection);
+            // persist a transaction
+
+        } catch (NoSuchAlgorithmException | SQLException | KeyException | InvalidLedgerException | InvalidAmountException |
+                InvalidValueException e) {
+
+        }
+    }
+
+    // todo: check if is deprecated and delete it
     public static Ledger load(Connection connection, int id) throws SQLException, KeyException, MissingLedgerException {
         String stmt = "SELECT * FROM ledger WHERE id = ?";
         PreparedStatement prepStmt = connection.prepareStatement(stmt);

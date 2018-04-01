@@ -70,6 +70,10 @@ public class Serialization {
         }
     }
 
+    public static class CheckAccountRequest {
+        public String key;
+    }
+
     public static class Response implements Signable, NonceContainer {
         @JsonIgnore
         public int statusCode = -1;

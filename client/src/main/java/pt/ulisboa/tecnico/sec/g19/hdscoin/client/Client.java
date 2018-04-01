@@ -2,10 +2,7 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import com.github.kevinsawicki.http.HttpRequest;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantRegisterException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.InvalidClientSignatureException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.InvalidServerResponseException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.ServerErrorException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.NonceContainer;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Signable;
@@ -37,7 +34,7 @@ public class Client implements IClient {
     }
 
     @Override
-    public void register(ECPrivateKey privateKey, ECPublicKey publicKey, double amount) throws CantRegisterException {
+    public void register(ECPublicKey publicKey, ECPrivateKey privateKey, double amount) throws CantRegisterException {
         try {
             String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
             Serialization.RegisterRequest request = new Serialization.RegisterRequest();
@@ -55,23 +52,10 @@ public class Client implements IClient {
             } else {
                 checkErrors(amount, response);
             }
-        } catch (IOException | KeyException | CantGenerateSignatureException | InvalidServerResponseException
+        } catch (HttpRequest.HttpRequestException | IOException | KeyException | CantGenerateSignatureException | InvalidServerResponseException
                     | InvalidClientSignatureException | InvalidKeyException | InvalidLedgerException
                     | InvalidAmountException | ServerErrorException e) {
             throw new CantRegisterException ("Couldn't register the public key provided. " + e.getMessage (), e);
-        }
-    }
-
-    private void checkErrors(double amount, Serialization.Response response) throws InvalidKeyException, InvalidAmountException, InvalidLedgerException, ServerErrorException {
-        switch (response.status) {
-            case ERROR_INVALID_KEY:
-                throw new InvalidKeyException ("The public key provided is not valid.");
-            case ERROR_INVALID_AMOUNT:
-                throw new InvalidAmountException ("The amount provided is invalid.", amount);
-            case ERROR_INVALID_LEDGER:
-                throw new InvalidLedgerException ("The public key provided is not valid.");
-            case ERROR_SERVER_ERROR:
-                throw new ServerErrorException ("Error on the server side.");
         }
     }
 
@@ -91,7 +75,30 @@ public class Client implements IClient {
     }
 
     @Override
-    public int checkAccount(ECPrivateKey privateKey, ECPublicKey key) {
+    public int checkAccount(ECPublicKey publicKey) throws CantCheckAccountException {
+        try {
+            String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
+
+            // not necessary?
+            Serialization.CheckAccountRequest request = new Serialization.CheckAccountRequest();
+            request.key = b64PublicKey;
+
+            // get..
+            Serialization.Response response = sendGetRequest(url.toString() + "/checkAccount/" + b64PublicKey, Serialization.Response.class);
+
+            // TODO
+            // create another type of response instead on a new class for a request and then test it.
+            // when it works create tests for register and check account on the client side.
+            // then create a mechanism (callbacks) to simulate tampering with the messages on traffic.
+                // this have to be made on the client side.
+            // make tests on the client side for now.
+
+
+        } catch (IOException | KeyException | InvalidServerResponseException | CantGenerateSignatureException e) {
+            throw new CantCheckAccountException ("Couldn't check the account of the public key provided. " +
+                    e.getMessage(), e);
+        }
+
         return 0;
     }
 
@@ -106,8 +113,7 @@ public class Client implements IClient {
 
     }
 
-    // TODO: better exceptions
-    private <T> T sendPostRequest(String url, ECPrivateKey privateKey, Object payload, Class<T> responseValueType) throws IOException, CantGenerateSignatureException, InvalidServerResponseException, InvalidClientSignatureException {
+    private <T> T sendPostRequest(String url, ECPrivateKey privateKey, Object payload, Class<T> responseValueType) throws HttpRequest.HttpRequestException, IOException, CantGenerateSignatureException, InvalidServerResponseException, InvalidClientSignatureException {
         String payloadJson = Serialization.serialize(payload);
         String nonce = Utils.randomNonce();
 
@@ -154,5 +160,53 @@ public class Client implements IClient {
 
         // no error detected
         return response;
+    }
+
+    private <T> T sendGetRequest (String url, Class<T> responsValueType) throws HttpRequest.HttpRequestException, IOException, InvalidServerResponseException, CantGenerateSignatureException {
+        String nonce = Utils.randomNonce();
+        HttpRequest request = HttpRequest.get (url);
+        request = request.header("NONCE", nonce);
+
+        if (request.code () != 200) {
+            // return the response
+            // what can we receive here?
+        }
+
+        String responseSignature = request.header("SIGNATURE");
+        T response = Serialization.parse (request.body (), responsValueType);
+        if(!(response instanceof Signable && response instanceof NonceContainer)) {
+            throw new InvalidServerResponseException ("Response isn't signable or doesn't contain a nonce.\n " +
+                    "Impossible to check if the sender was really the server.");
+        }
+
+        boolean result = Utils.checkSignature(responseSignature, ((Signable) response).getSignable(), serverPublicKey);
+        if (!result) {
+            throw new InvalidServerResponseException ("Server signatures do not match.");
+        }
+
+        String responseNonce = ((NonceContainer) response).getNonce();
+
+        System.out.println("NONCE: " + nonce);
+        System.out.println("ResponseNOnce: " + responseNonce);
+        if (!responseNonce.equals(nonce)) {
+            throw new InvalidServerResponseException ("The nonce received by the server do not match the one " +
+                    "the client sent previously.");
+        }
+
+        // no error detected
+        return response;
+    }
+
+    private void checkErrors(double amount, Serialization.Response response) throws InvalidKeyException, InvalidAmountException, InvalidLedgerException, ServerErrorException {
+        switch (response.status) {
+            case ERROR_INVALID_KEY:
+                throw new InvalidKeyException ("The public key provided is not valid.");
+            case ERROR_INVALID_AMOUNT:
+                throw new InvalidAmountException ("The amount provided is invalid.", amount);
+            case ERROR_INVALID_LEDGER:
+                throw new InvalidLedgerException ("The public key provided is not valid.");
+            case ERROR_SERVER_ERROR:
+                throw new ServerErrorException ("Error on the server side.");
+        }
     }
 }
