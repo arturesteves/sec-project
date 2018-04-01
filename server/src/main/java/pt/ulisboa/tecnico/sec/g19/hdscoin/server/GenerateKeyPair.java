@@ -18,7 +18,7 @@ public class GenerateKeyPair {
     public static final String ENTITY = "SERVER";
     public static final String FILE_PATH = "/src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/server/keys";
 
-    public static void main(String[] args) throws ParseException, CantGenerateKeysException, KeyException, IOException {
+    public static void main(String[] args) throws CantGenerateKeysException{
         String serverName;
 
         // create options
@@ -26,17 +26,22 @@ public class GenerateKeyPair {
         options.addOption ("n", true, "Name of the server");
 
         CommandLineParser parser = new BasicParser ();
-        CommandLine cmd = parser.parse(options, args);
+        try {
+            CommandLine cmd = parser.parse(options, args);
 
-        if (cmd.hasOption("n")) {
-            serverName = cmd.getOptionValue("n");
-        } else {
-            usage (options);
-            throw new RuntimeException("\nMissing the -n option.\n");
+            if (cmd.hasOption("n")) {
+                serverName = cmd.getOptionValue("n");
+            } else {
+                usage (options);
+                throw new CantGenerateKeysException("Failed to generate a key pair. Missing the -n option.",
+                        new Throwable());
+            }
+
+            KeyPair keyPair = Utils.generateKeyPair ();
+            Utils.writeKeyPairToFile (FILE_PATH + "/" + serverName + ".keys", keyPair);
+        } catch (ParseException | KeyException | IOException e) {
+            throw new CantGenerateKeysException("Failed to generate a key pair. " + e.getMessage(), e);
         }
-
-        KeyPair keyPair = Utils.generateKeyPair ();
-        Utils.writeKeyPairToFile (FILE_PATH + "/" + serverName + ".keys", keyPair);
 
     }
 

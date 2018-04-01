@@ -18,26 +18,30 @@ public class GenerateKeyPair {
     public static final String ENTITY = "CLIENT";
     public static final String FILE_PATH = "/src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/client/keys";
 
-    public static void main(String[] args) throws ParseException, CantGenerateKeysException, KeyException, IOException {
+    public static void main(String[] args) throws CantGenerateKeysException {
         String clientName;
 
         // create options
         Options options = new Options ();
         options.addOption ("n", true, "Name of the client");
 
-        CommandLineParser parser = new BasicParser();
-        CommandLine cmd = parser.parse(options, args);
+        CommandLineParser parser = new BasicParser ();
+        try {
+            CommandLine cmd = parser.parse(options, args);
 
-        if (cmd.hasOption("n")) {
-            clientName = cmd.getOptionValue("n");
-        } else {
-            usage (options);
-            throw new RuntimeException("\nMissing the -n option.\n");
+            if (cmd.hasOption("n")) {
+                clientName = cmd.getOptionValue("n");
+            } else {
+                usage (options);
+                throw new CantGenerateKeysException("Failed to generate a key pair. Missing the -n option.",
+                        new Throwable());
+            }
+
+            KeyPair keyPair = Utils.generateKeyPair ();
+            Utils.writeKeyPairToFile (FILE_PATH + "/" + clientName + ".keys", keyPair);
+        } catch (ParseException | KeyException | IOException e) {
+            throw new CantGenerateKeysException("Failed to generate a key pair. " + e.getMessage(), e);
         }
-
-        KeyPair keyPair = Utils.generateKeyPair ();
-        Utils.writeKeyPairToFile (FILE_PATH + "/" + clientName + ".keys", keyPair);
-
     }
 
     private static void usage (Options options) {

@@ -76,7 +76,7 @@ public class Utils {
             keyPairGenerator.initialize(ecGenSpec, new SecureRandom());
 
         } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException e) {
-            throw new CantGenerateKeysException(e);
+            throw new CantGenerateKeysException("Coudn't generate a key pair. " + e.getMessage(), e);
         }
         return keyPairGenerator.generateKeyPair();
     }
