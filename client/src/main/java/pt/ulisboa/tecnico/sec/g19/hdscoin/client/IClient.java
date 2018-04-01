@@ -1,6 +1,10 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantRegisterException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.InvalidClientSignatureException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.InvalidServerResponseException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateSignatureException;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -12,7 +16,7 @@ import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 
 
-//todo - Add the exception that will be thrown in case of errors
+//todo - Add the exceptions that will be thrown in case of errors
 public interface IClient {
 
     //all these methods can have more arguments in the future, it is not specified in the
@@ -24,7 +28,7 @@ public interface IClient {
          positive balance.
      * @param key The public key to be registered
      */
-    void register(ECPrivateKey privateKey, ECPublicKey key, double amount) throws IOException, KeyException, NoSuchAlgorithmException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, NoSuchProviderException, UnsupportedEncodingException, SignatureException;
+    void register(ECPrivateKey privateKey, ECPublicKey key, double amount) throws CantRegisterException;
 
     //todo - Maybe return the current balance for testing purposes
     /**
@@ -38,7 +42,7 @@ public interface IClient {
      * @param destination Public key of the Destination of the transfer
      * @param amount The amount to transfer as an integer
      */
-    void sendAmount(ECPrivateKey privateKey, ECPublicKey source, ECPublicKey destination, double amount) throws KeyException, IOException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException, SignatureException;
+    void sendAmount(ECPrivateKey privateKey, ECPublicKey source, ECPublicKey destination, double amount) throws KeyException, IOException, CantGenerateSignatureException, InvalidServerResponseException, InvalidClientSignatureException;
 
 
     //todo - Make sure that the return type here is integer

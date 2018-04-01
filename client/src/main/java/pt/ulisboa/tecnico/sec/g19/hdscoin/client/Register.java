@@ -1,16 +1,11 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import org.apache.commons.cli.*;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantRegisterException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.InvalidClientSignatureException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
@@ -22,7 +17,7 @@ public class Register {
     public static final String SERVER_URL = "http://localhost:4567";
     public static final String SERVER_PUBLIC_KEY_BASE_64 = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/GJhA+8icaML6/zYhJ1QY4oEbhzUqjzJmECK5dTJ2mRpS4Vsks0Zy52Q8HiNGQvDpO8wLr/a5X0yTV+Sj1vThQ==";
 
-    public static void main (String[] args) throws CantRegisterException{
+    public static void main (String[] args) throws CantRegisterException, InvalidClientSignatureException {
         String fileName;
         String clientName;
         double amount = -1.0;
@@ -39,7 +34,7 @@ public class Register {
             cmd = parser.parse (registerOptions, args);
         } catch (ParseException e) {
             e.printStackTrace();
-            throw new CantRegisterException(e);
+            throw new CantRegisterException("Can't register, because arguments are missing. " + e.getMessage(), e);
         }
 
         if (cmd.hasOption ("n")) {
@@ -69,9 +64,8 @@ public class Register {
             IClient client = new Client(new URL(SERVER_URL), serverPublicKey);
             client.register(clientPrivateKey, clientPublickey, amount);
 
-        } catch (KeyException | IOException | NoSuchAlgorithmException | NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException | SignatureException | NoSuchProviderException e) {
-            e.printStackTrace();
-            throw new CantRegisterException(e);
+        } catch (KeyException | IOException e) {
+            throw new CantRegisterException("Unable to register. " + e.getMessage(), e);
         }
 
     }
@@ -81,25 +75,4 @@ public class Register {
         formatter.printHelp( "Register", options);
     }
 
-    private static void teste () throws CantRegisterException {
-        try {
-            String ServerPublicKeyBase64 = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESM5RJvz4CL4aXzpo1NuWhIkfYW1QWAG5droc7oavOeiWyhBsjnxD+Z+WZ4Fm3R8+1zml14aIJAO7grCnXe0uGg==";
-            ECPublicKey serverPublicKey = Serialization.base64toPublicKey(ServerPublicKeyBase64);
-
-            Security.addProvider(new BouncyCastleProvider());
-
-            IClient client = new Client(new URL("http://localhost:4567"), serverPublicKey);
-
-            KeyPair pairA = Utils.generateKeyPair();
-            ECPrivateKey privateKeyA = (ECPrivateKey) pairA.getPrivate();
-            ECPublicKey publicKeyA = (ECPublicKey) pairA.getPublic();
-
-            client.register(privateKeyA, publicKeyA, 50);
-            System.out.println("Registered successfully");
-
-        }  catch (KeyException | InvalidAlgorithmParameterException | IOException | NoSuchAlgorithmException | NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException | SignatureException | NoSuchProviderException e) {
-            e.printStackTrace();
-            throw new CantRegisterException(e);
-        }
-    }
 }

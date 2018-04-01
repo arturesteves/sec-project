@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.common;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateKeysException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateSignatureException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantWritePublicKeyToFileException;
 
 import java.io.*;
@@ -13,6 +14,7 @@ import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.logging.*;
 
 public class Utils {
 
@@ -29,43 +31,43 @@ public class Utils {
         return rndGen.nextString();
     }
 
+    // TODO: THROWN ONLY 1 EXCEPTION
     //Returns a signature in base64 over an hash input
-    public static String generateSignature(String hashInput, ECPrivateKey privateKey) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, UnsupportedEncodingException, SignatureException {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        String hash = Arrays.toString(digest.digest(hashInput.getBytes(StandardCharsets.UTF_8)));
+    public static String generateSignature(String hashInput, ECPrivateKey privateKey) throws CantGenerateSignatureException{
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            String hash = Arrays.toString(digest.digest(hashInput.getBytes(StandardCharsets.UTF_8)));
 
-        Signature ecdsaSign = Signature.getInstance("SHA256withECDSA", "BC");
-        ecdsaSign.initSign(privateKey);
-        ecdsaSign.update(hash.getBytes("UTF-8"));
-        return new String(Base64.getEncoder().encode(ecdsaSign.sign()), StandardCharsets.UTF_8);
+            Signature ecdsaSign = Signature.getInstance("SHA256withECDSA", "BC");
+            ecdsaSign.initSign(privateKey);
+            ecdsaSign.update(hash.getBytes("UTF-8"));
+            return new String(Base64.getEncoder().encode(ecdsaSign.sign()), StandardCharsets.UTF_8);
+        } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | UnsupportedEncodingException | SignatureException e) {
+            throw new CantGenerateSignatureException ("Couldn't sign the message. " + e.getMessage (), e);
+        }
     }
 
-    public static boolean checkSignature(String signature, String hashInput, String publicKey) throws SignatureException, KeyException, NoSuchProviderException, NoSuchAlgorithmException, UnsupportedEncodingException {
+    public static boolean checkSignature(String signature, String hashInput, String publicKey) throws CantGenerateSignatureException, KeyException {
         return checkSignature(signature, hashInput, Serialization.base64toPublicKey(publicKey));
     }
 
-    public static boolean checkSignature(String signature, String hashInput, ECPublicKey publicKey) throws SignatureException, KeyException, NoSuchProviderException, NoSuchAlgorithmException, UnsupportedEncodingException {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        String hash = Arrays.toString(digest.digest(hashInput.getBytes(StandardCharsets.UTF_8)));
+    public static boolean checkSignature(String signature, String hashInput, ECPublicKey publicKey) throws CantGenerateSignatureException {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            String hash = Arrays.toString(digest.digest(hashInput.getBytes(StandardCharsets.UTF_8)));
 
-        byte[] signatureBytes = Base64.getDecoder().decode(signature);
-        Signature ecdsaVerify = Signature.getInstance("SHA256withECDSA", "BC");
-        ecdsaVerify.initVerify(publicKey);
-        ecdsaVerify.update(hash.getBytes("UTF-8"));
+            byte[] signatureBytes = Base64.getDecoder().decode(signature);
+            Signature ecdsaVerify = Signature.getInstance("SHA256withECDSA", "BC");
+            ecdsaVerify.initVerify(publicKey);
+            ecdsaVerify.update(hash.getBytes("UTF-8"));
 
-        return ecdsaVerify.verify(signatureBytes);
+            return ecdsaVerify.verify(signatureBytes);
+        } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | UnsupportedEncodingException | SignatureException e) {
+            throw new CantGenerateSignatureException ("Couldn't sign the message. " + e.getMessage (), e);
+        }
     }
 
-    // deprecated
-    public static KeyPair generateKeyPair() throws InvalidAlgorithmParameterException, NoSuchProviderException, NoSuchAlgorithmException {
-        ECGenParameterSpec ecGenSpec = new ECGenParameterSpec("secp256r1");
-        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("ECDSA", "BC");
-        keyPairGenerator.initialize(ecGenSpec, new SecureRandom());
-
-        return keyPairGenerator.generateKeyPair();
-    }
-
-    public static KeyPair generateKeyPair (String entity) throws CantGenerateKeysException {
+    public static KeyPair generateKeyPair () throws CantGenerateKeysException {
         ECGenParameterSpec ecGenSpec = new ECGenParameterSpec("secp256r1");
 
         KeyPairGenerator keyPairGenerator = null;
@@ -76,55 +78,7 @@ public class Utils {
         } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException e) {
             throw new CantGenerateKeysException(e);
         }
-        KeyPair keyPair = keyPairGenerator.generateKeyPair();
-
-        /*
-        try {
-            writePublicKeyToFile (entity, (ECPublicKey) keyPair.getPublic());
-        } catch (CantWritePublicKeyToFileException e) {
-            throw new CantGenerateKeysException(e);
-        }
-        */
-        return keyPair;
-    }
-
-    private static void writePublicKeyToFile (String entity, ECPublicKey publicKey) throws CantWritePublicKeyToFileException{
-        String filename = (entity.equals ("client") ? "clients-public-keys.keys" : "servers-public-keys.keys");
-        String root = System.getProperty("user.dir");
-        System.out.println("Root: " + root);    // return the client root path not the common
-        String s = "C:\\Users\\artur\\Documents\\Projectos\\Mestrado\\1º Ano\\2º Semestre\\SEC\\common\\";
-        String p = "src\\main\\java\\pt\\ulisboa\\tecnico\\sec\\g19\\hdscoin\\common\\resources\\keys\\";
-        String f = s+p+filename;
-        //ClassLoader cl = Utils.class.getClass().getClassLoader();
-        //System.out.println(cl.getName());   // retornou null
-
-
-        File directory = new File("./");
-        System.out.println(directory.getAbsolutePath());    // returning the path of the client project ....
-
-        //System.out.println(",,,," + cl.getResource("keys/servers-public-keys.keys").getFile());
-        //URL url = Utils.class.getResource("/src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/server")
-        //URL resource = Utils.class.getResource("pt/ulisboa/tecnico/sec/g19/hdscoin/common/keys/" + filename);
-        //System.out.print("RESOURCE::: " + resource.getFile());
-            //// return some strange path
-        ////URL url = Utils.class.getResource("/keys/servers-public-keys.keys");
-        ////System.out.println(url.getFile());
-        try {
-            String publicKeyBase64 = Serialization.publicKeyToBase64 (publicKey);   // encode the public key into 64 base string
-            FileWriter fw = new FileWriter(f, true); // true to append to file or create if doesn't exist
-            BufferedWriter bw = new BufferedWriter(fw);
-            PrintWriter out = new PrintWriter(bw);
-            out.println(publicKeyBase64);
-
-            // close
-            out.flush();
-            out.close();
-            bw.close();
-            fw.close();
-        } catch (KeyException | IOException e) {
-            e.printStackTrace ();
-            throw new CantWritePublicKeyToFileException (e);
-        }
+        return keyPairGenerator.generateKeyPair();
     }
 
     public static void writeKeyPairToFile (String filepath, KeyPair keyPair) throws KeyException, IOException {
@@ -145,9 +99,6 @@ public class Utils {
         fw.close();
     }
 
-
-
-    // OK -  missing documentation
     public static ECPublicKey readPublicKeyFromFile (String filepath) throws KeyException, IOException{
         String root = System.getProperty("user.dir");
 
@@ -178,4 +129,22 @@ public class Utils {
         return privateKey;
     }
 
+    public static void initLogger (Logger log) {
+        ConsoleHandler consoleHandler = new ConsoleHandler ();
+        consoleHandler.setLevel (Level.ALL);
+        consoleHandler.setFormatter (new SimpleFormatter());
+        try {
+            FileHandler fileHandler = new FileHandler ("logs.log");
+            fileHandler.setEncoding("UTF-8");
+            fileHandler.setLevel(Level.ALL);
+            fileHandler.setFormatter(new SimpleFormatter ());
+            log.addHandler (fileHandler);
+
+        } catch (IOException e) {
+            e.printStackTrace ();
+        }
+        log.addHandler (consoleHandler);
+        log.setLevel(Level.ALL);
+        log.log (Level.CONFIG, "Logger initialized");
+    }
 }

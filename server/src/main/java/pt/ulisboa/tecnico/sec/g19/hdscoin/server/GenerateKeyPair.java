@@ -35,7 +35,7 @@ public class GenerateKeyPair {
             throw new RuntimeException("\nMissing the -n option.\n");
         }
 
-        KeyPair keyPair = Utils.generateKeyPair (ENTITY);
+        KeyPair keyPair = Utils.generateKeyPair ();
         Utils.writeKeyPairToFile (FILE_PATH + "/" + serverName + ".keys", keyPair);
 
     }

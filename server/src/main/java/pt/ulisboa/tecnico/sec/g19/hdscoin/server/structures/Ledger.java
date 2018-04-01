@@ -1,7 +1,10 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures;
 
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exception.*;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidAmountException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidLedgerException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.*;
 
 import java.security.InvalidKeyException;
 import java.security.KeyException;
@@ -9,15 +12,19 @@ import java.security.interfaces.ECPublicKey;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 public final class Ledger {
+    private final static Logger log = Logger.getLogger (Ledger.class.getName ());
 
     private int id;
     private ECPublicKey publicKey;    // can't change
     private double amount;
 
     private Ledger(int id, ECPublicKey publicKey, double amount) {
+        Utils.initLogger (log);
         this.publicKey = publicKey;
         this.amount = amount;
         this.id = id;
@@ -26,13 +33,15 @@ public final class Ledger {
     public Ledger(Connection connection, ECPublicKey publicKey, double amount) throws SQLException, InvalidKeyException, InvalidAmountException, InvalidLedgerException {
         this(-1, publicKey, amount);
         if (publicKey == null) {
+            log.log (Level.WARNING, "Null key when trying to initialize a ledger.");
             throw new InvalidKeyException("Null key when trying to initialize a ledger.");
         }
 
         // check if a ledger with this public key already exists. If yes, this ledger can't be created
         try {
             load(connection, publicKey);
-            throw new InvalidLedgerException("A ledger with this public key already exists");
+            log.log (Level.WARNING, "A ledger with this public key already exists.");
+            throw new InvalidLedgerException("A ledger with this public key already exists.");
         } catch(MissingLedgerException ex) {
             // it's ok, go on
         } catch (KeyException e) {
@@ -40,6 +49,7 @@ public final class Ledger {
         }
 
         if (amount < 1) {
+            log.log (Level.WARNING, "Insufficient amount to setup a ledger.");
             throw new InvalidAmountException("Insufficient amount to setup a ledger.", amount);
         }
         // generate new ID for ledger based on highest ID in the database
@@ -77,6 +87,7 @@ public final class Ledger {
         prepStmt.setString(2, Serialization.publicKeyToBase64(getPublicKey()));
         prepStmt.setDouble(3, getAmount());
         prepStmt.executeUpdate();
+        log.log (Level.INFO, "A ledger was persisted. Public key of that ledger: " + getPublicKey());
     }
 
     public static Ledger load(Connection connection, int id) throws SQLException, KeyException, MissingLedgerException {
@@ -98,7 +109,8 @@ public final class Ledger {
 
         List<Ledger> results = loadResults(prepStmt);
         if(results.size() == 0) {
-            throw new MissingLedgerException("A ledger with the specified public key was not found");
+            log.log (Level.WARNING, "A ledger with the specified public key was not found. Public Key: " + pk);
+            throw new MissingLedgerException("A ledger with the specified public key was not found.");
         }
         return results.get(0);
     }

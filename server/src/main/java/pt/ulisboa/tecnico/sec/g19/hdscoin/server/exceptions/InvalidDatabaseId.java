@@ -1,4 +1,4 @@
-package pt.ulisboa.tecnico.sec.g19.hdscoin.server.exception;
+package pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions;
 
 public class InvalidDatabaseId extends Exception {
 

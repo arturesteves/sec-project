@@ -1,4 +1,4 @@
-package pt.ulisboa.tecnico.sec.g19.hdscoin.server.exception;
+package pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions;
 
 public class InvalidLedgerException extends Exception {
 

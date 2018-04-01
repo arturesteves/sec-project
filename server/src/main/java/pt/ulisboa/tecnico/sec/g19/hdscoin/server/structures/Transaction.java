@@ -1,8 +1,8 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures;
 
-import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exception.InvalidLedgerException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exception.InvalidValueException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exception.InvalidAmountException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidLedgerException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.InvalidValueException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidAmountException;
 
 public final class Transaction {
 

@@ -18,6 +18,13 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
 public class Serialization {
+
+    public enum StatusMessage {
+        OK, ERROR_INVALID_LEDGER, ERROR_INVALID_AMOUNT, ERROR_NO_SIGNATURE_MATCH,
+        ERROR_INVALID_KEY, ERROR_SERVER_ERROR
+    }
+
+
     private static ObjectMapper mapper = new ObjectMapper();
 
     public static class RegisterRequest implements Signable {
@@ -67,7 +74,8 @@ public class Serialization {
         @JsonIgnore
         public int statusCode = -1;
 
-        public String status; // "ok" or "error"
+        //public String status; // "ok" or "error"
+        public StatusMessage status;
         public String nonce; // nonce that the client sent and now we send back, as part of what's signed
 
         @Override
