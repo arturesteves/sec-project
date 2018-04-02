@@ -19,6 +19,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.logging.*;
 
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.Transaction;
 import spark.Request;
 import spark.Response;
 
@@ -70,7 +71,8 @@ public class Main {
                         "AMOUNT: " + request.amount);
 
                 //Recreate the hash with the data received
-                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"), request.getSignable(), request.key);
+                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"), request.getSignable(),
+                                                        request.key);
 
                 Serialization.Response response = new Serialization.Response();
 
@@ -80,7 +82,6 @@ public class Main {
                             "signature of the message.");
                     response.status = ERROR_NO_SIGNATURE_MATCH;
                     return prepareResponse(serverPrivateKey, req, res, response);
-                    //return ERROR_NO_SIGNATURE_MATCH; //"Hash does not match";
                 }
 
                 ///////////////////////////////////////////////////
@@ -88,14 +89,13 @@ public class Main {
                 ///////////////////////////////////////////////////
 
                 Connection conn = null;
-                String key = request.key;
                 try {
                     conn = Database.getConnection();
-                    Ledger ledger = new Ledger(conn, Serialization.base64toPublicKey(key), request.amount);
+                    Ledger ledger = new Ledger(conn, Serialization.base64toPublicKey(request.key), request.amount);
                     ledger.persist(conn);
                     conn.commit();
                     response.status = SUCCESS;
-                    log.log (Level.INFO, "Initialized a new ledger with the base 64 public key: " + key);
+                    log.log (Level.INFO, "Initialized a new ledger with the base 64 public key: " + request.key);
                 } catch (SQLException e) {
                     // servers fault
                     log.log (Level.SEVERE, "Error related to the database. " + e);
@@ -112,7 +112,7 @@ public class Main {
                     if (!response.status.equals(SUCCESS) && conn != null) {
                         conn.rollback ();
                         log.log (Level.SEVERE, "The ledger created with the following public key was not " +
-                                "persisted. Public Key: " + key);
+                                "persisted. Public Key: " + request.key);
                     }
                 }
 
@@ -129,37 +129,66 @@ public class Main {
         post("/sendAmount", "application/json", (req, res) -> {
 
             try {
-                Serialization.SendAmountRequest request = Serialization.parse(req, Serialization.SendAmountRequest.class);
-                System.out.println ("---Receiving Request---");
-                System.out.println("SIG: " + req.headers("SIGNATURE"));
-                System.out.println("NONCE: " + req.headers("NONCE"));
-                System.out.println("Source: " + request.source);
-                System.out.println("Destination: " + request.destination);
-                System.out.println("Amount: " + request.amount);
+                Serialization.SendAmountRequest request = Serialization.parse(req,
+                                                                Serialization.SendAmountRequest.class);
+                log.log (Level.INFO, "Request received at: /sendAmount \n" +
+                        "data on the request:" +
+                        "SIGNATURE: " + req.headers("SIGNATURE") + "\n" +
+                        "NONCE: " + req.headers("NONCE") + "\n" +
+                        "AMOUNT:" + request.amount + "\n" +
+                        "SOURCE CLIENT BASE 64 PUBLIC KEY: " + request.source + "\n" +
+                        "TARGET CLIENT BASE 64 PUBLIC KEY: " + request.target + "\n");
+
                 //Recreate the hash with the data received
-                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"), request.getSignable(), request.source);
+                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"), request.getSignable(),
+                                                        request.source);
+
+                Serialization.Response response = new Serialization.Response ();
 
                 if (!result) {
                     res.status(401);
-                    return "Hash does not match";
+                    log.log (Level.WARNING, "The messange received from the client doesn't match with the " +
+                            "signature of the message.");
+                    response.status = ERROR_NO_SIGNATURE_MATCH;
+                    return prepareResponse(serverPrivateKey, req, res, response);
                 }
 
                 ///////////////////////////////////////////////////
                 //We now know that the public key was sent by the owner of its respective private key.
                 ///////////////////////////////////////////////////
 
-                //Todo - Do Something with the data.
+                Connection conn = null;
+                try {
+                    conn = Database.getConnection ();
+                    Ledger sourceLedger = Ledger.load (conn, Serialization.base64toPublicKey (request.source));
+                    Ledger targetLedger = Ledger.load (conn, Serialization.base64toPublicKey (request.target));
 
+                    Transaction transaction = new Transaction (conn, sourceLedger, targetLedger, request.amount,
+                                                req.headers("NONCE"), req.headers("SIGNATURE"),
+                                                request.previousSignature, Transaction.TransactionTypes.SENDING);
 
-                ///////////////////////////////////////////////////
-                Serialization.Response response = new Serialization.Response();
-                response.status = SUCCESS;
+                    transaction.persist (conn);
+                    conn.commit ();
+                    response.status = SUCCESS;
+                    log.log (Level.INFO, "Transaction created with success.");
+                } catch (SQLException e) {
+                    // servers fault
+                    log.log (Level.SEVERE, "Error related to the databas. " + e);
+                    response.status = ERROR_SERVER_ERROR;
+                } finally {
+                    if (!response.status.equals(SUCCESS) && conn != null) {
+                        conn.rollback ();
+                        log.log (Level.SEVERE, "The transaction created was not persisted, due to an error.");
+                    }
+                }
 
                 return prepareResponse(serverPrivateKey, req, res, response);
             } catch (Exception ex) {
-                res.status(200);
-                res.type("application/json");
-                throw ex;
+                res.status(500);
+                Serialization.Response response = new Serialization.Response();
+                response.status = ERROR_SERVER_ERROR;
+                log.log (Level.SEVERE, "Error on processing a register request. " + ex);
+                return prepareResponse(serverPrivateKey, req, res, response);
             }
         });
 
@@ -209,7 +238,8 @@ public class Main {
         post("/receiveAmount", "application/json", (req, res) -> {
 
             try {
-                Serialization.ReceiveAmountRequest request = Serialization.parse(req, Serialization.ReceiveAmountRequest.class);
+                Serialization.ReceiveAmountRequest request = Serialization.parse(req,
+                                                                Serialization.ReceiveAmountRequest.class);
 
                 //Recreate the hash with the data received
                 Boolean result = Utils.checkSignature(req.headers("SIGNATURE"),

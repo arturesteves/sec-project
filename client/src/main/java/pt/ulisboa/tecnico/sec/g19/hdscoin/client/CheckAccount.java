@@ -20,7 +20,6 @@ public class CheckAccount {
     public static final String SERVER_PUBLIC_KEY_BASE_64 = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/GJhA+8icaML6/zYhJ1QY4oEbhzUqjzJmECK5dTJ2mRpS4Vsks0Zy52Q8HiNGQvDpO8wLr/a5X0yTV+Sj1vThQ==";
 
     public static void main (String[] args) throws CantCheckAccountException {
-        String fileName;
         String clientName;
 
         // create options
@@ -33,27 +32,25 @@ public class CheckAccount {
         try {
             cmd = parser.parse (registerOptions, args);
         } catch (ParseException e) {
-            throw new CantCheckAccountException("Can't check account, because arguments are missing. " + e);
+            throw new CantCheckAccountException("Can't register, failed to interpreter the arguments. " + e);
         }
 
         if (cmd.hasOption ("n")) {
             clientName = cmd.getOptionValue ("n");
         } else {
             usage (registerOptions);
-            throw new RuntimeException ("Missing the -n option.");
+            throw new CantCheckAccountException ("Can't register, client name is missing.");
         }
 
-        fileName = FILE_PATH + "/" + clientName + ".keys";
-
         try {
-            ECPublicKey clientPublickey = Utils.readPublicKeyFromFile (fileName);
+            ECPublicKey clientPublickey = Utils.readPublicKeyFromFile (FILE_PATH + "/" + clientName + ".keys");
             ECPublicKey serverPublicKey = Serialization.base64toPublicKey (SERVER_PUBLIC_KEY_BASE_64);
 
             IClient client = new Client (new URL(SERVER_URL), serverPublicKey);
             client.checkAccount (clientPublickey);
 
         } catch (KeyException | IOException e) {
-            throw new CantCheckAccountException ("Couldn't check the account of the public key provided. " + e);
+            throw new CantCheckAccountException ("Failed to check the account of the public key provided. " + e);
         }
 
     }

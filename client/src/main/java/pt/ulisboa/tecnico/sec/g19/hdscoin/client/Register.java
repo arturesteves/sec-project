@@ -17,10 +17,9 @@ public class Register {
     public static final String SERVER_URL = "http://localhost:4567";
     public static final String SERVER_PUBLIC_KEY_BASE_64 = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/GJhA+8icaML6/zYhJ1QY4oEbhzUqjzJmECK5dTJ2mRpS4Vsks0Zy52Q8HiNGQvDpO8wLr/a5X0yTV+Sj1vThQ==";
 
-    public static void main (String[] args) throws CantRegisterException, InvalidClientSignatureException {
-        String fileName;
+    public static void main (String[] args) throws CantRegisterException {
         String clientName;
-        double amount = -1.0;
+        double amount;
 
         // create options
         Options registerOptions = new Options ();
@@ -34,27 +33,27 @@ public class Register {
             cmd = parser.parse (registerOptions, args);
         } catch (ParseException e) {
             e.printStackTrace();
-            throw new CantRegisterException("Can't register, because arguments are missing. " + e);
+            throw new CantRegisterException("Can't register, failed to interpreter the arguments. " + e);
         }
 
         if (cmd.hasOption ("n")) {
             clientName = cmd.getOptionValue ("n");
         } else {
             usage (registerOptions);
-            throw new RuntimeException ("Missing the -n option.");
+            throw new CantRegisterException("Can't register, client name is missing.");
         }
         if (cmd.hasOption ("a")) {
             try {
                 amount = Double.parseDouble (cmd.getOptionValue ("a"));
             } catch (NullPointerException | NumberFormatException e) {
-                System.out.println(e.getMessage());
+                throw new CantRegisterException("Can't register, the amount is invalid. " + e);
             }
         } else {
             usage (registerOptions);
-            throw new RuntimeException ("Missing the -a option.");
+            throw new CantRegisterException("Can't register, amount is missing.");
         }
 
-        fileName = FILE_PATH + "/" + clientName + ".keys";
+        String fileName = FILE_PATH + "/" + clientName + ".keys";
 
         try {
             ECPublicKey clientPublickey = Utils.readPublicKeyFromFile (fileName);
@@ -65,7 +64,7 @@ public class Register {
             client.register(clientPublickey, clientPrivateKey, amount);
 
         } catch (KeyException | IOException e) {
-            throw new CantRegisterException("Unable to register. " + e);
+            throw new CantRegisterException("Failed to register. " + e);
         }
 
     }

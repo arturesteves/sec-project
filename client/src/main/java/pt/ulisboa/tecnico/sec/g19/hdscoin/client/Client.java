@@ -42,21 +42,21 @@ public class Client implements IClient {
             request.amount = amount;
             request.key = b64PublicKey;
             // log
+            System.out.println ("---------------------");
             System.out.println ("---Sending Request---");
-            System.out.println ("---               ---");
             System.out.println ("Base 64 Public Key: " + b64PublicKey);
             System.out.println ("Amount: " + amount);
-            System.out.println ("---               ---");
-            System.out.println ("---Sending Request---");
+            System.out.println ("---------------------");
             // http post request
-            Serialization.Response response = sendPostRequest(url.toString() + "/register", privateKey, request, Serialization.Response.class);
+            Serialization.Response response = sendPostRequest(url.toString() + "/register", privateKey, request,
+                    Serialization.Response.class);
 
             if (response.statusCode == 200) {
                 System.out.println("\n");
-                System.out.println ("----------------------------------");
+                System.out.println ("---------------------------------");
                 System.out.println ("---Registration was successful---");
                 System.out.println ();
-                System.out.println ("----------------------------------");
+                System.out.println ("---------------------------------");
             } else {
                 switch (response.status) {
                     case ERROR_INVALID_KEY:
@@ -69,26 +69,46 @@ public class Client implements IClient {
                         throw new ServerErrorException ("Error on the server side.");
                 }
             }
-        } catch (HttpRequest.HttpRequestException | IOException | KeyException | CantGenerateSignatureException | InvalidServerResponseException
-                    | InvalidClientSignatureException | InvalidKeyException | InvalidLedgerException
-                    | InvalidAmountException | ServerErrorException e) {
-            throw new CantRegisterException ("Couldn't register the public key provided. " + e);
+        } catch (HttpRequest.HttpRequestException | IOException | KeyException | CantGenerateSignatureException |
+                    InvalidServerResponseException | InvalidClientSignatureException | InvalidKeyException |
+                    InvalidLedgerException | InvalidAmountException | ServerErrorException e) {
+            throw new CantRegisterException ("Failed to register the public key provided. " + e);
         }
     }
 
     @Override
-    public void sendAmount(ECPrivateKey privateKey, ECPublicKey source, ECPublicKey destination, double amount) throws KeyException, IOException, CantGenerateSignatureException, InvalidServerResponseException, InvalidClientSignatureException {
-        String b64SourcePublicKey = Serialization.publicKeyToBase64(source);
-        String b64DestinationPublicKey = Serialization.publicKeyToBase64(destination);
+    public void sendAmount(ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, double amount,
+                           ECPrivateKey sourcePrivateKey, String previousSignature) throws CantSendAccountException {
+        try {
+            String b64SourcePublicKey = Serialization.publicKeyToBase64(sourcePublicKey);
+            String b64DestinationPublicKey = Serialization.publicKeyToBase64(targetPublicKey);
 
-        Serialization.SendAmountRequest request = new Serialization.SendAmountRequest();
-        request.source = b64SourcePublicKey;
-        request.destination = b64DestinationPublicKey;
-        request.amount = amount;
-        request.previousSignature = "TODO"; // TODO we must first do a request to obtain our last tx so we can get its signature
+            Serialization.SendAmountRequest request = new Serialization.SendAmountRequest();
+            request.source = b64SourcePublicKey;
+            request.target = b64DestinationPublicKey;
+            request.amount = amount;
+            request.previousSignature = previousSignature;
 
-        sendPostRequest(url.toString() + "/sendAmount", privateKey, request, Serialization.Response.class);
-        // TODO we must check that the response was successful and maybe implement retry logic if not
+            Serialization.Response response = sendPostRequest(url.toString() + "/sendAmount", sourcePrivateKey,
+                    request, Serialization.Response.class);
+
+            if (response.statusCode == 200) {
+                System.out.println ("\n");
+                System.out.println ("--------------------------------");
+                System.out.println ("---Transaction was successful---");
+                System.out.println ("--Waiting for target to accept--");
+                System.out.println ();
+                System.out.println ("--------------------------------");
+            } else {
+                switch (response.status) {
+                    case ERROR_SERVER_ERROR:
+                        throw new ServerErrorException ("Error on the server side.");
+                }
+            }
+        } catch (HttpRequest.HttpRequestException | IOException | KeyException | CantGenerateSignatureException |
+                InvalidServerResponseException | InvalidClientSignatureException | ServerErrorException e) {
+            throw new CantSendAccountException ("Failed to create a transaction. " + e);
+        }
     }
 
     @Override
@@ -128,7 +148,7 @@ public class Client implements IClient {
             return 0;
         } catch (InvalidKeyException | InvalidLedgerException | ServerErrorException | IOException | KeyException |
                     InvalidServerResponseException | CantGenerateSignatureException e) {
-            throw new CantCheckAccountException ("Couldn't check the account of the public key provided. " + e);
+            throw new CantCheckAccountException ("Failed to check the account of the public key provided. " + e);
         }
     }
 

@@ -41,7 +41,7 @@ public class Serialization {
 
     private static abstract class TransactionRequest implements Signable {
         public String source;
-        public String destination; // who receives the money
+        public String target; // who receives the money
         public double amount;
         public String previousSignature;
 
@@ -49,7 +49,7 @@ public class Serialization {
         @JsonIgnore
         public String getSignable() {
             // true: because is_send = true
-            return source + destination + Boolean.toString(true) + Double.toString(amount) + previousSignature;
+            return source + target + Boolean.toString(true) + Double.toString(amount) + previousSignature;
         }
     }
 

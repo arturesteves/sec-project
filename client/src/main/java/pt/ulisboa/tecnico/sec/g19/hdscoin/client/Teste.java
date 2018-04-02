@@ -31,7 +31,7 @@ public class Teste {
 
             client.register(publicKeyExpectedA, privateKeyA, 50);
             System.out.println("Registered successfully");
-            client.sendAmount(privateKeyA, publicKeyExpectedA, publicKeyExpectedB, 20);
+            //client.sendAmount(privateKeyA, publicKeyExpectedA, publicKeyExpectedB, 20);
             System.out.println("Amount sent successfully");
 
         } catch(Exception ex) {

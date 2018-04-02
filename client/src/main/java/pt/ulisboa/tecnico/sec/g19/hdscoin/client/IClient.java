@@ -1,9 +1,6 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantCheckAccountException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantRegisterException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.InvalidClientSignatureException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.InvalidServerResponseException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateSignatureException;
 
 import java.io.IOException;
@@ -18,29 +15,30 @@ public interface IClient {
      * Register the account and associated public key in the system before first use.
      * Initialize the proper structures to enable the use of the HDS coins.
      *
-     * @param publicKey     public key of the client
-     * @param privateKey    private key of the client, used to sign the message
-     * @param amount        initial amount
+     * @param publicKey     Public key of the client.
+     * @param privateKey    Private key of the client, used to sign the message.
+     * @param amount        Initial amount.
      * @throws CantRegisterException If the operation isn't successful due to an invalid argument,
      *                               or the server couldn't verify who sign it, or the client couldn't verify
      *                               if the server sign it, or occurred a server error.
      */
     void register(ECPublicKey publicKey, ECPrivateKey privateKey, double amount) throws CantRegisterException;
 
-    //TODO: check
-    //todo - Maybe return the current balance for testing purposes
     /**
-     *  Submit the request for transferring a given amount from account
-         source to account destination, if the balance of the source allows it. If the
-         server responds positively to this call, it must be guaranteed that the source
-         has the authority to perform the transfer. The transfer will only be finalized
-         when the receiver approves it via the receive_amount() method
-     * @param privateKey Private key of the client, to sign the transaction
-     * @param source Public key of the Source of the transfer
-     * @param destination Public key of the Destination of the transfer
-     * @param amount The amount to transfer as an integer
+     * Submit the request for transferring a given amount from account
+     * source to account destination, if the balance of the source allows it.
+     *
+     * @param sourcePublicKey   Public key of the client that is sending the transaction.
+     * @param targetPublicKey   Public key of the client that is receiving the transaction.
+     * @param amount            Amount to transfer.
+     * @param sourcePrivateKey  Private key of the client that is sending the transaction, used to sign the message.
+     * @param previousSignature Signature of the last transaction.
+     * @throws CantSendAccountException If the operation isn't successful due to an invalid argument,
+     *                               or the server couldn't verify who sign it, or the client couldn't verify
+     *                               if the server sign it, or occurred a server error.
      */
-    void sendAmount(ECPrivateKey privateKey, ECPublicKey source, ECPublicKey destination, double amount) throws KeyException, IOException, CantGenerateSignatureException, InvalidServerResponseException, InvalidClientSignatureException;
+    void sendAmount(ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, double amount,
+                    ECPrivateKey sourcePrivateKey, String previousSignature) throws CantSendAccountException;
 
     /**
      * Obtain the balance of the account associated with key.

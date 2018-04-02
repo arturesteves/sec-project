@@ -6,7 +6,6 @@ Download or clone this repository.
 Open a terminal on the project root directory and then type:  
 `$ mvn install`  
 
-    
 ## Usage
 
 #### Server Side
@@ -45,9 +44,9 @@ Open a terminal on the root directory of any project and then type:
 `mvn clean test`
 
 ## Documentation
-The client side programs documentation can be found at [CLIENT-DOCUMENTATION](docs/CLIENT-DOCUMENTATION.md). 
-The server side programs documentation can be found at [SERVER-DOCUMENTATION](docs/SERVER-DOCUMENTATION.md).
-
+The client side programs documentation can be found at [CLIENT-DOC](docs/CLIENT-DOCUMENTATION.md).   
+The server side programs documentation can be found at [SERVER-DOC](docs/SERVER-DOCUMENTATION.md).  
+The web server api documentation can be found at [SERVER-API-DOC](docs/SERVER-API-DOCUMENTATION.md).
 
 ## License  
 Licensed under MIT. See [LICENSE](LICENSE) for more information. 
