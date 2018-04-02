@@ -34,6 +34,8 @@ public class Main {
     private static ECPublicKey serverPublicKey;
     private static ECPrivateKey serverPrivateKey;
 
+    private static Object ledgerLock;
+
     public static void main(String[] args) throws FailedToLoadKeysException {
         // set Logger
         Utils.initLogger (log);
@@ -90,10 +92,14 @@ public class Main {
                 Connection conn = null;
                 String key = request.key;
                 try {
-                    conn = Database.getConnection();
-                    Ledger ledger = new Ledger(conn, Serialization.base64toPublicKey(key), request.amount);
-                    ledger.persist(conn);
-                    conn.commit();
+                    // mutual exclusion is necessary to ensure the new ledger ID obtained in "new Ledger"
+                    // is still correct/"fresh" when "ledger.persist" is called.
+                    synchronized (ledgerLock) {
+                        conn = Database.getConnection();
+                        Ledger ledger = new Ledger(conn, Serialization.base64toPublicKey(key), request.amount);
+                        ledger.persist(conn);
+                        conn.commit();
+                    }
                     response.status = SUCCESS;
                     log.log (Level.INFO, "Initialized a new ledger with the base 64 public key: " + key);
                 } catch (SQLException e) {
