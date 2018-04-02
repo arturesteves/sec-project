@@ -114,5 +114,5 @@ sec-project.iml
 .idea/vcs.xml
 common/common.iml
 server/server.iml
-client/client.iml√
+client/client.iml
 server/hdscoin.db
