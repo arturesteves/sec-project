@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures;
 
+import org.bouncycastle.jcajce.provider.asymmetric.ec.KeyFactorySpi;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidAmountException;
@@ -21,48 +22,49 @@ import java.util.logging.Logger;
 
 
 public final class Ledger {
-    private final static Logger log = Logger.getLogger (Ledger.class.getName ());
+    private final static Logger log = Logger.getLogger(Ledger.class.getName());
 
     private int id;
     private ECPublicKey publicKey;    // can't change
     private double amount;
 
     private Ledger(int id, ECPublicKey publicKey, double amount) {
-        Utils.initLogger (log);
+        Utils.initLogger(log);
         this.publicKey = publicKey;
         this.amount = amount;
         this.id = id;
     }
 
-    public Ledger(Connection connection, ECPublicKey publicKey, double amount) throws KeyException, SQLException, InvalidKeyException, InvalidAmountException, InvalidLedgerException {
+    public Ledger(Connection connection, ECPublicKey publicKey, double amount) throws KeyException, SQLException,
+            InvalidKeyException, InvalidAmountException, InvalidLedgerException {
         this(-1, publicKey, amount);
         if (publicKey == null) {
-            log.log (Level.WARNING, "Null key when trying to initialize a ledger.");
+            log.log(Level.WARNING, "Null key when trying to initialize a ledger.");
             throw new InvalidKeyException("Null key when trying to initialize a ledger.");
         }
 
         // check if a ledger with this public key already exists. If yes, this ledger can't be created
         try {
             load(connection, publicKey);
-            log.log (Level.WARNING, "A ledger with this public key already exists.");
+            log.log(Level.WARNING, "A ledger with this public key already exists.");
             throw new InvalidLedgerException("A ledger with this public key already exists.");
-        } catch(MissingLedgerException ex) {
+        } catch (MissingLedgerException ex) {
             // it's ok, go on
         } catch (KeyException e) {
             throw new InvalidKeyException(e);
         }
 
         if (amount < 1) {
-            log.log (Level.WARNING, "Insufficient amount to setup a ledger.");
+            log.log(Level.WARNING, "Insufficient amount to setup a ledger.");
             throw new InvalidAmountException("Insufficient amount to setup a ledger.", amount);
         }
         // generate new ID for ledger based on highest ID in the database
         setId(getNextId(connection));
 
         // GENERATE 1st transaction (dummy, but required)
-        generateFirstTransaction (connection);
-        log.log (Level.INFO, "The first transaction was generated to the ledger with the following " +
-                "public key base 64: " + Serialization.publicKeyToBase64 (publicKey));
+        generateFirstTransaction(connection);
+        log.log(Level.INFO, "The first transaction was generated to the ledger with the following " +
+                "public key base 64: " + Serialization.publicKeyToBase64(publicKey));
     }
 
     public int getId() {
@@ -81,7 +83,7 @@ public final class Ledger {
         return this.amount;
     }
 
-    public void setAmount(int amount) throws InvalidAmountException {
+    public void setAmount(double amount) throws InvalidAmountException {
         if (amount >= 0) {
             this.amount = amount;
         }
@@ -96,17 +98,18 @@ public final class Ledger {
         prepStmt.setString(2, Serialization.publicKeyToBase64(getPublicKey()));
         prepStmt.setDouble(3, getAmount());
         prepStmt.executeUpdate();
-        log.log (Level.INFO, "A ledger was persisted. Public key of that ledger: " + getPublicKey());
+        log.log(Level.INFO, "A ledger was persisted. Public key of that ledger: " + getPublicKey());
     }
 
     // useful for the audit
-    public List<Transaction> getAllTransactions () {
+    public List<Transaction> getAllTransactions() {
         return null;
     }
 
     // useful for the check account
     // when im the source and the transactions are pending.
-    public List<Transaction> getPendingTransactions (Connection connection, ECPublicKey publicKey) throws SQLException, KeyException, MissingLedgerException {
+    public List<Transaction> getPendingTransactions(Connection connection, ECPublicKey publicKey)
+            throws SQLException, KeyException, MissingLedgerException {
         String stmt = "SELECT * FROM tx AS t " +
                 "JOIN ledger AS l ON t.ledger_id = l.id " +
                 "WHERE l.public_key = ? " +
@@ -114,31 +117,68 @@ public final class Ledger {
         PreparedStatement prepStmt = connection.prepareStatement(stmt);
         prepStmt.setString(1, Serialization.publicKeyToBase64(publicKey));
 
-        return Transaction.loadResults (connection, prepStmt);
+        return Transaction.loadResults(connection, prepStmt);
     }
 
-
-    private void generateFirstTransaction (Connection connection) {
+    private void generateFirstTransaction(Connection connection) {
         try {
-            String base64PublicKey = Serialization.publicKeyToBase64 (this.publicKey);
+            String base64PublicKey = Serialization.publicKeyToBase64(this.publicKey);
             // values to hash a transaction, true: because is_send = true, and null because the previous hash is null
             String txValuesToHash = base64PublicKey + base64PublicKey + Boolean.toString(true) +
-                    Double.toString (this.amount) + null;
+                    Double.toString(this.amount) + null;
             // hash
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             String hash = Arrays.toString(digest.digest(txValuesToHash.getBytes(StandardCharsets.UTF_8)));
 
-            Transaction tx = new Transaction (connection, this, this, this.amount, Utils.randomNonce(),
-                    hash, null, Transaction.EspecialTransactionType.FIRST);
+            Transaction tx = new Transaction(connection, this, this, this.amount, Utils.randomNonce(),
+                    hash, null, Transaction.SpecialTransactionType.FIRST);
             tx.setPending(false);   // is not pending
 
             tx.persist(connection);
             // persist a transaction
 
-        } catch (NoSuchAlgorithmException | SQLException | KeyException | InvalidLedgerException | InvalidAmountException |
-                InvalidValueException e) {
+        } catch (NoSuchAlgorithmException | SQLException | KeyException | InvalidLedgerException |
+                InvalidAmountException | InvalidValueException e) {
 
         }
+    }
+
+    public static Transaction getPendingTransaction (Connection connection, ECPublicKey publicKey,
+                                                     String transactionSignature) throws SQLException, KeyException,
+            MissingLedgerException{
+
+        String stmt = "SELECT * FROM tx AS t " +
+                "JOIN ledger AS l ON t.other_id = l.id " +
+                "WHERE l.public_key = ? " +
+                "AND t.pending = 1 " +
+                "AND t.hash = ?";
+
+        PreparedStatement prepStmt = connection.prepareStatement(stmt);
+        prepStmt.setString(1, Serialization.publicKeyToBase64(publicKey));
+        prepStmt.setString(2, transactionSignature);
+
+        List<Transaction> txs = Transaction.loadResults(connection, prepStmt);
+        return txs.isEmpty() ? null : txs.get(0);
+    }
+
+    // todo: create on a non static method, where a ledger can retrieve only its peding transactions (need to change the sql query)
+    public static Transaction getPendingTransaction(Connection connection, ECPublicKey publicKey, String transactionSignature,
+                                             Transaction.TransactionTypes type) throws SQLException, KeyException,
+            MissingLedgerException {
+
+        String stmt = "SELECT * FROM tx AS t " +
+                "JOIN ledger AS l ON t.ledger_id = l.id " +
+                "WHERE l.public_key = ? " +
+                "AND t.pending = 1 " +
+                ((type == Transaction.TransactionTypes.SENDING) ? "AND t.prev_hash = ?" : "AND t.hash = ?");
+
+
+        PreparedStatement prepStmt = connection.prepareStatement(stmt);
+        prepStmt.setString(1, Serialization.publicKeyToBase64(publicKey));
+        prepStmt.setString(2, transactionSignature);
+
+        List<Transaction> txs = Transaction.loadResults(connection, prepStmt);
+        return txs.isEmpty() ? null : txs.get(0);
     }
 
     public static Ledger load(Connection connection, int id) throws SQLException, KeyException, MissingLedgerException {
@@ -147,7 +187,7 @@ public final class Ledger {
         prepStmt.setInt(1, id);
 
         List<Ledger> results = loadResults(prepStmt);
-        if(results.size() == 0) {
+        if (results.size() == 0) {
             throw new MissingLedgerException("A ledger with the specified ID was not found");
         }
         return results.get(0);
@@ -159,8 +199,8 @@ public final class Ledger {
         prepStmt.setString(1, Serialization.publicKeyToBase64(pk));
 
         List<Ledger> results = loadResults(prepStmt);
-        if(results.size() == 0) {
-            log.log (Level.WARNING, "A ledger with the specified public key was not found. Public Key: " + pk);
+        if (results.size() == 0) {
+            log.log(Level.WARNING, "A ledger with the specified public key was not found. Public Key: " + pk);
             throw new MissingLedgerException("A ledger with the specified public key was not found.");
         }
         return results.get(0);
@@ -176,7 +216,7 @@ public final class Ledger {
     private static List<Ledger> loadResults(PreparedStatement prepStmt) throws SQLException, KeyException {
         List<Ledger> ret = new ArrayList<>();
         ResultSet results = prepStmt.executeQuery();
-        while(results.next()) {
+        while (results.next()) {
             int id = results.getInt(1);
             ECPublicKey pk = Serialization.base64toPublicKey(results.getString(2));
             int amount = results.getInt(3);
@@ -189,7 +229,7 @@ public final class Ledger {
         int next = 0;
         Statement statement = connection.createStatement();
         ResultSet rs = statement.executeQuery("select max(id) from ledger");
-        while(rs.next()) {
+        while (rs.next()) {
             next = rs.getInt(1) + 1;
         }
         return next;

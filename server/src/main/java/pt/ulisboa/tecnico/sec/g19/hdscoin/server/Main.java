@@ -26,35 +26,38 @@ import spark.Response;
 import static pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization.StatusMessage.*;
 import static spark.Spark.post;
 import static spark.Spark.get;
+import static spark.Spark.trace;
 
 
 public class Main {
-    private final static Logger log = Logger.getLogger (Main.class.getName ());
+    private final static Logger log = Logger.getLogger(Main.class.getName());
 
     public static final String FILE_PATH = "/src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/server/keys";
     private static ECPublicKey serverPublicKey;
     private static ECPrivateKey serverPrivateKey;
 
+    private static Object ledgerLock = new Object();
+
     public static void main(String[] args) throws FailedToLoadKeysException {
         // set Logger
-        Utils.initLogger (log);
+        Utils.initLogger(log);
         Security.addProvider(new BouncyCastleProvider());
-        log.log (Level.CONFIG, "Added bouncy castle security provider.");
+        log.log(Level.CONFIG, "Added bouncy castle security provider.");
 
         try {
-            loadKeys (args[0]);
-            log.log (Level.INFO, "Loaded keys of the server.");
+            loadKeys(args[0]);
+            log.log(Level.INFO, "Loaded keys of the server.");
 
         } catch (KeyException | IOException e) {
-            log.log (Level.SEVERE, "Failed to load keys from file. " + e);
+            log.log(Level.SEVERE, "Failed to load keys from file. " + e);
             throw new FailedToLoadKeysException("Failed to load keys from file. " + e.getMessage(), e);
         }
 
         try {
             Database.recreateSchema();
-            log.log (Level.INFO, "Recreate database schema.");
+            log.log(Level.INFO, "Recreate database schema.");
         } catch (SQLException e) {
-            log.log (Level.SEVERE, "Failed to recreate database schema. " + e);
+            log.log(Level.SEVERE, "Failed to recreate database schema. " + e);
             e.printStackTrace();
             System.exit(-1);
         }
@@ -63,22 +66,24 @@ public class Main {
 
             try {
                 Serialization.RegisterRequest request = Serialization.parse(req, Serialization.RegisterRequest.class);
-                log.log (Level.INFO, "Request received at: /register \n" +
+                log.log(Level.INFO, "Request received at: /register \n" +
                         "data on the request:" +
-                        "SIGNATURE: " + req.headers("SIGNATURE") + "\n" +
-                        "NONCE: " + req.headers("NONCE") + "\n" +
+                        "SIGNATURE: " + req.headers(Serialization.SIGNATURE_HEADER_NAME) + "\n" +
+                        "NONCE: " + req.headers(Serialization.NONCE_HEADER_NAME) + "\n" +
                         "CLIENT BASE 64 PUBLIC KEY: " + request.key + "\n" +
                         "AMOUNT: " + request.amount);
 
                 //Recreate the hash with the data received
-                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"), request.getSignable(),
-                                                        request.key);
+                Boolean result = Utils.checkSignature(
+                        req.headers(Serialization.SIGNATURE_HEADER_NAME),
+                        request.getSignable(),
+                        request.key);
 
                 Serialization.Response response = new Serialization.Response();
 
                 if (!result) {
                     res.status(401);
-                    log.log (Level.WARNING, "The messange received from the client doesn't match with the " +
+                    log.log(Level.WARNING, "The messange received from the client doesn't match with the " +
                             "signature of the message.");
                     response.status = ERROR_NO_SIGNATURE_MATCH;
                     return prepareResponse(serverPrivateKey, req, res, response);
@@ -89,16 +94,21 @@ public class Main {
                 ///////////////////////////////////////////////////
 
                 Connection conn = null;
+                String key = request.key;
                 try {
                     conn = Database.getConnection();
-                    Ledger ledger = new Ledger(conn, Serialization.base64toPublicKey(request.key), request.amount);
-                    ledger.persist(conn);
-                    conn.commit();
+                    // mutual exclusion is necessary to ensure the new ledger ID obtained in "new Ledger"
+                    // is still correct/"fresh" when "ledger.persist" is called.
+                    synchronized (ledgerLock) {
+                        Ledger ledger = new Ledger(conn, Serialization.base64toPublicKey(key), request.amount);
+                        ledger.persist(conn);
+                        conn.commit();
+                    }
                     response.status = SUCCESS;
-                    log.log (Level.INFO, "Initialized a new ledger with the base 64 public key: " + request.key);
+                    log.log(Level.INFO, "Initialized a new ledger with the base 64 public key: " + key);
                 } catch (SQLException e) {
                     // servers fault
-                    log.log (Level.SEVERE, "Error related to the database. " + e);
+                    log.log(Level.SEVERE, "Error related to the database. " + e);
                     response.status = ERROR_SERVER_ERROR;
                 }
                 // these exceptions are the client's fault
@@ -121,7 +131,7 @@ public class Main {
                 res.status(500);
                 Serialization.Response response = new Serialization.Response();
                 response.status = ERROR_SERVER_ERROR;
-                log.log (Level.SEVERE, "Error on processing a register request. " + ex);
+                log.log(Level.SEVERE, "Error on processing a register request. " + ex);
                 return prepareResponse(serverPrivateKey, req, res, response);
             }
         });
@@ -133,21 +143,23 @@ public class Main {
                                                                 Serialization.SendAmountRequest.class);
                 log.log (Level.INFO, "Request received at: /sendAmount \n" +
                         "data on the request:" +
-                        "SIGNATURE: " + req.headers("SIGNATURE") + "\n" +
-                        "NONCE: " + req.headers("NONCE") + "\n" +
+                        "SIGNATURE: " + req.headers(Serialization.SIGNATURE_HEADER_NAME) + "\n" +
+                        "NONCE: " + req.headers(Serialization.NONCE_HEADER_NAME) + "\n" +
                         "AMOUNT:" + request.amount + "\n" +
                         "SOURCE CLIENT BASE 64 PUBLIC KEY: " + request.source + "\n" +
-                        "TARGET CLIENT BASE 64 PUBLIC KEY: " + request.target + "\n");
-
-                //Recreate the hash with the data received
-                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"), request.getSignable(),
-                                                        request.source);
+                        "TARGET CLIENT BASE 64 PUBLIC KEY: " + request.target);
 
                 Serialization.Response response = new Serialization.Response ();
 
+                //Recreate the hash with the data received
+                Boolean result = Utils.checkSignature(
+                        req.headers(Serialization.SIGNATURE_HEADER_NAME),
+                        request.getSignable(),
+                        request.source);
+
                 if (!result) {
                     res.status(401);
-                    log.log (Level.WARNING, "The messange received from the client doesn't match with the " +
+                    log.log (Level.WARNING, "The message received from the client doesn't match with the " +
                             "signature of the message.");
                     response.status = ERROR_NO_SIGNATURE_MATCH;
                     return prepareResponse(serverPrivateKey, req, res, response);
@@ -164,10 +176,13 @@ public class Main {
                     Ledger targetLedger = Ledger.load (conn, Serialization.base64toPublicKey (request.target));
 
                     Transaction transaction = new Transaction (conn, sourceLedger, targetLedger, request.amount,
-                                                req.headers("NONCE"), req.headers("SIGNATURE"),
+                                                req.headers(Serialization.NONCE_HEADER_NAME),
+                                                req.headers(Serialization.SIGNATURE_HEADER_NAME),
                                                 request.previousSignature, Transaction.TransactionTypes.SENDING);
-
-                    transaction.persist (conn);
+                    // checkout the amount from the source ledger
+                    sourceLedger.setAmount(sourceLedger.getAmount() - request.amount);
+                    transaction.persist(conn);
+                    sourceLedger.persist(conn);
                     conn.commit ();
                     response.status = SUCCESS;
                     log.log (Level.INFO, "Transaction created with success.");
@@ -175,6 +190,12 @@ public class Main {
                     // servers fault
                     log.log (Level.SEVERE, "Error related to the databas. " + e);
                     response.status = ERROR_SERVER_ERROR;
+                }
+                // these exceptions are the client's fault
+                catch (MissingLedgerException e) {
+                    response.status = ERROR_INVALID_LEDGER;
+                } catch (InvalidKeyException e) {
+                    response.status = ERROR_INVALID_KEY;
                 } finally {
                     if (!response.status.equals(SUCCESS) && conn != null) {
                         conn.rollback ();
@@ -187,50 +208,52 @@ public class Main {
                 res.status(500);
                 Serialization.Response response = new Serialization.Response();
                 response.status = ERROR_SERVER_ERROR;
-                log.log (Level.SEVERE, "Error on processing a register request. " + ex);
+                log.log (Level.SEVERE, "Error on processing a send amount request. " + ex);
                 return prepareResponse(serverPrivateKey, req, res, response);
             }
         });
 
         get("/checkAccount", "application/json", (req, res) -> {
             try {
-                String b64PublicKey = req.queryParamOrDefault ("publickey", "")
-                                        .replace (" ", "+");    // to be sure
-                log.log (Level.INFO, "Request received at: /checkAccount \n" +
+                String b64PublicKey = req.queryParamOrDefault("publickey", "")
+                        .replace(" ", "+");    // to be sure
+                log.log(Level.INFO, "Request received at: /checkAccount \n" +
                         "data on the request:" +
                         "public key: " + b64PublicKey);
 
-                Serialization.CheckAccountResponse response = new Serialization.CheckAccountResponse ();
-                Connection conn = null;
+                // init generic response to use when an error occur
+                Serialization.Response errorResponse = new Serialization.Response();
                 try {
-                    ECPublicKey clientPublicKey = Serialization.base64toPublicKey (b64PublicKey);
-                    conn = Database.getConnection ();
-                    Ledger ledger = Ledger.load (conn, clientPublicKey);
-                    System.out.println("Pendin" + ledger.getPendingTransactions (conn, clientPublicKey));
-                    response.balance = ledger.getAmount ();
-                    response.pendingTransactions = ledger.getPendingTransactions (conn, clientPublicKey);
+                    Serialization.CheckAccountResponse response = new Serialization.CheckAccountResponse();
+                    ECPublicKey clientPublicKey = Serialization.base64toPublicKey(b64PublicKey);
+                    Connection conn = Database.getConnection();
+                    Ledger ledger = Ledger.load(conn, clientPublicKey);
+                    System.out.println("Pending" + ledger.getPendingTransactions(conn, clientPublicKey));
+                    response.balance = ledger.getAmount();
+                    response.pendingTransactions = ledger.getPendingTransactions(conn, clientPublicKey);
                     System.out.printf("Balance: " + response.balance);
 
                     response.status = SUCCESS;
-                    log.log (Level.INFO, "Successful check account operation of the ledger with the " +
+                    log.log(Level.INFO, "Successful check account operation of the ledger with the " +
                             "following public key in base 64: " + b64PublicKey);
+                    return prepareResponse(serverPrivateKey, req, res, response);
                 } catch (SQLException e) {
                     // servers fault
-                    log.log (Level.SEVERE, "Error related to the database. " + e);
-                    response.status = ERROR_SERVER_ERROR;
+                    log.log(Level.SEVERE, "Error related to the database. " + e);
+                    errorResponse.status = ERROR_SERVER_ERROR;
                 }
                 // these exceptions are the client's fault
                 catch (MissingLedgerException e) {
-                    response.status = ERROR_INVALID_LEDGER;
+                    errorResponse.status = ERROR_INVALID_LEDGER;
                 } catch (InvalidKeyException e) {
-                    response.status = ERROR_INVALID_KEY;
+                    errorResponse.status = ERROR_INVALID_KEY;
                 }
-                return prepareResponse(serverPrivateKey, req, res, response);
+                return prepareResponse(serverPrivateKey, req, res, errorResponse);
             } catch (Exception ex) {
-                res.status (500);
-                Serialization.Response response = new Serialization.Response ();
+                res.status(500);
+                Serialization.Response response = new Serialization.Response();
                 response.status = ERROR_SERVER_ERROR;
-                log.log (Level.SEVERE, "Error on processing a check account request. " + ex);
+                log.log(Level.SEVERE, "Error on processing a check account request. " + ex);
                 return prepareResponse(serverPrivateKey, req, res, response);
             }
         });
@@ -241,35 +264,97 @@ public class Main {
                 Serialization.ReceiveAmountRequest request = Serialization.parse(req,
                                                                 Serialization.ReceiveAmountRequest.class);
 
+                log.log (Level.INFO, "Request received at: /receiveAmount \n" +
+                        "data on the request:" +
+                        "SIGNATURE: " + req.headers(Serialization.SIGNATURE_HEADER_NAME) + "\n" +
+                        "NONCE: " + req.headers(Serialization.NONCE_HEADER_NAME) + "\n" +
+                        "SOURCE CLIENT BASE 64 PUBLIC KEY: " + request.source + "\n" +
+                        "Transaction Signature: " + request.transactionSignature);
+
+                Serialization.Response response = new Serialization.Response ();
+
                 //Recreate the hash with the data received
-                Boolean result = Utils.checkSignature(req.headers("SIGNATURE"),
-                        req.headers("NONCE") + request.source,
+                Boolean result = Utils.checkSignature(
+                        req.headers(Serialization.SIGNATURE_HEADER_NAME),
+                        request.getSignable(),
                         request.source);
 
                 if (!result) {
                     res.status(401);
-                    return "Hash does not match";
+                    log.log (Level.WARNING, "The message received from the client doesn't match with the " +
+                            "signature of the message.");
+                    response.status = ERROR_NO_SIGNATURE_MATCH;
+                    return prepareResponse(serverPrivateKey, req, res, response);
                 }
 
                 ///////////////////////////////////////////////////
                 //We now know that the public key was sent by the owner of its respective private key.
                 ///////////////////////////////////////////////////
 
-                //Todo - Do Something with the data.
-                System.out.println("Received Source Public key: " + request.source);
+                Connection conn = null;
+                try {
+                    conn = Database.getConnection();
+                    ECPublicKey publicKey = Serialization.base64toPublicKey(request.source);
+                    Ledger targetLedger = Ledger.load(conn, publicKey);
 
-                ///////////////////////////////////////////////////
-                Serialization.Response response = new Serialization.Response();
-                response.status = SUCCESS;
+                    Transaction txReceived = Ledger.getPendingTransaction(conn, publicKey, request.transactionSignature,
+                            Transaction.TransactionTypes.RECEIVING);
+
+                    if (txReceived != null) {
+                        Transaction txSent = Ledger.getPendingTransaction(conn, publicKey, request.transactionSignature,
+                                Transaction.TransactionTypes.SENDING);
+                    } else {
+                        // nothing ..
+                    }
+
+                    /*
+                    Transaction txSent = sourceLedger.getPendingTransaction(conn, publicKey, request.transactionSignature,
+                            Transaction.TransactionTypes.SENDING);
+                    if (txSent != null) {
+                        Transaction txReceived = sourceLedger.getPendingTransaction(conn, publicKey, request.transactionSignature,
+                                Transaction.TransactionTypes.RECEIVING);
+                        txSent.setPending(false);
+                        if (txReceived != null) {
+                            // sum the amount to the target
+                            txSent.getTargetLedger().setAmount(txSent.getTargetLedger().getAmount() + txSent.getAmount());
+
+                            txReceived.setPending(false);
+                            // actualizar o balanco da account
+                            txSent.persist(conn);
+                            txSent.getTargetLedger().persist(conn);
+                            //// transaction finalized!
+                        }
+                    } else {
+                        // no transaction - error - operation no t successful
+
+                    }
+                    */
+                } catch (SQLException e) {
+                    // servers fault
+                    log.log(Level.SEVERE, "Error related to the databas. " + e);
+                    response.status = ERROR_SERVER_ERROR;
+                }
+                // these exceptions are the client's fault
+                catch (MissingLedgerException e) {
+                    response.status = ERROR_INVALID_LEDGER;
+                } catch (InvalidKeyException e) {
+                    response.status = ERROR_INVALID_KEY;
+                } finally {
+                    if (!response.status.equals(SUCCESS) && conn != null) {
+                        conn.rollback ();
+                        log.log (Level.SEVERE, "The transaction created was not persisted, due to an error.");
+                    }
+                }
 
                 return prepareResponse(serverPrivateKey, req, res, response);
 
             } catch (Exception ex) {
-                res.status(200);
-                res.type("application/json");
-                throw ex;
+                res.status(500);
+                Serialization.Response response = new Serialization.Response();
+                response.status = ERROR_SERVER_ERROR;
+                log.log (Level.SEVERE, "Error on processing a receive amount request. " + ex);
+                return prepareResponse(serverPrivateKey, req, res, response);
             }
-
         });
 
         get("/audit/:key", "application/json", (req, res) -> {
@@ -282,26 +367,32 @@ public class Main {
     }
 
     private static String prepareResponse(ECPrivateKey privateKey, Request sparkRequest, Response sparkResponse, Serialization.Response response) throws JsonProcessingException, CantGenerateSignatureException {
-        response.nonce = sparkRequest.headers("NONCE");
+        response.nonce = sparkRequest.headers(Serialization.NONCE_HEADER_NAME);
         if (response.statusCode < 0) {
             // try to guess a status code from the status string
-            if (response.status.equals (SUCCESS)) {
-                response.statusCode = 200;
-            } else {
-                response.statusCode = 400;
+            switch (response.status) {
+                case SUCCESS:
+                    response.statusCode = 200;
+                    break;
+                case ERROR_SERVER_ERROR:
+                    response.statusCode = 500;
+                    break;
+                default:
+                    // all other errors are problems with the request
+                    response.statusCode = 400;
             }
         }
         String signature = Utils.generateSignature(response.getSignable(), privateKey);
         sparkResponse.status(response.statusCode);
-        sparkResponse.header("SIGNATURE", signature);
+        sparkResponse.header(Serialization.SIGNATURE_HEADER_NAME, signature);
         sparkResponse.type("application/json");
         return Serialization.serialize(response);
     }
 
-    private static void loadKeys (String serverName) throws KeyException, IOException{
+    private static void loadKeys(String serverName) throws KeyException, IOException {
         String filepath = FILE_PATH + "/" + serverName + ".keys";
-        serverPublicKey = Utils.readPublicKeyFromFile (filepath);
-        serverPrivateKey = Utils.readPrivateKeyFromFile (filepath);
+        serverPublicKey = Utils.readPublicKeyFromFile(filepath);
+        serverPrivateKey = Utils.readPrivateKeyFromFile(filepath);
     }
 
 }

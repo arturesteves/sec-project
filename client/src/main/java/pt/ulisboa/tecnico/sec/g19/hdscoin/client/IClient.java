@@ -49,16 +49,19 @@ public interface IClient {
      */
     int checkAccount(ECPublicKey publicKey) throws CantCheckAccountException;
 
-
-    //TODO: check
     /**
      * Used by recipient of a transfer to accept in a non-repudiable way
-         a pending incoming transfer that must have been previously authorized by the
-         source.
-     * @param privateKey Private key of the client, to sign the transaction
-     * @param sendTxSignature Signature of the send-transaction we want to receive
+     * a pending incoming transfer that was previously authorized by the
+     * source.
+     *
+     * @param publicKey            Public key of the client.
+     * @param privateKey           Private key of the client, used to sign the message.
+     * @param transactionSignature Signature of the transaction to receive the amount.
+     * @throws CantReceiveAmountException If the operation isn't successful due to an invalid argument,
+     *                               or the server couldn't verify who sign it, or the client couldn't verify
+     *                               if the server sign it, or occurred a server error.
      */
-    void receiveAmount(ECPrivateKey privateKey, String sendTxSignature) throws KeyException, IOException, SignatureException, NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException;
+    void receiveAmount (ECPublicKey publicKey, ECPrivateKey privateKey, String transactionSignature) throws CantReceiveAmountException;
 
     //TODO: check
     //todo - Discover the return type of the audit operation

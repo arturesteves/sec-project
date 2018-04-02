@@ -33,8 +33,7 @@ public class GenerateKeyPair {
                 serverName = cmd.getOptionValue("n");
             } else {
                 usage (options);
-                throw new CantGenerateKeysException("Failed to generate a key pair. Missing the -n option.",
-                        new Throwable());
+                throw new CantGenerateKeysException("Failed to generate a key pair. Missing the -n option.");
             }
 
             KeyPair keyPair = Utils.generateKeyPair ();

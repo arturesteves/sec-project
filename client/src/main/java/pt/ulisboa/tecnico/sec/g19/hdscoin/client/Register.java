@@ -33,7 +33,7 @@ public class Register {
             cmd = parser.parse (registerOptions, args);
         } catch (ParseException e) {
             e.printStackTrace();
-            throw new CantRegisterException("Can't register, failed to interpreter the arguments. " + e);
+            throw new CantRegisterException("Can't register, failed to interpreter the arguments. " + e, e);
         }
 
         if (cmd.hasOption ("n")) {
@@ -46,7 +46,7 @@ public class Register {
             try {
                 amount = Double.parseDouble (cmd.getOptionValue ("a"));
             } catch (NullPointerException | NumberFormatException e) {
-                throw new CantRegisterException("Can't register, the amount is invalid. " + e);
+                throw new CantRegisterException("Can't register, the amount is invalid. " + e, e);
             }
         } else {
             usage (registerOptions);
@@ -64,7 +64,9 @@ public class Register {
             client.register(clientPublickey, clientPrivateKey, amount);
 
         } catch (KeyException | IOException e) {
-            throw new CantRegisterException("Failed to register. " + e);
+            throw new CantRegisterException("Failed to register. " + e, e);
+        } catch (Exception e) {
+            throw new CantRegisterException("Failed to register, due to an unexpected error. " + e,e );
         }
 
     }

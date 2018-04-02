@@ -25,6 +25,8 @@ public class Serialization {
         ERROR_INVALID_KEY, ERROR_SERVER_ERROR
     }
 
+    public static final String SIGNATURE_HEADER_NAME = "SIGNATURE";
+    public static final String NONCE_HEADER_NAME = "NONCE";
 
     private static ObjectMapper mapper = new ObjectMapper();
 
@@ -39,7 +41,22 @@ public class Serialization {
         }
     }
 
+    /*
     private static abstract class TransactionRequest implements Signable {
+        public String source;
+        public String target; // who receives the money
+        public double amount;
+        public String previousSignature;
+
+        @Override
+        @JsonIgnore
+        public String getSignable() {
+            // true: because is_send = true
+            return source + target + Boolean.toString(true) + Double.toString(amount) + previousSignature;
+        }
+    }*/
+
+    public static class SendAmountRequest implements Signable {
         public String source;
         public String target; // who receives the money
         public double amount;
@@ -53,21 +70,15 @@ public class Serialization {
         }
     }
 
-    public static class SendAmountRequest extends TransactionRequest implements Signable {
-        @Override
-        @JsonIgnore
-        public String getSignable() {
-            // true: because is_send = true
-            return super.getSignable() + Boolean.toString(true);
-        }
-    }
+    public static class ReceiveAmountRequest implements Signable {
+        public String source;
+        public String transactionSignature;
 
-    public static class ReceiveAmountRequest extends TransactionRequest implements Signable {
         @Override
         @JsonIgnore
         public String getSignable() {
             // false: because is_send = false
-            return super.getSignable() + Boolean.toString(false);
+            return source + transactionSignature + Boolean.toString(false);
         }
     }
 
