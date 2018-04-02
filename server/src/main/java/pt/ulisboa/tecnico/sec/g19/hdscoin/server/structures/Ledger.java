@@ -34,7 +34,7 @@ public final class Ledger {
         this.id = id;
     }
 
-    public Ledger(Connection connection, ECPublicKey publicKey, double amount) throws SQLException, InvalidKeyException, InvalidAmountException, InvalidLedgerException {
+    public Ledger(Connection connection, ECPublicKey publicKey, double amount) throws KeyException, SQLException, InvalidKeyException, InvalidAmountException, InvalidLedgerException {
         this(-1, publicKey, amount);
         if (publicKey == null) {
             log.log (Level.WARNING, "Null key when trying to initialize a ledger.");
@@ -61,6 +61,8 @@ public final class Ledger {
 
         // GENERATE 1st transaction (dummy, but required)
         generateFirstTransaction (connection);
+        log.log (Level.INFO, "The first transaction was generated to the ledger with the following " +
+                "public key base 64: " + Serialization.publicKeyToBase64 (publicKey));
     }
 
     public int getId() {
@@ -103,10 +105,16 @@ public final class Ledger {
     }
 
     // useful for the check account
-    public List<Transaction> getPendingTransactions () {
-        String stmt = "SELECT * FROM ";
-        // a transacao inicial é do source para ele mesmo?,
-        return null;
+    // when im the source and the transactions are pending.
+    public List<Transaction> getPendingTransactions (Connection connection, ECPublicKey publicKey) throws SQLException, KeyException, MissingLedgerException {
+        String stmt = "SELECT * FROM tx AS t " +
+                "JOIN ledger AS l ON t.ledger_id = l.id " +
+                "WHERE l.public_key = ? " +
+                "AND t.pending = 1";
+        PreparedStatement prepStmt = connection.prepareStatement(stmt);
+        prepStmt.setString(1, Serialization.publicKeyToBase64(publicKey));
+
+        return Transaction.loadResults (connection, prepStmt);
     }
 
 
@@ -133,7 +141,6 @@ public final class Ledger {
         }
     }
 
-    // todo: check if is deprecated and delete it
     public static Ledger load(Connection connection, int id) throws SQLException, KeyException, MissingLedgerException {
         String stmt = "SELECT * FROM ledger WHERE id = ?";
         PreparedStatement prepStmt = connection.prepareStatement(stmt);

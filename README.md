@@ -1,5 +1,4 @@
 # SEC Project - Secure Bank
--------------------------
   
 ## Installation  
 **Maven is required**  
@@ -15,11 +14,11 @@ Open a terminal on the project root directory and then type:
 2. We need to start the web server.
 
 ##### How to generate a key pair
-Open a terminal on the directory of the server project and then type:  
+Open a terminal on the root directory of the server project and then type:  
 `mvn exec:java@GenerateKeyPair -Dexec.args="-n Server_1"`
   
 ##### How to start the web server
-Open a terminal on the directory of the server project and then type:  
+Open a terminal on the root directory of the server project and then type:  
 `mvn exec:java@WebServer -Dexec.args="Server_1"`
 
 #### Client Side
@@ -28,17 +27,21 @@ Open a terminal on the directory of the server project and then type:
 3. Use any of the other client side programs that uses the interfaces the server has made available to the public.
 
 ##### How to generate a key pair
-Open a terminal on the directory of the client project and then type:  
+Open a terminal on the root directory of the client project and then type:  
 `mvn exec:java@GenerateKeyPair -Dexec.args="-n Client_1"`
 
 ##### How to register a client
-Open a terminal on the directory of the client project and then type:  
+Open a terminal on the root directory of the client project and then type:  
 `mvn exec:java@Register -Dexec.args="-n Client_1 -a 10"`
+
+##### How to check an account
+Open a terminal on the root directory of the client project and then type:  
+`mvn exec:java@CheckAccount -Dexec.args="-n Client_1"`
 
 ## Tests
 
 ##### How to run tests on the server 
-Open a terminal on the directory of the server project and then type:  
+Open a terminal on the root directory of any project and then type:  
 `mvn clean test`
 
 ## Documentation

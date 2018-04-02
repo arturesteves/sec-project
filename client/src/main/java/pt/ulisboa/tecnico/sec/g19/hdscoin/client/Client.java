@@ -13,6 +13,7 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidKeyException
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
@@ -42,20 +43,36 @@ public class Client implements IClient {
             request.key = b64PublicKey;
             // log
             System.out.println ("---Sending Request---");
-            System.out.println("Base 64 Public Key: " + b64PublicKey);
-            System.out.println("Amount: " + amount);
+            System.out.println ("---               ---");
+            System.out.println ("Base 64 Public Key: " + b64PublicKey);
+            System.out.println ("Amount: " + amount);
+            System.out.println ("---               ---");
+            System.out.println ("---Sending Request---");
             // http post request
             Serialization.Response response = sendPostRequest(url.toString() + "/register", privateKey, request, Serialization.Response.class);
 
             if (response.statusCode == 200) {
-                System.out.println("---Registration was successful---");
+                System.out.println("\n");
+                System.out.println ("----------------------------------");
+                System.out.println ("---Registration was successful---");
+                System.out.println ();
+                System.out.println ("----------------------------------");
             } else {
-                checkErrors(amount, response);
+                switch (response.status) {
+                    case ERROR_INVALID_KEY:
+                        throw new InvalidKeyException ("The public key provided is not valid.");
+                    case ERROR_INVALID_AMOUNT:
+                        throw new InvalidAmountException ("The amount provided is invalid.", amount);
+                    case ERROR_INVALID_LEDGER:
+                        throw new InvalidLedgerException ("The public key provided isn't associated with any ledger.");
+                    case ERROR_SERVER_ERROR:
+                        throw new ServerErrorException ("Error on the server side.");
+                }
             }
         } catch (HttpRequest.HttpRequestException | IOException | KeyException | CantGenerateSignatureException | InvalidServerResponseException
                     | InvalidClientSignatureException | InvalidKeyException | InvalidLedgerException
                     | InvalidAmountException | ServerErrorException e) {
-            throw new CantRegisterException ("Couldn't register the public key provided. " + e.getMessage (), e);
+            throw new CantRegisterException ("Couldn't register the public key provided. " + e);
         }
     }
 
@@ -77,29 +94,42 @@ public class Client implements IClient {
     @Override
     public int checkAccount(ECPublicKey publicKey) throws CantCheckAccountException {
         try {
-            String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
+            String b64PublicKey = Serialization.publicKeyToBase64 (publicKey);
+            String requestPath = url.toString () +
+                                    "/checkAccount?publickey=" + URLEncoder.encode (b64PublicKey, "UTF-8");
 
-            // not necessary?
-            Serialization.CheckAccountRequest request = new Serialization.CheckAccountRequest();
-            request.key = b64PublicKey;
+            Serialization.CheckAccountResponse response = sendGetRequest(requestPath,
+                                                                Serialization.CheckAccountResponse.class);
 
-            // get..
-            Serialization.Response response = sendGetRequest(url.toString() + "/checkAccount/" + b64PublicKey, Serialization.Response.class);
+            System.out.println("response.statusCode: " + response.statusCode);
+            System.out.println("response.status: " + response.status);
 
-            // TODO
-            // create another type of response instead on a new class for a request and then test it.
-            // when it works create tests for register and check account on the client side.
-            // then create a mechanism (callbacks) to simulate tampering with the messages on traffic.
-                // this have to be made on the client side.
-            // make tests on the client side for now.
+            if (response.statusCode == 200) {
+                System.out.println ("\n");
+                System.out.println ("----------------------------------");
+                System.out.println ("---Check account was successful---");
+                System.out.println ();
+                System.out.println ("Balance: " + response.balance);
+                System.out.println ("Pending Transactions:");
+                System.out.println (response.pendingTransactions.toString ());
+                System.out.println ("----------------------------------");
+            } else {
+                switch (response.status) {
+                    case ERROR_INVALID_KEY:
+                        throw new InvalidKeyException ("The public key provided is not valid.");
+                    case ERROR_INVALID_LEDGER:
+                        throw new InvalidLedgerException ("The public key provided isn't associated with any ledger.");
+                    case ERROR_SERVER_ERROR:
+                        throw new ServerErrorException ("Error on the server side.");
+                }
+            }
 
-
-        } catch (IOException | KeyException | InvalidServerResponseException | CantGenerateSignatureException e) {
-            throw new CantCheckAccountException ("Couldn't check the account of the public key provided. " +
-                    e.getMessage(), e);
+            // todo: return an object with the balance and the transactions
+            return 0;
+        } catch (InvalidKeyException | InvalidLedgerException | ServerErrorException | IOException | KeyException |
+                    InvalidServerResponseException | CantGenerateSignatureException e) {
+            throw new CantCheckAccountException ("Couldn't check the account of the public key provided. " + e);
         }
-
-        return 0;
     }
 
     @Override
@@ -127,14 +157,7 @@ public class Client implements IClient {
         request = request.header("NONCE", nonce)
                 .send(payloadJson);
 
-        if (request.code() != 200) {
-            if (request.body ().equals(ERROR_NO_SIGNATURE_MATCH.toString())) {
-                throw new InvalidClientSignatureException ("The message was reject by the server, because the " +
-                        "client signature didn't match.");
-            }else {
-                return Serialization.parse(request.body (), responseValueType);
-            }
-        }
+        int responseCode = request.code ();
 
         String responseSignature = request.header("SIGNATURE");
         T response = Serialization.parse(request.body(), responseValueType);
@@ -151,14 +174,20 @@ public class Client implements IClient {
 
         String responseNonce = ((NonceContainer) response).getNonce();
 
-        System.out.println("NONCE: " + nonce);
-        System.out.println("ResponseNOnce: " + responseNonce);
+        System.out.println("Client NONCE: " + nonce);
+        System.out.println("Server NONCE: " + responseNonce);
         if (!responseNonce.equals(nonce)) {
             throw new InvalidServerResponseException ("The nonce received by the server do not match the one " +
                     "the client sent previously.");
         }
 
-        // no error detected
+        if ( responseCode != 200 ) {
+            if ( ((Serialization.Response) response).status.equals (ERROR_NO_SIGNATURE_MATCH)) {
+                throw new InvalidClientSignatureException ("The message was reject by the server, because the " +
+                            "client signature didn't match.");
+            }
+        }
+
         return response;
     }
 
@@ -167,13 +196,11 @@ public class Client implements IClient {
         HttpRequest request = HttpRequest.get (url);
         request = request.header("NONCE", nonce);
 
-        if (request.code () != 200) {
-            // return the response
-            // what can we receive here?
-        }
+        int responseCode = request.code ();
 
         String responseSignature = request.header("SIGNATURE");
         T response = Serialization.parse (request.body (), responsValueType);
+
         if(!(response instanceof Signable && response instanceof NonceContainer)) {
             throw new InvalidServerResponseException ("Response isn't signable or doesn't contain a nonce.\n " +
                     "Impossible to check if the sender was really the server.");
@@ -186,27 +213,18 @@ public class Client implements IClient {
 
         String responseNonce = ((NonceContainer) response).getNonce();
 
-        System.out.println("NONCE: " + nonce);
-        System.out.println("ResponseNOnce: " + responseNonce);
+        System.out.println("Client NONCE: " + nonce);
+        System.out.println("Server NONCE: " + responseNonce);
         if (!responseNonce.equals(nonce)) {
             throw new InvalidServerResponseException ("The nonce received by the server do not match the one " +
                     "the client sent previously.");
         }
 
-        // no error detected
+        if (responseCode != 200) {
+            // todo: handle
+        }
+
         return response;
     }
 
-    private void checkErrors(double amount, Serialization.Response response) throws InvalidKeyException, InvalidAmountException, InvalidLedgerException, ServerErrorException {
-        switch (response.status) {
-            case ERROR_INVALID_KEY:
-                throw new InvalidKeyException ("The public key provided is not valid.");
-            case ERROR_INVALID_AMOUNT:
-                throw new InvalidAmountException ("The amount provided is invalid.", amount);
-            case ERROR_INVALID_LEDGER:
-                throw new InvalidLedgerException ("The public key provided is not valid.");
-            case ERROR_SERVER_ERROR:
-                throw new ServerErrorException ("Error on the server side.");
-        }
-    }
 }

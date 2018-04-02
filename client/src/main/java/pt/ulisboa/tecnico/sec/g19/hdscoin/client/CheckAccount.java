@@ -33,7 +33,7 @@ public class CheckAccount {
         try {
             cmd = parser.parse (registerOptions, args);
         } catch (ParseException e) {
-            throw new CantCheckAccountException("Can't check account, because arguments are missing. " + e.getMessage(), e);
+            throw new CantCheckAccountException("Can't check account, because arguments are missing. " + e);
         }
 
         if (cmd.hasOption ("n")) {
@@ -51,9 +51,9 @@ public class CheckAccount {
 
             IClient client = new Client (new URL(SERVER_URL), serverPublicKey);
             client.checkAccount (clientPublickey);
+
         } catch (KeyException | IOException e) {
-            throw new CantCheckAccountException ("Couldn't check the account of the public key provided. " +
-                    e.getMessage(), e);
+            throw new CantCheckAccountException ("Couldn't check the account of the public key provided. " + e);
         }
 
     }

@@ -1,12 +1,17 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures;
 
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidLedgerException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.InvalidValueException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidAmountException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.MissingLedgerException;
 
 import java.security.KeyException;
+import java.security.interfaces.ECPublicKey;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -26,7 +31,57 @@ public final class Transaction {
     private boolean pending;
     private TransactionType type;
 
+    /**
+     *
+     * @param id
+     * @param source
+     * @param target
+     * @param amount
+     * @param nonce
+     * @param hash
+     * @param previousHash
+     * @param type
+     */
+    private Transaction (int id, Ledger source, Ledger target, double amount, String nonce, String hash, String previousHash, TransactionType type) {
+        Utils.initLogger (log);
+        this.id = id;
+        this.source = source;
+        this.target = target;
+        this.amount = amount;
+        this.nonce = nonce;
+        this.hash = hash;
+        this.previousHash = previousHash;
+        this.type = type;
+        this.pending = true;
+    }
 
+    public Transaction(Connection connection, Ledger source, Ledger target, double amount, String nonce, String hash, String previousHash, TransactionType type) throws SQLException, InvalidLedgerException, InvalidAmountException, InvalidValueException {
+        this(-1, source, target, amount, nonce, hash, previousHash, type);
+
+        if (type != EspecialTransactionType.FIRST) {    // the first transaction can have null on the previous hash
+            if (previousHash == null) {
+                throw new InvalidValueException("The previous hash can't be null.");
+            }
+        }
+        if (source == null || target == null) {
+            throw new InvalidLedgerException("Both the source and target ledgers can't be null.");
+        }
+        if (amount < 1) {
+            throw new InvalidAmountException("Insufficient amount to create a transaction.", amount);
+        }
+        if (nonce == null) {
+            throw new InvalidValueException("The nonce can't be null.");
+        }
+        if (hash == null) {
+            throw new InvalidValueException("The hash can't be null.");
+        }
+        if (type == null) {
+            throw new InvalidValueException("The type of transaction can't be null.");
+        }
+        setId(getNextId(connection));
+    }
+
+    /*
     private Transaction(Connection connection, int id, Ledger source, Ledger target, double amount, String nonce, String hash, String previousHash, TransactionType type) throws SQLException, InvalidLedgerException, InvalidAmountException, InvalidValueException {
         Utils.initLogger (log);
         if (type != EspecialTransactionType.FIRST) {    // the first transaction can have null on the previous hash
@@ -65,7 +120,7 @@ public final class Transaction {
     public Transaction(Connection connection, Ledger source, Ledger target, double amount, String nonce, String hash, String previousHash, TransactionType type) throws SQLException, InvalidLedgerException, InvalidAmountException, InvalidValueException {
         this(connection, -1, source, target, amount, nonce, hash, previousHash, type);
     }
-
+*/
 
     public int getID() {
         return this.id;
@@ -142,5 +197,32 @@ public final class Transaction {
         return next;
     }
 
+
+    public static List<Transaction> loadResults(Connection connection, PreparedStatement prepStmt) throws SQLException, KeyException, MissingLedgerException {
+        List<Transaction> ret = new ArrayList<> ();
+        ResultSet results = prepStmt.executeQuery ();
+        while (results.next ()) {
+            int id = results.getInt (1);
+            int sourceLedgerIdId = results.getInt (2);
+            int targetLedgerId = results.getInt (3);
+            TransactionType type = results.getInt (4) == 1 ? TransactionTypes.SENDING : TransactionTypes.RECEIVING;
+            double amount = results.getDouble (5);
+            String nonce = results.getString (6);
+            String hash = results.getString (7);
+            String previousHash = results.getString (8);
+            boolean pending = results.getInt (9) == 1;
+
+            Ledger source = Ledger.load (connection, sourceLedgerIdId);
+            Ledger target = Ledger.load (connection, targetLedgerId);
+
+            Transaction tx = new Transaction (id, source, target, amount, nonce, hash, previousHash, type);
+            tx.setPending (pending);
+
+            ret.add (tx);
+        }
+        return ret;
+    }
+
+    // create proper toString
 
 }

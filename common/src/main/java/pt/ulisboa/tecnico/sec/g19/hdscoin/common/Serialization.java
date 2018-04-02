@@ -16,11 +16,12 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import java.util.List;
 
 public class Serialization {
 
     public enum StatusMessage {
-        OK, ERROR_INVALID_LEDGER, ERROR_INVALID_AMOUNT, ERROR_NO_SIGNATURE_MATCH,
+        SUCCESS, ERROR_INVALID_LEDGER, ERROR_INVALID_AMOUNT, ERROR_NO_SIGNATURE_MATCH,
         ERROR_INVALID_KEY, ERROR_SERVER_ERROR
     }
 
@@ -70,12 +71,7 @@ public class Serialization {
         }
     }
 
-    public static class CheckAccountRequest {
-        public String key;
-    }
-
     public static class Response implements Signable, NonceContainer {
-        @JsonIgnore
         public int statusCode = -1;
 
         //public String status; // "ok" or "error"
@@ -91,6 +87,18 @@ public class Serialization {
         @Override
         public String getNonce() {
             return nonce;
+        }
+    }
+
+    public static class CheckAccountResponse extends Response implements Signable {
+        public double balance;
+        public Object pendingTransactions;    // todo: change this - exceptions occur
+
+
+        @Override
+        @JsonIgnore
+        public String getSignable() {
+            return super.getSignable() + balance + pendingTransactions;
         }
     }
 
@@ -111,7 +119,7 @@ public class Serialization {
      *
      * @param request   the string to deserialize
      * @param valueType the expected object class
-     * @return the read object
+     * @return the  read object
      * @throws IOException
      */
     public static <T> T parse(String request, Class<T> valueType) throws IOException {

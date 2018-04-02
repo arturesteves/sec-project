@@ -39,6 +39,11 @@ public class GenerateKeyPair {
 
             KeyPair keyPair = Utils.generateKeyPair ();
             Utils.writeKeyPairToFile (FILE_PATH + "/" + clientName + ".keys", keyPair);
+            System.out.println("---                               ---");
+            System.out.println("---Key Pair Generated with Success---");
+            System.out.println("---                               ---");
+            System.out.println("---                               ---");
+
         } catch (ParseException | KeyException | IOException e) {
             throw new CantGenerateKeysException("Failed to generate a key pair. " + e.getMessage(), e);
         }

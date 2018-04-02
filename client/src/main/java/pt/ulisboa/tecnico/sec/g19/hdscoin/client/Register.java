@@ -34,7 +34,7 @@ public class Register {
             cmd = parser.parse (registerOptions, args);
         } catch (ParseException e) {
             e.printStackTrace();
-            throw new CantRegisterException("Can't register, because arguments are missing. " + e.getMessage(), e);
+            throw new CantRegisterException("Can't register, because arguments are missing. " + e);
         }
 
         if (cmd.hasOption ("n")) {
@@ -65,7 +65,7 @@ public class Register {
             client.register(clientPublickey, clientPrivateKey, amount);
 
         } catch (KeyException | IOException e) {
-            throw new CantRegisterException("Unable to register. " + e.getMessage(), e);
+            throw new CantRegisterException("Unable to register. " + e);
         }
 
     }

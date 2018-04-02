@@ -1,8 +1,8 @@
-package pt.ulisboa.tecnico.sec.g19.hdscoin.server;
+package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
+
 
 import org.junit.Assert;
 import org.junit.Test;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateKeysException;
 
@@ -21,16 +21,16 @@ public class GenerateKeyPairTest {
 
     @Test
     public void testMainValidArguments () throws CantGenerateKeysException {
-        GenerateKeyPair.main(new String[] {"-n", "SERVER_KEYS_TEST"});
+        GenerateKeyPair.main(new String[] {"-n", "CLIENT_KEYS_TEST"});
     }
 
     // check if the file with the keys was create
     @Test
     public void testMainCheckFileExists () throws CantGenerateKeysException {
-        String serverID = "SERVER_KEYS_TEST";
-        GenerateKeyPair.main(new String[] {"-n", serverID});
+        String clientID = "CLIENT_KEYS_TEST";
+        GenerateKeyPair.main(new String[] {"-n", clientID});
         String root = System.getProperty("user.dir");
-        String filepath = "/src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/server/keys/" + serverID + ".keys";
+        String filepath = "/src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/client/keys/" + clientID + ".keys";
 
         File file = new File (root + filepath);
         Assert.assertTrue(file.exists());
@@ -38,10 +38,10 @@ public class GenerateKeyPairTest {
 
     @Test
     public void testMainCheckFileContainsKeys () throws CantGenerateKeysException, KeyException, IOException {
-        String serverID = "SERVER_KEYS_TEST";
-        GenerateKeyPair.main(new String[] {"-n", serverID});
+        String clientID = "CLIENT_KEYS_TEST";
+        GenerateKeyPair.main(new String[] {"-n", clientID});
         //String root = System.getProperty("user.dir");
-        String filepath = "/src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/server/keys/" + serverID + ".keys";
+        String filepath = "/src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/client/keys/" + clientID + ".keys";
 
         ECPrivateKey privateKey = Utils.readPrivateKeyFromFile (filepath);
         ECPublicKey publicKey = Utils.readPublicKeyFromFile (filepath);
@@ -53,3 +53,4 @@ public class GenerateKeyPairTest {
         Assert.assertEquals(privateKey.getAlgorithm(), "EC");
     }
 }
+

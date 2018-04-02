@@ -42,21 +42,12 @@ public interface IClient {
      */
     void sendAmount(ECPrivateKey privateKey, ECPublicKey source, ECPublicKey destination, double amount) throws KeyException, IOException, CantGenerateSignatureException, InvalidServerResponseException, InvalidClientSignatureException;
 
-
-    //todo - Make sure that the return type here is integer
-    /**
-     *  Obtain the balance of the account associated with key. This
-         method also returns the list of pending incoming transfers that require
-         approval by the account’s owner, if any.
-     * @param key The Public key of the account to be checked
-     */
-
     /**
      * Obtain the balance of the account associated with key.
 
      * @param publicKey Public key of the client
      *
-     * @return
+     * @return int -
      */
     int checkAccount(ECPublicKey publicKey) throws CantCheckAccountException;
 

@@ -49,6 +49,16 @@
                             <arguments></arguments>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>CheckAccount</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.client.CheckAccount</mainClass>
+                            <arguments></arguments>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>
