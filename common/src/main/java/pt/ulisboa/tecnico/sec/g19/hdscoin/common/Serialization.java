@@ -25,6 +25,8 @@ public class Serialization {
         ERROR_INVALID_KEY, ERROR_SERVER_ERROR
     }
 
+    public static final String SIGNATURE_HEADER_NAME = "SIGNATURE";
+    public static final String NONCE_HEADER_NAME = "NONCE";
 
     private static ObjectMapper mapper = new ObjectMapper();
 
