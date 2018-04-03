@@ -19,7 +19,7 @@ public class ReceiveAmount {
     public static final String SERVER_URL = "http://localhost:4567";
     public static final String SERVER_PUBLIC_KEY_BASE_64 = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/GJhA+8icaML6/zYhJ1QY4oEbhzUqjzJmECK5dTJ2mRpS4Vsks0Zy52Q8HiNGQvDpO8wLr/a5X0yTV+Sj1vThQ==";
 
-    public static void main (String[] args) throws CantReceiveAmountException {
+    public static void main (String[] args) throws ReceiveAmountException {
         String clientName;
         String transactionSignature;
 
@@ -34,20 +34,20 @@ public class ReceiveAmount {
         try {
             cmd = parser.parse (registerOptions, args);
         } catch (ParseException e) {
-            throw new CantReceiveAmountException ("Can't receive amount, because arguments are missing. " + e);
+            throw new ReceiveAmountException("Can't receive amount, because arguments are missing. " + e);
         }
 
         if (cmd.hasOption ("n") && !cmd.getOptionValue("n").trim().equals("")) {
             clientName = cmd.getOptionValue ("n");
         } else {
             usage (registerOptions);
-            throw new CantReceiveAmountException ("Can't receive amount, the name of the client is missing.");
+            throw new ReceiveAmountException("Can't receive amount, the name of the client is missing.");
         }
         if (cmd.hasOption ("ts") && !cmd.getOptionValue("ts").trim().equals("")) {
             transactionSignature = cmd.getOptionValue ("ts");
         } else {
             usage (registerOptions);
-            throw new CantReceiveAmountException ("Can't receive amount, the transaction signature is missing.");
+            throw new ReceiveAmountException("Can't receive amount, the transaction signature is missing.");
         }
 
         String root = System.getProperty("user.dir");
@@ -63,7 +63,7 @@ public class ReceiveAmount {
             client.receiveAmount (sourcePublickey, sourcePrivateKey, transactionSignature);
 
         } catch (KeyException | IOException e) {
-            throw new CantReceiveAmountException ("Failed to receive amount. " + e);
+            throw new ReceiveAmountException("Failed to receive amount. " + e);
         }
 
     }

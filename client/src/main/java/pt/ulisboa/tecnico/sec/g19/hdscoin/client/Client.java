@@ -35,7 +35,7 @@ public class Client implements IClient {
     }
 
     @Override
-    public void register(ECPublicKey publicKey, ECPrivateKey privateKey, int amount) throws CantRegisterException {
+    public void register(ECPublicKey publicKey, ECPrivateKey privateKey, int amount) throws RegisterException {
         try {
             String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
             Serialization.RegisterRequest request = new Serialization.RegisterRequest();
@@ -79,13 +79,13 @@ public class Client implements IClient {
         } catch (HttpRequest.HttpRequestException | IOException | KeyException | CantGenerateSignatureException |
                 InvalidServerResponseException | InvalidClientSignatureException | InvalidKeyException |
                 InvalidLedgerException | InvalidAmountException | ServerErrorException e) {
-            throw new CantRegisterException("Failed to register the public key provided. " + e, e);
+            throw new RegisterException("Failed to register the public key provided. " + e, e);
         }
     }
 
     @Override
     public void sendAmount(ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, int amount,
-                           ECPrivateKey sourcePrivateKey, String previousSignature) throws CantSendAmountException {
+                           ECPrivateKey sourcePrivateKey, String previousSignature) throws SendAmountException {
         try {
             String b64SourcePublicKey = Serialization.publicKeyToBase64(sourcePublicKey);
             String b64DestinationPublicKey = Serialization.publicKeyToBase64(targetPublicKey);
@@ -115,12 +115,12 @@ public class Client implements IClient {
             }
         } catch (HttpRequest.HttpRequestException | IOException | KeyException | CantGenerateSignatureException |
                 InvalidServerResponseException | InvalidClientSignatureException | ServerErrorException e) {
-            throw new CantSendAmountException("Failed to create a transaction. " + e);
+            throw new SendAmountException("Failed to create a transaction. " + e);
         }
     }
 
     @Override
-    public int checkAccount(ECPublicKey publicKey) throws CantCheckAccountException {
+    public int checkAccount(ECPublicKey publicKey) throws CheckAccountException {
         try {
             String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
             String requestPath = url.toString() +
@@ -156,12 +156,12 @@ public class Client implements IClient {
             return 0;
         } catch (InvalidKeyException | InvalidLedgerException | ServerErrorException | IOException | KeyException |
                 InvalidServerResponseException | CantGenerateSignatureException e) {
-            throw new CantCheckAccountException("Failed to check the account of the public key provided. " + e);
+            throw new CheckAccountException("Failed to check the account of the public key provided. " + e);
         }
     }
 
     @Override
-    public void receiveAmount(ECPublicKey publicKey, ECPrivateKey privateKey, String transactionSignature) throws CantReceiveAmountException {
+    public void receiveAmount(ECPublicKey publicKey, ECPrivateKey privateKey, String transactionSignature) throws ReceiveAmountException {
         // todo: handle
     }
 

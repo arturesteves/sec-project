@@ -1,7 +1,7 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import org.apache.commons.cli.*;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantSendAmountException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.SendAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.AuditException;
@@ -20,7 +20,7 @@ public class SendAmount {
 
     public static final String SERVER_URL = "http://localhost:4567";
 
-    public static void main(String[] args) throws CantSendAmountException {
+    public static void main(String[] args) throws SendAmountException {
         String clientNameSource;
         String clientNameTarget;
         String serverName;
@@ -39,36 +39,36 @@ public class SendAmount {
         try {
             cmd = parser.parse(registerOptions, args);
         } catch (ParseException e) {
-            throw new CantSendAmountException("Can't send amount, because arguments are missing. " + e);
+            throw new SendAmountException("Can't send amount, because arguments are missing. " + e);
         }
 
         if (cmd.hasOption("ns") && !cmd.getOptionValue("ns").trim().equals("")) {
             clientNameSource = cmd.getOptionValue("ns");
         } else {
             usage(registerOptions);
-            throw new CantSendAmountException("Can't send amount, the name of the source client is missing.");
+            throw new SendAmountException("Can't send amount, the name of the source client is missing.");
         }
         if (cmd.hasOption("nt") && !cmd.getOptionValue("nt").trim().equals("")) {
             clientNameTarget = cmd.getOptionValue("nt");
         } else {
             usage(registerOptions);
-            throw new CantSendAmountException("Can't send amount, the name of the target client is missing.");
+            throw new SendAmountException("Can't send amount, the name of the target client is missing.");
         }
         if (cmd.hasOption("s") && !cmd.getOptionValue("s").trim().equals("")) {
             serverName = cmd.getOptionValue("s");
         } else {
             usage(registerOptions);
-            throw new CantSendAmountException("Can't send amount, server name is missing.");
+            throw new SendAmountException("Can't send amount, server name is missing.");
         }
         if (cmd.hasOption("a") && !cmd.getOptionValue("a").trim().equals("")) {
             try {
                 amount = Integer.parseInt(cmd.getOptionValue("a"));
             } catch (NullPointerException | NumberFormatException e) {
-                throw new CantSendAmountException("Can't send amount, the amount is invalid. " + e);
+                throw new SendAmountException("Can't send amount, the amount is invalid. " + e);
             }
         } else {
             usage(registerOptions);
-            throw new CantSendAmountException("Can't send amount, the amount is missing.");
+            throw new SendAmountException("Can't send amount, the amount is missing.");
         }
 
         String root = System.getProperty("user.dir");
@@ -97,9 +97,9 @@ public class SendAmount {
             client.sendAmount(sourcePublickey, targetPublicKey, amount, sourcePrivateKey, previousHash);
 
         } catch (KeyException | IOException e) {
-            throw new CantSendAmountException("Failed to create a transaction. " + e);
+            throw new SendAmountException("Failed to create a transaction. " + e);
         } catch (AuditException e) {
-            throw new CantSendAmountException("Self-auditing failed. " + e);
+            throw new SendAmountException("Self-auditing failed. " + e);
         }
 
     }

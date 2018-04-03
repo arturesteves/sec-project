@@ -2,10 +2,7 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 
 import org.apache.commons.cli.*;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantCheckAccountException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantRegisterException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantSendAmountException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.InvalidClientSignatureException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CheckAccountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 
@@ -14,13 +11,12 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyException;
-import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 
 public class CheckAccount {
     public static final String SERVER_URL = "http://localhost:4567";
 
-    public static void main(String[] args) throws CantCheckAccountException {
+    public static void main(String[] args) throws CheckAccountException {
         String clientName;
         String serverName;
 
@@ -35,20 +31,20 @@ public class CheckAccount {
         try {
             cmd = parser.parse(registerOptions, args);
         } catch (ParseException e) {
-            throw new CantCheckAccountException("Can't check account, failed to interpret the arguments. " + e);
+            throw new CheckAccountException("Can't check account, failed to interpret the arguments. " + e);
         }
 
         if (cmd.hasOption("n") && !cmd.getOptionValue("n").trim().equals("")) {
             clientName = cmd.getOptionValue("n");
         } else {
             usage(registerOptions);
-            throw new CantCheckAccountException("Can't check account, client name is missing.");
+            throw new CheckAccountException("Can't check account, client name is missing.");
         }
         if (cmd.hasOption("s") && !cmd.getOptionValue("s").trim().equals("")) {
             serverName = cmd.getOptionValue("s");
         } else {
             usage(registerOptions);
-            throw new CantCheckAccountException("Can't check account, server name is missing.");
+            throw new CheckAccountException("Can't check account, server name is missing.");
         }
 
         String root = System.getProperty("user.dir");
@@ -69,7 +65,7 @@ public class CheckAccount {
             client.checkAccount(clientPublickey);
 
         } catch (KeyException | IOException e) {
-            throw new CantCheckAccountException("Failed to check the account of the public key provided. " + e);
+            throw new CheckAccountException("Failed to check the account of the public key provided. " + e);
         }
 
     }

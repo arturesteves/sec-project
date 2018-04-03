@@ -59,6 +59,16 @@
                             <arguments></arguments>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>Audit</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.client.Audit</mainClass>
+                            <arguments></arguments>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>

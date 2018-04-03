@@ -1,7 +1,7 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import org.apache.commons.cli.*;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantRegisterException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.RegisterException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 
@@ -17,7 +17,7 @@ public class Register {
 
     public static final String SERVER_URL = "http://localhost:4567";
 
-    public static void main(String[] args) throws CantRegisterException {
+    public static void main(String[] args) throws RegisterException {
         String clientName;
         String serverName;
         int amount;
@@ -35,30 +35,30 @@ public class Register {
             cmd = parser.parse(registerOptions, args);
         } catch (ParseException e) {
             e.printStackTrace();
-            throw new CantRegisterException("Can't register, failed to interpret the arguments. " + e, e);
+            throw new RegisterException("Can't register, failed to interpret the arguments. " + e, e);
         }
 
         if (cmd.hasOption("n") && !cmd.getOptionValue("n").trim().equals("")) {
             clientName = cmd.getOptionValue("n");
         } else {
             usage(registerOptions);
-            throw new CantRegisterException("Can't register, client name is missing.");
+            throw new RegisterException("Can't register, client name is missing.");
         }
         if (cmd.hasOption("s") && !cmd.getOptionValue("s").trim().equals("")) {
             serverName = cmd.getOptionValue("s");
         } else {
             usage(registerOptions);
-            throw new CantRegisterException("Can't register, server name is missing.");
+            throw new RegisterException("Can't register, server name is missing.");
         }
         if (cmd.hasOption("a") && !cmd.getOptionValue("a").trim().equals("")) {
             try {
                 amount = Integer.parseInt(cmd.getOptionValue("a"));
             } catch (NullPointerException | NumberFormatException e) {
-                throw new CantRegisterException("Can't register, the amount is invalid. " + e, e);
+                throw new RegisterException("Can't register, the amount is invalid. " + e, e);
             }
         } else {
             usage(registerOptions);
-            throw new CantRegisterException("Can't register, amount is missing.");
+            throw new RegisterException("Can't register, amount is missing.");
         }
 
         String root = System.getProperty("user.dir");
@@ -79,9 +79,9 @@ public class Register {
             IClient client = new Client(new URL(SERVER_URL), serverPublicKey);
             client.register(clientPublickey, clientPrivateKey, amount);
         } catch (KeyException | IOException e) {
-            throw new CantRegisterException("Failed to register. " + e, e);
+            throw new RegisterException("Failed to register. " + e, e);
         } catch (Exception e) {
-            throw new CantRegisterException("Failed to register, due to an unexpected error. " + e, e);
+            throw new RegisterException("Failed to register, due to an unexpected error. " + e, e);
         }
 
     }

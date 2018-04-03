@@ -3,7 +3,6 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import org.apache.commons.cli.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.AuditException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantCheckAccountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 

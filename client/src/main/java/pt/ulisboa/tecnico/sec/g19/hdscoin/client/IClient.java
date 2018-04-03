@@ -17,9 +17,9 @@ public interface IClient {
      * @param publicKey     Public key of the client.
      * @param privateKey    Private key of the client, used to sign the message.
      * @param amount        Initial amount.
-     * @throws CantRegisterException If there are any problems while trying to register a public key.
+     * @throws RegisterException If there are any problems while trying to register a public key.
      */
-    void register(ECPublicKey publicKey, ECPrivateKey privateKey, int amount) throws CantRegisterException;
+    void register(ECPublicKey publicKey, ECPrivateKey privateKey, int amount) throws RegisterException;
 
     /**
      * Submit the request for transferring a given amount from account
@@ -31,10 +31,10 @@ public interface IClient {
      * @param amount            Amount to transfer.
      * @param sourcePrivateKey  Private key of the client that is sending the transaction, used to sign the message.
      * @param previousSignature Signature of the last transaction.
-     * @throws CantSendAmountException If there are any problems while trying to create a transaction.
+     * @throws SendAmountException If there are any problems while trying to create a transaction.
      */
     void sendAmount(ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, int amount,
-                    ECPrivateKey sourcePrivateKey, String previousSignature) throws CantSendAmountException;
+                    ECPrivateKey sourcePrivateKey, String previousSignature) throws SendAmountException;
 
     /**
      * Obtain the balance of the account associated with key.
@@ -43,7 +43,7 @@ public interface IClient {
      *
      * @return int -
      */
-    int checkAccount(ECPublicKey publicKey) throws CantCheckAccountException;
+    int checkAccount(ECPublicKey publicKey) throws CheckAccountException;
 
     /**
      * Used by recipient of a transfer to accept in a non-repudiable way
@@ -53,9 +53,9 @@ public interface IClient {
      * @param publicKey            Public key of the client.
      * @param privateKey           Private key of the client, used to sign the message.
      * @param transactionSignature Signature of the transaction to receive the amount.
-     * @throws CantReceiveAmountException If there are any problems while trying to complete a transaction.
+     * @throws ReceiveAmountException If there are any problems while trying to complete a transaction.
      */
-    void receiveAmount (ECPublicKey publicKey, ECPrivateKey privateKey, String transactionSignature) throws CantReceiveAmountException;
+    void receiveAmount (ECPublicKey publicKey, ECPrivateKey privateKey, String transactionSignature) throws ReceiveAmountException;
 
     /**
      * Obtain the full transaction history of the account associated with key.

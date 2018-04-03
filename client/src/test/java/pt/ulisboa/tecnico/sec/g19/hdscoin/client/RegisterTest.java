@@ -2,24 +2,16 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 
 import com.github.paweladamski.httpclientmock.HttpClientMock;
-import org.junit.AfterClass;
-import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantRegisterException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.RegisterException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateKeysException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateSignatureException;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyException;
-import java.util.Arrays;
-import java.util.Collection;
 
 
 //@RunWith(Parameterized.class)
@@ -59,20 +51,20 @@ public class RegisterTest {
         this.amount = amount;
     }
 
-    @Test (expected = CantRegisterException.class)
-    public void testRegisterInvalidArguments () throws CantRegisterException {
+    @Test (expected = RegisterException.class)
+    public void testRegisterInvalidArguments () throws RegisterException {
         Assume.assumeTrue(type == Type.INVALID_COMMAND_LINE_ARGS);
         Register.main(new String[] {flagName, name, flagAmount, amount});
     }
 
-    @Test (expected = CantRegisterException.class)
-    public void testRegisterWithNoGeneratedKey () throws CantRegisterException {
+    @Test (expected = RegisterException.class)
+    public void testRegisterWithNoGeneratedKey () throws RegisterException {
         // no key was generated under the name Cli_1
         Register.main(new String[] {"-n", "Cli_1", "-a", "10"});
     }
 
     @Test
-    public void testRegisterValidArguments () throws CantRegisterException, CantGenerateKeysException {
+    public void testRegisterValidArguments () throws RegisterException, CantGenerateKeysException {
         Assume.assumeTrue(type == Type.INVALID_COMMAND_LINE_ARGS);
         GenerateKeyPair.main(new String[] {flagName, name});    // needs to generate a key pair first
         Register.main(new String[] {flagName, name, flagAmount, amount});
@@ -88,7 +80,7 @@ public class RegisterTest {
     // mensage signature for register (public key + amount + nonce): MEQCIGWVj8dH6aeAqvUOgUnHhXRWDBgLYr5Ub57mm6AqGvaGAiAdNMZfyWkuGNpAjFiNhGX+voSN7MQ29d0hs0rKsSo/ZQ==
 
     @Test
-    public void testSimple () throws CantRegisterException {
+    public void testSimple () throws RegisterException {
         Register.main(new String[] {"-n", "Client_1", "-a", "10"});
         //todo: criar forma de alterar as mensagens, pq agora da jeito usar um nonce predefinido.
             // isto depois tambem ajuda para simular os ataques.
