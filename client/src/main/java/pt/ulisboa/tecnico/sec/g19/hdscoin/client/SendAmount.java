@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import org.apache.commons.cli.*;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantRegisterException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantSendAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
@@ -17,17 +18,18 @@ import java.security.interfaces.ECPublicKey;
 public class SendAmount {
 
     public static final String SERVER_URL = "http://localhost:4567";
-    public static final String SERVER_PUBLIC_KEY_BASE_64 = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/GJhA+8icaML6/zYhJ1QY4oEbhzUqjzJmECK5dTJ2mRpS4Vsks0Zy52Q8HiNGQvDpO8wLr/a5X0yTV+Sj1vThQ==";
 
     public static void main(String[] args) throws CantSendAmountException {
         String clientNameSource;
         String clientNameTarget;
+        String serverName;
         int amount;
 
         // create options
         Options registerOptions = new Options();
         registerOptions.addOption("ns", true, "The name of the client that is sending the amount.");
         registerOptions.addOption("nt", true, "The name of the client that is receiving.");
+        registerOptions.addOption("s", true, "Server name");
         registerOptions.addOption("a", true, "Amount to send.");
 
         CommandLineParser parser = new BasicParser();
@@ -51,6 +53,12 @@ public class SendAmount {
             usage(registerOptions);
             throw new CantSendAmountException("Can't send amount, the name of the target client is missing.");
         }
+        if (cmd.hasOption("s") && !cmd.getOptionValue("s").trim().equals("")) {
+            serverName = cmd.getOptionValue("s");
+        } else {
+            usage(registerOptions);
+            throw new CantSendAmountException("Can't send amount, server name is missing.");
+        }
         if (cmd.hasOption("a") && !cmd.getOptionValue("a").trim().equals("")) {
             try {
                 amount = Integer.parseInt(cmd.getOptionValue("a"));
@@ -67,12 +75,14 @@ public class SendAmount {
         String filepathTarget = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + clientNameTarget + ".keys";
         Path pathSource = Paths.get(filepathSource).normalize(); // create path and normalize it
         Path pathTarget = Paths.get(filepathTarget).normalize();
+        String serverKeyFilepath = root + "\\..\\server\\" + Serialization.SERVER_PACKAGE_PATH + "\\keys\\" + serverName + ".keys";
+        Path serverKeyPath = Paths.get(serverKeyFilepath).normalize(); // create path and normalize it
 
         try {
             ECPublicKey sourcePublickey = Utils.readPublicKeyFromFile(pathSource.toString());
             ECPrivateKey sourcePrivateKey = Utils.readPrivateKeyFromFile(pathSource.toString());
             ECPublicKey targetPublicKey = Utils.readPublicKeyFromFile(pathTarget.toString());
-            ECPublicKey serverPublicKey = Serialization.base64toPublicKey(SERVER_PUBLIC_KEY_BASE_64);
+            ECPublicKey serverPublicKey = Utils.readPublicKeyFromFile(serverKeyPath.toString());
 
             // todo: first we have to audit the account to retrieve the last transaction.
             String previousHash = "";
