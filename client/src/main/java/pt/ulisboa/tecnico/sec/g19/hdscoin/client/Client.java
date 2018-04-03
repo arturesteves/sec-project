@@ -183,6 +183,7 @@ public class Client implements IClient {
                 // transactions come ordered from the oldest to the newest
                 String prevHash = null;
                 for (Serialization.Transaction tx : response.transactions) {
+                    System.out.println("Checking signature: " + tx.signature);
                     if (!Utils.checkSignature(tx.signature, tx.getSignable(), publicKey)) {
                         throw new AuditException("Error checking signature of transaction");
                     }

@@ -90,7 +90,10 @@ public class SendAmount {
             // get the hash of our last transaction, so we can include it in the new transaction
             // client.audit verifies the transaction chain for us
             List<Serialization.Transaction> transactions = client.audit(sourcePublickey);
-            previousHash = transactions.get(transactions.size() - 1).signature;
+            // transactions.size() should always be > 0 because of the dummy transaction required to open an account
+            if(transactions.size() > 0) {
+                previousHash = transactions.get(transactions.size() - 1).signature;
+            }
             client.sendAmount(sourcePublickey, targetPublicKey, amount, sourcePrivateKey, previousHash);
 
         } catch (KeyException | IOException e) {
