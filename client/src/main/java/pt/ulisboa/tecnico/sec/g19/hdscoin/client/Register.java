@@ -35,7 +35,7 @@ public class Register {
             cmd = parser.parse(registerOptions, args);
         } catch (ParseException e) {
             e.printStackTrace();
-            throw new CantRegisterException("Can't register, failed to interpreter the arguments. " + e, e);
+            throw new CantRegisterException("Can't register, failed to interpret the arguments. " + e, e);
         }
 
         if (cmd.hasOption("n") && !cmd.getOptionValue("n").trim().equals("")) {

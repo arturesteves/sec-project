@@ -4,6 +4,7 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 import org.apache.commons.cli.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantCheckAccountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantRegisterException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantSendAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.InvalidClientSignatureException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
@@ -18,51 +19,64 @@ import java.security.interfaces.ECPublicKey;
 
 public class CheckAccount {
     public static final String SERVER_URL = "http://localhost:4567";
-    public static final String SERVER_PUBLIC_KEY_BASE_64 = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/GJhA+8icaML6/zYhJ1QY4oEbhzUqjzJmECK5dTJ2mRpS4Vsks0Zy52Q8HiNGQvDpO8wLr/a5X0yTV+Sj1vThQ==";
 
-    public static void main (String[] args) throws CantCheckAccountException {
+    public static void main(String[] args) throws CantCheckAccountException {
         String clientName;
+        String serverName;
 
         // create options
-        Options registerOptions = new Options ();
-        registerOptions.addOption ("n", true, "Client name");
+        Options registerOptions = new Options();
+        registerOptions.addOption("n", true, "Client name");
+        registerOptions.addOption("s", true, "Server name");
 
-        CommandLineParser parser = new BasicParser ();
+        CommandLineParser parser = new BasicParser();
         CommandLine cmd = null;
 
         try {
-            cmd = parser.parse (registerOptions, args);
+            cmd = parser.parse(registerOptions, args);
         } catch (ParseException e) {
-            throw new CantCheckAccountException("Can't register, failed to interpreter the arguments. " + e);
+            throw new CantCheckAccountException("Can't check account, failed to interpret the arguments. " + e);
         }
 
-        if (cmd.hasOption ("n") && !cmd.getOptionValue("n").trim().equals("")) {
-            clientName = cmd.getOptionValue ("n");
+        if (cmd.hasOption("n") && !cmd.getOptionValue("n").trim().equals("")) {
+            clientName = cmd.getOptionValue("n");
         } else {
-            usage (registerOptions);
-            throw new CantCheckAccountException ("Can't register, client name is missing.");
+            usage(registerOptions);
+            throw new CantCheckAccountException("Can't check account, client name is missing.");
+        }
+        if (cmd.hasOption("s") && !cmd.getOptionValue("s").trim().equals("")) {
+            serverName = cmd.getOptionValue("s");
+        } else {
+            usage(registerOptions);
+            throw new CantCheckAccountException("Can't check account, server name is missing.");
         }
 
         String root = System.getProperty("user.dir");
-        String filepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + clientName + ".keys";
-        Path path = Paths.get (filepath).normalize(); // create path and normalize it
+
+        // This is more or less a simulation of a CA
+        // Note that we could obtain the private key of the server here, but we won't do it (we assume that if a CA was
+        // in place, we'd obtain the public keys from it, and not from a file).
+        String clientKeyFilepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + clientName + ".keys";
+        Path clientKeyPath = Paths.get(clientKeyFilepath).normalize(); // create path and normalize it
+        String serverKeyFilepath = root + "\\..\\server\\" + Serialization.SERVER_PACKAGE_PATH + "\\keys\\" + serverName + ".keys";
+        Path serverKeyPath = Paths.get(serverKeyFilepath).normalize(); // create path and normalize it
 
         try {
-            ECPublicKey clientPublickey = Utils.readPublicKeyFromFile (path.toString());
-            ECPublicKey serverPublicKey = Serialization.base64toPublicKey (SERVER_PUBLIC_KEY_BASE_64);
+            ECPublicKey clientPublickey = Utils.readPublicKeyFromFile(clientKeyPath.toString());
+            ECPublicKey serverPublicKey = Utils.readPublicKeyFromFile(serverKeyPath.toString());
 
-            IClient client = new Client (new URL(SERVER_URL), serverPublicKey);
-            client.checkAccount (clientPublickey);
+            IClient client = new Client(new URL(SERVER_URL), serverPublicKey);
+            client.checkAccount(clientPublickey);
 
         } catch (KeyException | IOException e) {
-            throw new CantCheckAccountException ("Failed to check the account of the public key provided. " + e);
+            throw new CantCheckAccountException("Failed to check the account of the public key provided. " + e);
         }
 
     }
 
-    private static void usage (Options options) {
+    private static void usage(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp( "Register", options);
+        formatter.printHelp("CheckAccount", options);
     }
 
 }
