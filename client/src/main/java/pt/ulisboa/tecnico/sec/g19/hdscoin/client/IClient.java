@@ -1,11 +1,7 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.*;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateSignatureException;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.*;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 
@@ -18,27 +14,24 @@ public interface IClient {
      * @param publicKey     Public key of the client.
      * @param privateKey    Private key of the client, used to sign the message.
      * @param amount        Initial amount.
-     * @throws CantRegisterException If the operation isn't successful due to an invalid argument,
-     *                               or the server couldn't verify who sign it, or the client couldn't verify
-     *                               if the server sign it, or occurred a server error.
+     * @throws CantRegisterException If there are any problems while trying to register a public key.
      */
     void register(ECPublicKey publicKey, ECPrivateKey privateKey, double amount) throws CantRegisterException;
 
     /**
      * Submit the request for transferring a given amount from account
      * source to account destination, if the balance of the source allows it.
+     * The transfer will only be finalized when the receiver approves it via the receiveAmount() method.
      *
      * @param sourcePublicKey   Public key of the client that is sending the transaction.
      * @param targetPublicKey   Public key of the client that is receiving the transaction.
      * @param amount            Amount to transfer.
      * @param sourcePrivateKey  Private key of the client that is sending the transaction, used to sign the message.
      * @param previousSignature Signature of the last transaction.
-     * @throws CantSendAccountException If the operation isn't successful due to an invalid argument,
-     *                               or the server couldn't verify who sign it, or the client couldn't verify
-     *                               if the server sign it, or occurred a server error.
+     * @throws CantSendAmountException If there are any problems while trying to create a transaction.
      */
     void sendAmount(ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, double amount,
-                    ECPrivateKey sourcePrivateKey, String previousSignature) throws CantSendAccountException;
+                    ECPrivateKey sourcePrivateKey, String previousSignature) throws CantSendAmountException;
 
     /**
      * Obtain the balance of the account associated with key.
@@ -57,9 +50,7 @@ public interface IClient {
      * @param publicKey            Public key of the client.
      * @param privateKey           Private key of the client, used to sign the message.
      * @param transactionSignature Signature of the transaction to receive the amount.
-     * @throws CantReceiveAmountException If the operation isn't successful due to an invalid argument,
-     *                               or the server couldn't verify who sign it, or the client couldn't verify
-     *                               if the server sign it, or occurred a server error.
+     * @throws CantReceiveAmountException If there are any problems while trying to complete a transaction.
      */
     void receiveAmount (ECPublicKey publicKey, ECPrivateKey privateKey, String transactionSignature) throws CantReceiveAmountException;
 

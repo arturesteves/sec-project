@@ -14,6 +14,8 @@ import java.security.spec.ECGenParameterSpec;
 
 public class ClientTests {
 
+    // On the client side the tests must be mocked, which means the answers provided by the server must be "simulated"
+        // they correspond to the real deal, but we are not actually making any connection.
 
     @Test
     public void testRegister() {

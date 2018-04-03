@@ -18,7 +18,6 @@ import java.util.logging.*;
 
 public class Utils {
 
-    // not working...
     static {
         Security.addProvider(new BouncyCastleProvider());
     }
@@ -81,13 +80,10 @@ public class Utils {
     }
 
     public static void writeKeyPairToFile (String filepath, KeyPair keyPair) throws KeyException, IOException {
-        String root = System.getProperty("user.dir");
         String publicKeyBase64 = Serialization.publicKeyToBase64 ( (ECPublicKey) keyPair.getPublic ());
         String privateKeyBase64 = Serialization.privateKeyToBase64 ( (ECPrivateKey) keyPair.getPrivate());
 
-        System.out.println("Writing keys to '" + root + filepath);
-
-        File file = new File (root + filepath);
+        File file = new File (filepath);
         FileWriter fw;
         if (!file.createNewFile ()) {
             fw = new FileWriter(file,false);//if file exists overwrite it
@@ -99,11 +95,9 @@ public class Utils {
     }
 
     public static ECPublicKey readPublicKeyFromFile (String filepath) throws KeyException, IOException{
-        String root = System.getProperty("user.dir");
-
         ECPublicKey publicKey = null;
 
-        FileReader fr = new FileReader (root + filepath);
+        FileReader fr = new FileReader (filepath);
         BufferedReader bf = new BufferedReader (fr);
         String line = bf.readLine(); // the public key is only in 1 line?
         publicKey = Serialization.base64toPublicKey(line);
@@ -115,9 +109,8 @@ public class Utils {
     }
 
     public static ECPrivateKey readPrivateKeyFromFile (String filepath) throws KeyException, IOException{
-        String root = System.getProperty("user.dir");
         ECPrivateKey privateKey = null;
-        FileReader fr = new FileReader (root + filepath);
+        FileReader fr = new FileReader (filepath);
         BufferedReader bf = new BufferedReader (fr);
         bf.readLine(); //1st line
         privateKey = Serialization.base64toPrivateKey (bf.readLine ()); // read 2nd line that

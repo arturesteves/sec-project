@@ -1,56 +1,114 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateKeysException;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.KeyException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import java.util.Arrays;
+import java.util.Collection;
 
+
+@RunWith(Parameterized.class)
 public class GenerateKeyPairTest {
+    enum Type {INVALID_COMMAND_LINE_ARGS, VALID_COMMAND_LINE_ARGS }
 
-    @Test(expected = CantGenerateKeysException.class)
+    @Parameterized.Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][] {
+                { Type.INVALID_COMMAND_LINE_ARGS, "", ""}, { Type.INVALID_COMMAND_LINE_ARGS, " ", " "},
+                { Type.INVALID_COMMAND_LINE_ARGS, "-n", "   "}, { Type.INVALID_COMMAND_LINE_ARGS, "-n", ""},
+                { Type.INVALID_COMMAND_LINE_ARGS, "-abc", "CLIENT_TEST"},
+                { Type.INVALID_COMMAND_LINE_ARGS, "-n", null },
+
+                { Type.VALID_COMMAND_LINE_ARGS, "-n", "null" }, { Type.VALID_COMMAND_LINE_ARGS, "-n", "1" },
+                { Type.VALID_COMMAND_LINE_ARGS, "-n", "CLIENT_TEST" }
+        });
+    }
+
+    private Type type;
+    private String flag;
+    private String value;
+
+    public GenerateKeyPairTest (Type type, String flag, String value) {
+        this.flag = flag;
+        this.value = value;
+        this.type = type;
+    }
+
+
+    @Test (expected = CantGenerateKeysException.class)
     public void testMainInvalidArguments () throws CantGenerateKeysException {
-        GenerateKeyPair.main(new String[] {""});
+        Assume.assumeTrue(type == Type.INVALID_COMMAND_LINE_ARGS);
+        GenerateKeyPair.main(new String[] {flag, value});
     }
 
     @Test
     public void testMainValidArguments () throws CantGenerateKeysException {
-        GenerateKeyPair.main(new String[] {"-n", "CLIENT_KEYS_TEST"});
+        Assume.assumeTrue(type == Type.VALID_COMMAND_LINE_ARGS);
+        GenerateKeyPair.main(new String[] {flag, value});
     }
 
     // check if the file with the keys was create
     @Test
     public void testMainCheckFileExists () throws CantGenerateKeysException {
-        String clientID = "CLIENT_KEYS_TEST";
-        GenerateKeyPair.main(new String[] {"-n", clientID});
+        Assume.assumeTrue(type == Type.VALID_COMMAND_LINE_ARGS);
+        GenerateKeyPair.main(new String[] {flag, value});
+        // compose path
         String root = System.getProperty("user.dir");
-        String filepath = "/src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/client/keys/" + clientID + ".keys";
+        String filepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\";
+        Path path = Paths.get (filepath).normalize();
 
-        File file = new File (root + filepath);
+        File file = new File (path.toString());
         Assert.assertTrue(file.exists());
     }
 
     @Test
     public void testMainCheckFileContainsKeys () throws CantGenerateKeysException, KeyException, IOException {
-        String clientID = "CLIENT_KEYS_TEST";
-        GenerateKeyPair.main(new String[] {"-n", clientID});
-        //String root = System.getProperty("user.dir");
-        String filepath = "/src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/client/keys/" + clientID + ".keys";
+        Assume.assumeTrue(type == Type.VALID_COMMAND_LINE_ARGS);
+        GenerateKeyPair.main(new String[] {flag, value});
 
-        ECPrivateKey privateKey = Utils.readPrivateKeyFromFile (filepath);
-        ECPublicKey publicKey = Utils.readPublicKeyFromFile (filepath);
+        String root = System.getProperty("user.dir");
+        String filepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + value + ".keys";
+        Path path = Paths.get (filepath).normalize();
+
+        ECPrivateKey privateKey = Utils.readPrivateKeyFromFile (path.toString());
+        ECPublicKey publicKey = Utils.readPublicKeyFromFile (path.toString());
 
         Assert.assertNotEquals (privateKey, null);
         Assert.assertNotEquals (publicKey, null);
         Assert.assertNotEquals (publicKey, "");
-        Assert.assertNotEquals (publicKey, "");
+        Assert.assertNotEquals (privateKey, "");
+        Assert.assertEquals(publicKey.getAlgorithm(), "EC");    // elliptic curves
         Assert.assertEquals(privateKey.getAlgorithm(), "EC");
     }
-}
 
+    //@AfterClass
+    public static void clean () {
+        // destroy all the key files present on the keys directory.
+        String root = System.getProperty("user.dir");
+        String filepath = "\\src\\main\\java\\pt\\ulisboa\\tecnico\\sec\\g19\\hdscoin\\client\\keys";
+        File dir = new File(root + filepath);
+        if (dir.isDirectory()) {
+            File files[] = dir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    file.delete ();
+                }
+            }
+        }
+    }
+}

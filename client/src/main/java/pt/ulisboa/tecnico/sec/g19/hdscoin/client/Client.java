@@ -10,8 +10,8 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidKeyException;
 
+import java.awt.*;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.security.*;
@@ -41,12 +41,16 @@ public class Client implements IClient {
             Serialization.RegisterRequest request = new Serialization.RegisterRequest();
             request.amount = amount;
             request.key = b64PublicKey;
+            request.nonce = Utils.randomNonce();
             // log
+            System.out.println();
             System.out.println ("---------------------");
             System.out.println ("---Sending Request---");
             System.out.println ("Base 64 Public Key: " + b64PublicKey);
             System.out.println ("Amount: " + amount);
+            System.out.println ("Nonce: " + request.nonce);
             System.out.println ("---------------------");
+            System.out.println();
 
             // http post request
             Serialization.Response response = sendPostRequest(url.toString() + "/register", privateKey, request,
@@ -66,7 +70,7 @@ public class Client implements IClient {
                     case ERROR_INVALID_AMOUNT:
                         throw new InvalidAmountException("The amount provided is invalid.", amount);
                     case ERROR_INVALID_LEDGER:
-                        throw new InvalidLedgerException("The public key provided isn't associated with any ledger.");
+                        throw new InvalidLedgerException("The public key is already associated with a ledger.");
                     case ERROR_SERVER_ERROR:
                         throw new ServerErrorException("Error on the server side.");
                 }
@@ -81,7 +85,7 @@ public class Client implements IClient {
 
     @Override
     public void sendAmount(ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, double amount,
-                           ECPrivateKey sourcePrivateKey, String previousSignature) throws CantSendAccountException {
+                           ECPrivateKey sourcePrivateKey, String previousSignature) throws CantSendAmountException {
         try {
             String b64SourcePublicKey = Serialization.publicKeyToBase64(sourcePublicKey);
             String b64DestinationPublicKey = Serialization.publicKeyToBase64(targetPublicKey);
@@ -111,7 +115,7 @@ public class Client implements IClient {
             }
         } catch (HttpRequest.HttpRequestException | IOException | KeyException | CantGenerateSignatureException |
                 InvalidServerResponseException | InvalidClientSignatureException | ServerErrorException e) {
-            throw new CantSendAccountException ("Failed to create a transaction. " + e);
+            throw new CantSendAmountException("Failed to create a transaction. " + e);
         }
     }
 
@@ -169,14 +173,15 @@ public class Client implements IClient {
 
     private <T> T sendPostRequest(String url, ECPrivateKey privateKey, Object payload, Class<T> responseValueType) throws HttpRequest.HttpRequestException, IOException, CantGenerateSignatureException, InvalidServerResponseException, InvalidClientSignatureException {
         String payloadJson = Serialization.serialize(payload);
-        String nonce = Utils.randomNonce();
+        String nonce = ((NonceContainer) payload).getNonce();
 
         HttpRequest request = HttpRequest
-                .post(url)
-                .header(Serialization.NONCE_HEADER_NAME, nonce);
+                .post(url);
+                //.header(Serialization.NONCE_HEADER_NAME, nonce);
 
         if (payload instanceof Signable) {
             String toSign = ((Signable) payload).getSignable();
+            // added the nonce to the signable message on the request
             request = request.header(Serialization.SIGNATURE_HEADER_NAME, Utils.generateSignature(toSign, privateKey));
         }
 
@@ -198,9 +203,9 @@ public class Client implements IClient {
         }
 
         String responseNonce = ((NonceContainer) response).getNonce();
-
         System.out.println("Client NONCE: " + nonce);
         System.out.println("Server NONCE: " + responseNonce);
+        System.out.println("SIGN : " + responseSignature);
         if (!responseNonce.equals(nonce)) {
             throw new InvalidServerResponseException("The nonce received by the server do not match the one " +
                     "the client sent previously.");

@@ -8,6 +8,9 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateKeysExc
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.KeyException;
 import java.security.KeyPair;
 import java.security.interfaces.ECPrivateKey;
@@ -16,7 +19,6 @@ import java.security.interfaces.ECPublicKey;
 
 public class GenerateKeyPair {
     public static final String ENTITY = "CLIENT";
-    public static final String FILE_PATH = "/src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/client/keys";
 
     public static void main(String[] args) throws CantGenerateKeysException {
         String clientName;
@@ -29,19 +31,25 @@ public class GenerateKeyPair {
         try {
             CommandLine cmd = parser.parse(options, args);
 
-            if (cmd.hasOption("n")) {
+            if (cmd.hasOption("n") && !cmd.getOptionValue("n").trim().equals("")) {
                 clientName = cmd.getOptionValue("n");
             } else {
                 usage (options);
                 throw new CantGenerateKeysException("Failed to generate a key pair. Missing the -n option.");
             }
+            String root = System.getProperty("user.dir");
+            String filepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + clientName + ".keys";
+            Path path = Paths.get (filepath).normalize(); // create path and normalize it
 
             KeyPair keyPair = Utils.generateKeyPair ();
-            Utils.writeKeyPairToFile (FILE_PATH + "/" + clientName + ".keys", keyPair);
-            System.out.println("---                               ---");
+            Utils.writeKeyPairToFile (path.toString(), keyPair);
+
+            // everything ok
+            System.out.println();
+            System.out.println("-------------------------------------");
             System.out.println("---Key Pair Generated with Success---");
-            System.out.println("---                               ---");
-            System.out.println("---                               ---");
+            System.out.println("---Generated at: " + path.toString());
+            System.out.println("-------------------------------------");
 
         } catch (ParseException | KeyException | IOException e) {
             throw new CantGenerateKeysException("Failed to generate a key pair. " + e.getMessage(), e);

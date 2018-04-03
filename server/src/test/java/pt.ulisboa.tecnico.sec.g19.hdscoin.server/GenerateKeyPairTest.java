@@ -8,6 +8,8 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateKeysExc
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.KeyException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
@@ -29,10 +31,12 @@ public class GenerateKeyPairTest {
     public void testMainCheckFileExists () throws CantGenerateKeysException {
         String serverID = "SERVER_KEYS_TEST";
         GenerateKeyPair.main(new String[] {"-n", serverID});
+        // compose path
         String root = System.getProperty("user.dir");
-        String filepath = "/src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/server/keys/" + serverID + ".keys";
+        String filepath = root + Serialization.SERVER_PACKAGE_PATH + "\\keys\\" + serverID + ".keys";
+        Path path = Paths.get (filepath).normalize();
 
-        File file = new File (root + filepath);
+        File file = new File (path.toString());
         Assert.assertTrue(file.exists());
     }
 
@@ -40,11 +44,13 @@ public class GenerateKeyPairTest {
     public void testMainCheckFileContainsKeys () throws CantGenerateKeysException, KeyException, IOException {
         String serverID = "SERVER_KEYS_TEST";
         GenerateKeyPair.main(new String[] {"-n", serverID});
-        //String root = System.getProperty("user.dir");
-        String filepath = "/src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/server/keys/" + serverID + ".keys";
+        // compose path
+        String root = System.getProperty("user.dir");
+        String filename = root + Serialization.SERVER_PACKAGE_PATH + "\\keys\\" + serverID + ".keys";
+        Path path = Paths.get (filename).normalize();
 
-        ECPrivateKey privateKey = Utils.readPrivateKeyFromFile (filepath);
-        ECPublicKey publicKey = Utils.readPublicKeyFromFile (filepath);
+        ECPrivateKey privateKey = Utils.readPrivateKeyFromFile (path.toString());
+        ECPublicKey publicKey = Utils.readPublicKeyFromFile (path.toString());
 
         Assert.assertNotEquals (privateKey, null);
         Assert.assertNotEquals (publicKey, null);

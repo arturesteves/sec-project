@@ -25,36 +25,30 @@ public class Serialization {
         ERROR_INVALID_KEY, ERROR_SERVER_ERROR
     }
 
+    public static final String CLIENT_PACKAGE_PATH = "\\src\\main\\java\\pt\\ulisboa\\tecnico\\sec\\g19\\hdscoin\\client";
+    public static final String SERVER_PACKAGE_PATH = "\\src\\main\\java\\pt\\ulisboa\\tecnico\\sec\\g19\\hdscoin\\server";
+
     public static final String SIGNATURE_HEADER_NAME = "SIGNATURE";
     public static final String NONCE_HEADER_NAME = "NONCE";
 
     private static ObjectMapper mapper = new ObjectMapper();
 
-    public static class RegisterRequest implements Signable {
+    public static class RegisterRequest implements Signable, NonceContainer  {
         public String key;
         public double amount;
+        public String nonce;
 
         @Override
         @JsonIgnore
         public String getSignable() {
-            return key + Double.toString(amount);
+            return key + Double.toString(amount) + nonce;
+        }
+
+        @Override
+        public String getNonce() {
+            return nonce;
         }
     }
-
-    /*
-    private static abstract class TransactionRequest implements Signable {
-        public String source;
-        public String target; // who receives the money
-        public double amount;
-        public String previousSignature;
-
-        @Override
-        @JsonIgnore
-        public String getSignable() {
-            // true: because is_send = true
-            return source + target + Boolean.toString(true) + Double.toString(amount) + previousSignature;
-        }
-    }*/
 
     public static class SendAmountRequest implements Signable {
         public String source;
@@ -84,8 +78,6 @@ public class Serialization {
 
     public static class Response implements Signable, NonceContainer {
         public int statusCode = -1;
-
-        //public String status; // "ok" or "error"
         public StatusMessage status;
         public String nonce; // nonce that the client sent and now we send back, as part of what's signed
 
