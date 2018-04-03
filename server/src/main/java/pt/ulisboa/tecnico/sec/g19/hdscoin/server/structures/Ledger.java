@@ -102,8 +102,20 @@ public final class Ledger {
     }
 
     // useful for the audit
-    public List<Transaction> getAllTransactions() {
-        return null;
+    public List<Transaction> getAllTransactions(Connection connection) throws SQLException, KeyException {
+        String stmt = "SELECT * FROM tx AS t " +
+                "JOIN ledger AS l ON t.ledger_id = l.id " +
+                "WHERE l.public_key = ? " +
+                "ORDER BY tx.id";
+        PreparedStatement prepStmt = connection.prepareStatement(stmt);
+        prepStmt.setString(1, Serialization.publicKeyToBase64(publicKey));
+
+        try {
+            return Transaction.loadResults(connection, prepStmt);
+        } catch (MissingLedgerException ex) {
+            // there's no way this should happen, if this happens, how did this ledger get instantiated?
+            throw new Error("MissingLedgerException on getAllTransactions of Ledger");
+        }
     }
 
     // useful for the check account
@@ -143,9 +155,9 @@ public final class Ledger {
         }
     }
 
-    public static Transaction getPendingTransaction (Connection connection, ECPublicKey publicKey,
-                                                     String transactionSignature) throws SQLException, KeyException,
-            MissingLedgerException{
+    public static Transaction getPendingTransaction(Connection connection, ECPublicKey publicKey,
+                                                    String transactionSignature) throws SQLException, KeyException,
+            MissingLedgerException {
 
         String stmt = "SELECT * FROM tx AS t " +
                 "JOIN ledger AS l ON t.other_id = l.id " +
@@ -163,7 +175,7 @@ public final class Ledger {
 
     // todo: create on a non static method, where a ledger can retrieve only its peding transactions (need to change the sql query)
     public static Transaction getPendingTransaction(Connection connection, ECPublicKey publicKey, String transactionSignature,
-                                             Transaction.TransactionTypes type) throws SQLException, KeyException,
+                                                    Transaction.TransactionTypes type) throws SQLException, KeyException,
             MissingLedgerException {
 
         String stmt = "SELECT * FROM tx AS t " +

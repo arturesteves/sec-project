@@ -15,6 +15,7 @@ import java.security.interfaces.ECPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
@@ -22,7 +23,7 @@ public class Serialization {
 
     public enum StatusMessage {
         SUCCESS, ERROR_INVALID_LEDGER, ERROR_INVALID_AMOUNT, ERROR_NO_SIGNATURE_MATCH,
-        ERROR_INVALID_KEY, ERROR_SERVER_ERROR
+        ERROR_INVALID_KEY, ERROR_MISSING_PARAMETER, ERROR_SERVER_ERROR
     }
 
     public static final String CLIENT_PACKAGE_PATH = "\\src\\main\\java\\pt\\ulisboa\\tecnico\\sec\\g19\\hdscoin\\client";
@@ -79,7 +80,7 @@ public class Serialization {
     public static class Response implements Signable, NonceContainer {
         public int statusCode = -1;
         public StatusMessage status;
-        public String nonce; // nonce that the client sent and now we send back, as part of what's signed
+        public String nonce = ""; // nonce that the client sent and now we send back, as part of what's signed
 
         @Override
         @JsonIgnore
@@ -102,6 +103,35 @@ public class Serialization {
         @JsonIgnore
         public String getSignable() {
             return super.getSignable() + balance + pendingTransactions;
+        }
+    }
+
+    public static class AuditResponse extends Response implements Signable {
+        public List<Transaction> transactions = new ArrayList<>();
+
+        @Override
+        @JsonIgnore
+        public String getSignable() {
+            String signable = super.getSignable();
+            for (Transaction tx : transactions) {
+                signable += tx.getSignable();
+            }
+            return signable;
+        }
+    }
+
+    // TODO maybe SendAmountRequest and ReceiveAmountRequest can be eliminated and we can just use Transaction?
+    public static class Transaction implements Signable {
+        public String source;
+        public String target; // who receives the money
+        public boolean isSend;
+        public double amount;
+        public String previousSignature;
+
+        @Override
+        @JsonIgnore
+        public String getSignable() {
+            return source + target + Boolean.toString(isSend) + Double.toString(amount) + previousSignature;
         }
     }
 
