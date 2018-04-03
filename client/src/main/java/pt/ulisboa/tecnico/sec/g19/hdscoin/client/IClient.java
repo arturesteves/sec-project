@@ -1,9 +1,12 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.*;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.AuditException;
 
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import java.util.List;
 
 public interface IClient {
 
@@ -54,12 +57,10 @@ public interface IClient {
      */
     void receiveAmount (ECPublicKey publicKey, ECPrivateKey privateKey, String transactionSignature) throws CantReceiveAmountException;
 
-    //TODO: check
-    //todo - Discover the return type of the audit operation
     /**
      * Obtain the full transaction history of the account associated with key.
-     * @param key The public key of the account to be audited
+     * @param publicKey The public key of the account to be audited
      */
-    void audit(ECPrivateKey privateKey, ECPublicKey key);
+    List<Serialization.Transaction> audit(ECPublicKey publicKey) throws AuditException;
 
 }

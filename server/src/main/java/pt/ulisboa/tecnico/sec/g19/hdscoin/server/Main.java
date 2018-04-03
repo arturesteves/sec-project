@@ -406,6 +406,7 @@ public class Main {
                     serializedTx.isSend = tx.getTransactionType() == Transaction.TransactionTypes.SENDING;
                     serializedTx.amount = tx.getAmount();
                     serializedTx.previousSignature = tx.getPreviousHash();
+                    serializedTx.signature = tx.getHash();
                     response.transactions.add(serializedTx);
                 }
                 conn.commit();

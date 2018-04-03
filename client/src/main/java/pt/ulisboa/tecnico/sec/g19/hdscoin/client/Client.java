@@ -10,13 +10,13 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidKeyException;
 
-import java.awt.*;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import java.util.List;
 
 import static pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization.StatusMessage.ERROR_NO_SIGNATURE_MATCH;
 
@@ -44,12 +44,12 @@ public class Client implements IClient {
             request.nonce = Utils.randomNonce();
             // log
             System.out.println();
-            System.out.println ("---------------------");
-            System.out.println ("---Sending Request---");
-            System.out.println ("Base 64 Public Key: " + b64PublicKey);
-            System.out.println ("Amount: " + amount);
-            System.out.println ("Nonce: " + request.nonce);
-            System.out.println ("---------------------");
+            System.out.println("---------------------");
+            System.out.println("---Sending Request---");
+            System.out.println("Base 64 Public Key: " + b64PublicKey);
+            System.out.println("Amount: " + amount);
+            System.out.println("Nonce: " + request.nonce);
+            System.out.println("---------------------");
             System.out.println();
 
             // http post request
@@ -57,11 +57,11 @@ public class Client implements IClient {
                     Serialization.Response.class);
 
             if (response.statusCode == 200) {
-                System.out.println ();
-                System.out.println ("---------------------------------");
-                System.out.println ("---Registration was successful---");
-                System.out.println ("---------------------------------");
-                System.out.println ();
+                System.out.println();
+                System.out.println("---------------------------------");
+                System.out.println("---Registration was successful---");
+                System.out.println("---------------------------------");
+                System.out.println();
 
             } else {
                 switch (response.status) {
@@ -77,9 +77,9 @@ public class Client implements IClient {
             }
 
         } catch (HttpRequest.HttpRequestException | IOException | KeyException | CantGenerateSignatureException |
-                    InvalidServerResponseException | InvalidClientSignatureException | InvalidKeyException |
-                    InvalidLedgerException | InvalidAmountException | ServerErrorException e) {
-            throw new CantRegisterException ("Failed to register the public key provided. " + e, e);
+                InvalidServerResponseException | InvalidClientSignatureException | InvalidKeyException |
+                InvalidLedgerException | InvalidAmountException | ServerErrorException e) {
+            throw new CantRegisterException("Failed to register the public key provided. " + e, e);
         }
     }
 
@@ -100,17 +100,17 @@ public class Client implements IClient {
                     request, Serialization.Response.class);
 
             if (response.statusCode == 200) {
-                System.out.println ();
-                System.out.println ("--------------------------------");
-                System.out.println ("---Transaction was successful---");
-                System.out.println ("--Waiting for target to accept--");
-                System.out.println ("--------------------------------");
-                System.out.println ();
+                System.out.println();
+                System.out.println("--------------------------------");
+                System.out.println("---Transaction was successful---");
+                System.out.println("--Waiting for target to accept--");
+                System.out.println("--------------------------------");
+                System.out.println();
 
             } else {
                 switch (response.status) {
                     case ERROR_SERVER_ERROR:
-                        throw new ServerErrorException ("Error on the server side.");
+                        throw new ServerErrorException("Error on the server side.");
                 }
             }
         } catch (HttpRequest.HttpRequestException | IOException | KeyException | CantGenerateSignatureException |
@@ -155,20 +155,64 @@ public class Client implements IClient {
             // todo: return an object with the balance and the transactions
             return 0;
         } catch (InvalidKeyException | InvalidLedgerException | ServerErrorException | IOException | KeyException |
-                    InvalidServerResponseException | CantGenerateSignatureException e) {
-            throw new CantCheckAccountException ("Failed to check the account of the public key provided. " + e);
-
+                InvalidServerResponseException | CantGenerateSignatureException e) {
+            throw new CantCheckAccountException("Failed to check the account of the public key provided. " + e);
         }
     }
 
     @Override
-    public void receiveAmount (ECPublicKey publicKey, ECPrivateKey privateKey, String transactionSignature) throws CantReceiveAmountException {
+    public void receiveAmount(ECPublicKey publicKey, ECPrivateKey privateKey, String transactionSignature) throws CantReceiveAmountException {
         // todo: handle
     }
 
     @Override
-    public void audit(ECPrivateKey privateKey, ECPublicKey key) {
+    public List<Serialization.Transaction> audit(ECPublicKey publicKey) throws AuditException {
+        try {
+            String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
+            String requestPath = url.toString() +
+                    "/audit/" + URLEncoder.encode(b64PublicKey, "UTF-8");
 
+            Serialization.AuditResponse response = sendGetRequest(requestPath,
+                    Serialization.AuditResponse.class);
+
+            System.out.println("response.statusCode: " + response.statusCode);
+            System.out.println("response.status: " + response.status);
+
+            if (response.statusCode == 200) {
+                // check transaction chain
+                // transactions come ordered from the oldest to the newest
+                String prevHash = null;
+                for (Serialization.Transaction tx : response.transactions) {
+                    if (!Utils.checkSignature(tx.signature, tx.getSignable(), publicKey)) {
+                        throw new AuditException("Error checking signature of transaction");
+                    }
+                    // now we know tx.signature is correct... but is it signing the right prevHash?
+                    if (prevHash != null && !prevHash.equals(tx.signature)) {
+                        throw new AuditException("Transaction chain is broken: the previous signature contained in " +
+                                "one transaction does not match the signature of the transaction that precedes it");
+                    }
+                    prevHash = tx.signature;
+                }
+
+                System.out.println("\n");
+                System.out.println("----------------------------------");
+                System.out.println("-------Audit was successful-------");
+                System.out.println("----------------------------------");
+                return response.transactions;
+            }
+            switch (response.status) {
+                case ERROR_INVALID_KEY:
+                    throw new InvalidKeyException("The public key provided is not valid.");
+                case ERROR_INVALID_LEDGER:
+                    throw new InvalidLedgerException("The public key provided isn't associated with any ledger.");
+                case ERROR_SERVER_ERROR:
+                default:
+                    throw new ServerErrorException("Error on the server side.");
+            }
+        } catch (InvalidKeyException | InvalidLedgerException | ServerErrorException | IOException | KeyException |
+                InvalidServerResponseException | CantGenerateSignatureException e) {
+            throw new AuditException("Failed to audit the account of the public key provided. " + e);
+        }
     }
 
     private <T> T sendPostRequest(String url, ECPrivateKey privateKey, Object payload, Class<T> responseValueType) throws HttpRequest.HttpRequestException, IOException, CantGenerateSignatureException, InvalidServerResponseException, InvalidClientSignatureException {
@@ -177,7 +221,7 @@ public class Client implements IClient {
 
         HttpRequest request = HttpRequest
                 .post(url);
-                //.header(Serialization.NONCE_HEADER_NAME, nonce);
+        //.header(Serialization.NONCE_HEADER_NAME, nonce);
 
         if (payload instanceof Signable) {
             String toSign = ((Signable) payload).getSignable();

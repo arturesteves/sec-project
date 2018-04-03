@@ -127,6 +127,7 @@ public class Serialization {
         public boolean isSend;
         public int amount;
         public String previousSignature;
+        public String signature;
 
         @Override
         @JsonIgnore

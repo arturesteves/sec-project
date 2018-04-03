@@ -5,6 +5,7 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantRegisterExceptio
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantSendAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.AuditException;
 
 import java.io.IOException;
 import java.net.URL;
@@ -13,6 +14,7 @@ import java.nio.file.Paths;
 import java.security.KeyException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import java.util.List;
 
 
 public class SendAmount {
@@ -84,13 +86,18 @@ public class SendAmount {
             ECPublicKey targetPublicKey = Utils.readPublicKeyFromFile(pathTarget.toString());
             ECPublicKey serverPublicKey = Utils.readPublicKeyFromFile(serverKeyPath.toString());
 
-            // todo: first we have to audit the account to retrieve the last transaction.
             String previousHash = "";
             IClient client = new Client(new URL(SERVER_URL), serverPublicKey);
+            // get the hash of our last transaction, so we can include it in the new transaction
+            // client.audit verifies the transaction chain for us
+            List<Serialization.Transaction> transactions = client.audit(sourcePublickey);
+            previousHash = transactions.get(transactions.size() - 1).signature;
             client.sendAmount(sourcePublickey, targetPublicKey, amount, sourcePrivateKey, previousHash);
 
         } catch (KeyException | IOException e) {
             throw new CantSendAmountException("Failed to create a transaction. " + e);
+        } catch (AuditException e) {
+            throw new CantSendAmountException("Self-auditing failed. " + e);
         }
 
     }
