@@ -16,15 +16,16 @@ import java.security.interfaces.ECPublicKey;
 public class Register {
 
     public static final String SERVER_URL = "http://localhost:4567";
-    public static final String SERVER_PUBLIC_KEY_BASE_64 = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/GJhA+8icaML6/zYhJ1QY4oEbhzUqjzJmECK5dTJ2mRpS4Vsks0Zy52Q8HiNGQvDpO8wLr/a5X0yTV+Sj1vThQ==";
 
     public static void main(String[] args) throws CantRegisterException {
         String clientName;
+        String serverName;
         int amount;
 
         // create options
         Options registerOptions = new Options();
         registerOptions.addOption("n", true, "Client name");
+        registerOptions.addOption("s", true, "Server name");
         registerOptions.addOption("a", true, "Amount to initialize the account");
 
         CommandLineParser parser = new BasicParser();
@@ -43,6 +44,12 @@ public class Register {
             usage(registerOptions);
             throw new CantRegisterException("Can't register, client name is missing.");
         }
+        if (cmd.hasOption("s") && !cmd.getOptionValue("s").trim().equals("")) {
+            serverName = cmd.getOptionValue("s");
+        } else {
+            usage(registerOptions);
+            throw new CantRegisterException("Can't register, server name is missing.");
+        }
         if (cmd.hasOption("a") && !cmd.getOptionValue("a").trim().equals("")) {
             try {
                 amount = Integer.parseInt(cmd.getOptionValue("a"));
@@ -55,18 +62,22 @@ public class Register {
         }
 
         String root = System.getProperty("user.dir");
-        String filepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + clientName + ".keys";
-        Path path = Paths.get(filepath).normalize(); // create path and normalize it
+
+        // This is more or less a simulation of a CA
+        // Note that we could obtain the private key of the server here, but we won't do it (we assume that if a CA was
+        // in place, we'd obtain the public keys from it, and not from a file).
+        String clientKeyFilepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + clientName + ".keys";
+        Path clientKeyPath = Paths.get(clientKeyFilepath).normalize(); // create path and normalize it
+        String serverKeyFilepath = root + "\\..\\server\\" + Serialization.SERVER_PACKAGE_PATH + "\\keys\\" + serverName + ".keys";
+        Path serverKeyPath = Paths.get(serverKeyFilepath).normalize(); // create path and normalize it
 
         try {
-
-            ECPublicKey clientPublickey = Utils.readPublicKeyFromFile(path.toString());
-            ECPrivateKey clientPrivateKey = Utils.readPrivateKeyFromFile(path.toString());
-            ECPublicKey serverPublicKey = Serialization.base64toPublicKey(SERVER_PUBLIC_KEY_BASE_64);
+            ECPublicKey clientPublickey = Utils.readPublicKeyFromFile(clientKeyPath.toString());
+            ECPrivateKey clientPrivateKey = Utils.readPrivateKeyFromFile(clientKeyPath.toString());
+            ECPublicKey serverPublicKey = Utils.readPublicKeyFromFile(serverKeyPath.toString());
 
             IClient client = new Client(new URL(SERVER_URL), serverPublicKey);
             client.register(clientPublickey, clientPrivateKey, amount);
-
         } catch (KeyException | IOException e) {
             throw new CantRegisterException("Failed to register. " + e, e);
         } catch (Exception e) {

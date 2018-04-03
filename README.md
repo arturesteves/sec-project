@@ -31,7 +31,7 @@ Open a terminal on the root directory of the client project and then type:
 
 ##### How to register a client
 Open a terminal on the root directory of the client project and then type:  
-`mvn exec:java@Register -Dexec.args="-n Client_1 -a 10"`
+`mvn exec:java@Register -Dexec.args="-n Client_1 -s Server_1 -a 10"`
 
 ##### How to check an account
 Open a terminal on the root directory of the client project and then type:  
