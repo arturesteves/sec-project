@@ -1,11 +1,10 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import org.apache.commons.cli.*;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantRegisterException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantSendAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.AuditException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.AuditException;
 
 import java.io.IOException;
 import java.net.URL;

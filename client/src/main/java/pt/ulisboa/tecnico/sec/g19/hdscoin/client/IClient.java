@@ -2,7 +2,7 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.AuditException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.AuditException;
 
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
