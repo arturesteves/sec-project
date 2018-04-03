@@ -384,6 +384,7 @@ public class Main {
 
         get("/audit/:key", "application/json", (req, res) -> {
             Serialization.Response errorResponse = new Serialization.Response();
+            errorResponse.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
             String pubKeyBase64 = req.params(":key");
             if (pubKeyBase64 == null) {
                 errorResponse.status = ERROR_MISSING_PARAMETER;
@@ -394,6 +395,7 @@ public class Main {
             Connection conn = null;
             try {
                 Serialization.AuditResponse response = new Serialization.AuditResponse();
+                response.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
                 conn = Database.getConnection();
                 ECPublicKey publicKey = Serialization.base64toPublicKey(req.params(":key"));
                 Ledger ledger = Ledger.load(conn, publicKey);
