@@ -36,13 +36,13 @@ public class Serialization {
 
     public static class RegisterRequest implements Signable, NonceContainer  {
         public String key;
-        public double amount;
+        public int amount;
         public String nonce;
 
         @Override
         @JsonIgnore
         public String getSignable() {
-            return key + Double.toString(amount) + nonce;
+            return key + Integer.toString(amount) + nonce;
         }
 
         @Override
@@ -54,14 +54,14 @@ public class Serialization {
     public static class SendAmountRequest implements Signable {
         public String source;
         public String target; // who receives the money
-        public double amount;
+        public int amount;
         public String previousSignature;
 
         @Override
         @JsonIgnore
         public String getSignable() {
             // true: because is_send = true
-            return source + target + Boolean.toString(true) + Double.toString(amount) + previousSignature;
+            return source + target + Boolean.toString(true) + Integer.toString(amount) + previousSignature;
         }
     }
 
@@ -95,7 +95,7 @@ public class Serialization {
     }
 
     public static class CheckAccountResponse extends Response implements Signable {
-        public double balance;
+        public int balance;
         public Object pendingTransactions;    // todo: change this - exceptions occur
 
 
@@ -125,13 +125,13 @@ public class Serialization {
         public String source;
         public String target; // who receives the money
         public boolean isSend;
-        public double amount;
+        public int amount;
         public String previousSignature;
 
         @Override
         @JsonIgnore
         public String getSignable() {
-            return source + target + Boolean.toString(isSend) + Double.toString(amount) + previousSignature;
+            return source + target + Boolean.toString(isSend) + Integer.toString(amount) + previousSignature;
         }
     }
 

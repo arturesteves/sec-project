@@ -25,7 +25,7 @@ public final class Transaction {
     private int id;
     private Ledger source;
     private Ledger target;
-    private double amount;
+    private int amount;
     private String nonce;
     private String hash;
     private String previousHash;
@@ -42,7 +42,7 @@ public final class Transaction {
      * @param previousHash
      * @param type
      */
-    private Transaction(int id, Ledger source, Ledger target, double amount, String nonce, String hash, String previousHash, TransactionType type) {
+    private Transaction(int id, Ledger source, Ledger target, int amount, String nonce, String hash, String previousHash, TransactionType type) {
         Utils.initLogger(log);
         this.id = id;
         this.source = source;
@@ -55,7 +55,7 @@ public final class Transaction {
         this.pending = true;
     }
 
-    public Transaction(Connection connection, Ledger source, Ledger target, double amount, String nonce, String hash, String previousHash, TransactionType type) throws SQLException, InvalidLedgerException, InvalidAmountException, InvalidValueException {
+    public Transaction(Connection connection, Ledger source, Ledger target, int amount, String nonce, String hash, String previousHash, TransactionType type) throws SQLException, InvalidLedgerException, InvalidAmountException, InvalidValueException {
         this(-1, source, target, amount, nonce, hash, previousHash, type);
 
         if (type != SpecialTransactionType.FIRST) {    // the first transaction can have null on the previous hash
@@ -97,7 +97,7 @@ public final class Transaction {
         return this.target;
     }
 
-    public double getAmount() {
+    public int getAmount() {
         return this.amount;
     }
 
@@ -133,8 +133,8 @@ public final class Transaction {
         prepStmt.setInt(1, this.id);
         prepStmt.setInt(2, this.getSourceLedger().getId());
         prepStmt.setInt(3, this.getTargetLedger().getId());
-        prepStmt.setInt(4, type == TransactionTypes.RECEIVING ? 0 : 1);
-        prepStmt.setDouble(5, this.amount);
+        prepStmt.setInt(4, type == TransactionTypes.SENDING ? 1 : 0);
+        prepStmt.setInt(5, this.amount);
         prepStmt.setString(6, this.nonce);
         prepStmt.setString(7, this.hash);
         prepStmt.setString(8, this.previousHash);
@@ -164,7 +164,7 @@ public final class Transaction {
             int sourceLedgerIdId = results.getInt(2);
             int targetLedgerId = results.getInt(3);
             TransactionType type = results.getInt(4) == 1 ? TransactionTypes.SENDING : TransactionTypes.RECEIVING;
-            double amount = results.getDouble(5);
+            int amount = results.getInt(5);
             String nonce = results.getString(6);
             String hash = results.getString(7);
             String previousHash = results.getString(8);

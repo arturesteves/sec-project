@@ -408,6 +408,13 @@ public class Main {
                 log.log(Level.SEVERE, "Error related to the databas. " + e);
                 errorResponse.status = ERROR_SERVER_ERROR;
             }
+            if(conn != null) {
+                try {
+                    conn.rollback();
+                } catch(SQLException ex) {
+                    // oh well
+                }
+            }
             return prepareResponse(serverPrivateKey, req, res, errorResponse);
         });
     }

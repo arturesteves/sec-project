@@ -16,7 +16,7 @@ public interface IClient {
      * @param amount        Initial amount.
      * @throws CantRegisterException If there are any problems while trying to register a public key.
      */
-    void register(ECPublicKey publicKey, ECPrivateKey privateKey, double amount) throws CantRegisterException;
+    void register(ECPublicKey publicKey, ECPrivateKey privateKey, int amount) throws CantRegisterException;
 
     /**
      * Submit the request for transferring a given amount from account
@@ -30,7 +30,7 @@ public interface IClient {
      * @param previousSignature Signature of the last transaction.
      * @throws CantSendAmountException If there are any problems while trying to create a transaction.
      */
-    void sendAmount(ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, double amount,
+    void sendAmount(ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, int amount,
                     ECPrivateKey sourcePrivateKey, String previousSignature) throws CantSendAmountException;
 
     /**

@@ -26,16 +26,16 @@ public final class Ledger {
 
     private int id;
     private ECPublicKey publicKey;    // can't change
-    private double amount;
+    private int amount;
 
-    private Ledger(int id, ECPublicKey publicKey, double amount) {
+    private Ledger(int id, ECPublicKey publicKey, int amount) {
         Utils.initLogger(log);
         this.publicKey = publicKey;
         this.amount = amount;
         this.id = id;
     }
 
-    public Ledger(Connection connection, ECPublicKey publicKey, double amount) throws KeyException, SQLException,
+    public Ledger(Connection connection, ECPublicKey publicKey, int amount) throws KeyException, SQLException,
             InvalidKeyException, InvalidAmountException, InvalidLedgerException {
         this(-1, publicKey, amount);
         if (publicKey == null) {
@@ -79,11 +79,11 @@ public final class Ledger {
         return this.publicKey;
     }
 
-    public double getAmount() {
+    public int getAmount() {
         return this.amount;
     }
 
-    public void setAmount(double amount) throws InvalidAmountException {
+    public void setAmount(int amount) throws InvalidAmountException {
         if (amount >= 0) {
             this.amount = amount;
         }
@@ -96,7 +96,7 @@ public final class Ledger {
         PreparedStatement prepStmt = connection.prepareStatement(stmt);
         prepStmt.setInt(1, getId());
         prepStmt.setString(2, Serialization.publicKeyToBase64(getPublicKey()));
-        prepStmt.setDouble(3, getAmount());
+        prepStmt.setInt(3, getAmount());
         prepStmt.executeUpdate();
         log.log(Level.INFO, "A ledger was persisted. Public key of that ledger: " + getPublicKey());
     }
@@ -137,7 +137,7 @@ public final class Ledger {
             String base64PublicKey = Serialization.publicKeyToBase64(this.publicKey);
             // values to hash a transaction, true: because is_send = true, and null because the previous hash is null
             String txValuesToHash = base64PublicKey + base64PublicKey + Boolean.toString(true) +
-                    Double.toString(this.amount) + null;
+                    Integer.toString(this.amount) + null;
             // hash
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             String hash = Arrays.toString(digest.digest(txValuesToHash.getBytes(StandardCharsets.UTF_8)));

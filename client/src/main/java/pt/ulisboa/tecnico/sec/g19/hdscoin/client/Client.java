@@ -35,7 +35,7 @@ public class Client implements IClient {
     }
 
     @Override
-    public void register(ECPublicKey publicKey, ECPrivateKey privateKey, double amount) throws CantRegisterException {
+    public void register(ECPublicKey publicKey, ECPrivateKey privateKey, int amount) throws CantRegisterException {
         try {
             String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
             Serialization.RegisterRequest request = new Serialization.RegisterRequest();
@@ -84,7 +84,7 @@ public class Client implements IClient {
     }
 
     @Override
-    public void sendAmount(ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, double amount,
+    public void sendAmount(ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, int amount,
                            ECPrivateKey sourcePrivateKey, String previousSignature) throws CantSendAmountException {
         try {
             String b64SourcePublicKey = Serialization.publicKeyToBase64(sourcePublicKey);
