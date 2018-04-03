@@ -407,12 +407,14 @@ public class Main {
                 // servers fault
                 log.log(Level.SEVERE, "Error related to the databas. " + e);
                 errorResponse.status = ERROR_SERVER_ERROR;
-            }
-            if(conn != null) {
-                try {
-                    conn.rollback();
-                } catch(SQLException ex) {
-                    // oh well
+            } finally {
+                if (conn != null) {
+                    try {
+                        conn.rollback();
+                    } catch (SQLException ex) {
+                        // if we can't even rollback, this is now a server error
+                        errorResponse.status = ERROR_SERVER_ERROR;
+                    }
                 }
             }
             return prepareResponse(serverPrivateKey, req, res, errorResponse);

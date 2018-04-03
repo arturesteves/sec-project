@@ -106,7 +106,7 @@ public final class Ledger {
         String stmt = "SELECT * FROM tx AS t " +
                 "JOIN ledger AS l ON t.ledger_id = l.id " +
                 "WHERE l.public_key = ? " +
-                "ORDER BY tx.id";
+                "ORDER BY t.id";
         PreparedStatement prepStmt = connection.prepareStatement(stmt);
         prepStmt.setString(1, Serialization.publicKeyToBase64(publicKey));
 
