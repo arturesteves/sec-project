@@ -124,7 +124,7 @@ public class Client implements IClient {
         try {
             String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
             String requestPath = url.toString() +
-                    "/checkAccount?publickey=" + URLEncoder.encode(b64PublicKey, "UTF-8");
+                    "/checkAccount/" + URLEncoder.encode(b64PublicKey, "UTF-8");
 
             Serialization.CheckAccountResponse response = sendGetRequest(requestPath,
                     Serialization.CheckAccountResponse.class);

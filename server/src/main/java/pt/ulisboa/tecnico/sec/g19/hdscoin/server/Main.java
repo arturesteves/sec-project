@@ -226,29 +226,36 @@ public class Main {
             }
         });
 
-        get("/checkAccount", "application/json", (req, res) -> {
+        get("/checkAccount/:key", "application/json", (req, res) -> {
             try {
-                String b64PublicKey = req.queryParamOrDefault("publickey", "")
-                        .replace(" ", "+");    // to be sure
-                log.log(Level.INFO, "Request received at: /checkAccount \n" +
-                        "data on the request:" +
-                        "public key: " + b64PublicKey);
-
                 // init generic response to use when an error occur
                 Serialization.Response errorResponse = new Serialization.Response();
+                errorResponse.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
+                String pubKeyBase64 = req.params(":key");
+                if (pubKeyBase64 == null) {
+                    errorResponse.status = ERROR_MISSING_PARAMETER;
+                    return prepareResponse(serverPrivateKey, req, res, errorResponse);
+                }
+                log.log(Level.INFO, "Checking account with public key: " + pubKeyBase64);
+
+                Connection conn = null;
+                boolean committed = false;
                 try {
                     Serialization.CheckAccountResponse response = new Serialization.CheckAccountResponse();
-                    ECPublicKey clientPublicKey = Serialization.base64toPublicKey(b64PublicKey);
-                    Connection conn = Database.getConnection();
+                    ECPublicKey clientPublicKey = Serialization.base64toPublicKey(pubKeyBase64);
+                    conn = Database.getConnection();
                     Ledger ledger = Ledger.load(conn, clientPublicKey);
+                    response.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
                     System.out.println("Pending" + ledger.getPendingTransactions(conn, clientPublicKey));
                     response.balance = ledger.getAmount();
                     response.pendingTransactions = ledger.getPendingTransactions(conn, clientPublicKey);
                     System.out.printf("Balance: " + response.balance);
 
                     response.status = SUCCESS;
-                    log.log(Level.INFO, "Successful check account operation of the ledger with the " +
-                            "following public key in base 64: " + b64PublicKey);
+                    log.log(Level.INFO, "Successful check account operation of the ledger with " +
+                            "public key: " + pubKeyBase64);
+                    conn.commit();
+                    committed = true;
                     return prepareResponse(serverPrivateKey, req, res, response);
                 } catch (SQLException e) {
                     // servers fault
@@ -260,6 +267,11 @@ public class Main {
                     errorResponse.status = ERROR_INVALID_LEDGER;
                 } catch (InvalidKeyException e) {
                     errorResponse.status = ERROR_INVALID_KEY;
+                } finally {
+                    if (conn != null && !committed) {
+                        conn.rollback();
+                        log.log(Level.SEVERE, "Error committing read-only transaction");
+                    }
                 }
                 return prepareResponse(serverPrivateKey, req, res, errorResponse);
             } catch (Exception ex) {
@@ -377,7 +389,7 @@ public class Main {
                 errorResponse.status = ERROR_MISSING_PARAMETER;
                 return prepareResponse(serverPrivateKey, req, res, errorResponse);
             }
-            System.out.println("Going to send audit data for public key: " + pubKeyBase64);
+            log.log(Level.INFO, "Going to send audit data for public key: " + pubKeyBase64);
 
             Connection conn = null;
             try {
