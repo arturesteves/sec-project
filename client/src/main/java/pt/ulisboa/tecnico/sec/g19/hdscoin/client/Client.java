@@ -128,7 +128,7 @@ public class Client implements IClient {
     }
 
     @Override
-    public int checkAccount(ECPublicKey publicKey) throws CheckAccountException {
+    public CheckAccountResult checkAccount(ECPublicKey publicKey) throws CheckAccountException {
         try {
             String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
             String requestPath = url.toString() +
@@ -144,11 +144,8 @@ public class Client implements IClient {
                 System.out.println("\n");
                 System.out.println("----------------------------------");
                 System.out.println("---Check account was successful---");
-                System.out.println();
-                System.out.println("Balance: " + response.balance);
-                System.out.println("Pending Transactions:");
-                System.out.println(response.pendingTransactions.toString());
                 System.out.println("----------------------------------");
+                return new CheckAccountResult(response.balance, response.pendingTransactions);
             } else {
                 switch (response.status) {
                     case ERROR_INVALID_KEY:
@@ -156,12 +153,10 @@ public class Client implements IClient {
                     case ERROR_INVALID_LEDGER:
                         throw new InvalidLedgerException("The public key provided isn't associated with any ledger.");
                     case ERROR_SERVER_ERROR:
+                    default:
                         throw new ServerErrorException("Error on the server side.");
                 }
             }
-
-            // todo: return an object with the balance and the transactions
-            return 0;
         } catch (InvalidKeyException | InvalidLedgerException | ServerErrorException | IOException | KeyException |
                 InvalidServerResponseException | SignatureException e) {
             throw new CheckAccountException("Failed to check the account of the public key provided. " + e);

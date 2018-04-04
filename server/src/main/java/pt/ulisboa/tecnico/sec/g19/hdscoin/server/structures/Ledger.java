@@ -118,11 +118,11 @@ public final class Ledger {
     }
 
     // useful for the check account
-    // when im the source and the transactions are pending.
+    // get pending transactions where this ledger can receive money
     public List<Transaction> getPendingTransactions(Connection connection, ECPublicKey publicKey)
             throws SQLException, KeyException, MissingLedgerException {
         String stmt = "SELECT * FROM tx AS t " +
-                "JOIN ledger AS l ON t.ledger_id = l.id " +
+                "JOIN ledger AS l ON t.other_id = l.id " +
                 "WHERE l.public_key = ? " +
                 "AND t.pending = 1";
         PreparedStatement prepStmt = connection.prepareStatement(stmt);

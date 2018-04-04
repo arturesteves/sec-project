@@ -62,8 +62,18 @@ public class CheckAccount {
             ECPublicKey serverPublicKey = Utils.readPublicKeyFromFile(serverKeyPath.toString());
 
             IClient client = new Client(new URL(SERVER_URL), serverPublicKey);
-            client.checkAccount(clientPublickey);
-
+            CheckAccountResult result = client.checkAccount(clientPublickey);
+            System.out.println("Balance: " + result.balance);
+            if(result.pendingTransactions.size() > 0) {
+                System.out.println("Pending incoming transactions:");
+                for (Serialization.Transaction tx : result.pendingTransactions) {
+                    System.out.println("  Signature: " + tx.signature);
+                    System.out.printf("  Amount: %d from %s\n", tx.amount, tx.source);
+                    System.out.println("--------");
+                }
+            } else {
+                System.out.println("No pending incoming transactions");
+            }
         } catch (KeyException | IOException e) {
             throw new CheckAccountException("Failed to check the account of the public key provided. " + e);
         }

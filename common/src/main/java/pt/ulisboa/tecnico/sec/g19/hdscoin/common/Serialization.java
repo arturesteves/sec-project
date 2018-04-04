@@ -34,7 +34,7 @@ public class Serialization {
 
     private static ObjectMapper mapper = new ObjectMapper();
 
-    public static class RegisterRequest implements Signable, NonceContainer  {
+    public static class RegisterRequest implements Signable, NonceContainer {
         public Transaction initialTransaction;
 
         @Override
@@ -87,13 +87,16 @@ public class Serialization {
 
     public static class CheckAccountResponse extends Response implements Signable {
         public int balance;
-        public List<Transaction> pendingTransactions;
-
+        public List<Transaction> pendingTransactions = new ArrayList<>();
 
         @Override
         @JsonIgnore
         public String getSignable() {
-            return super.getSignable() + balance + pendingTransactions;
+            StringBuilder signable = new StringBuilder(super.getSignable()).append(balance);
+            for (Transaction tx : pendingTransactions) {
+                signable.append(tx.getSignable());
+            }
+            return signable.toString();
         }
     }
 
@@ -103,11 +106,11 @@ public class Serialization {
         @Override
         @JsonIgnore
         public String getSignable() {
-            String signable = super.getSignable();
+            StringBuilder signable = new StringBuilder(super.getSignable());
             for (Transaction tx : transactions) {
-                signable += tx.getSignable();
+                signable.append(tx.getSignable());
             }
-            return signable;
+            return signable.toString();
         }
     }
 

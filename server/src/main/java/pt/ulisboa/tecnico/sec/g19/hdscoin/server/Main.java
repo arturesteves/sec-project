@@ -183,7 +183,7 @@ public class Main {
                 }
 
                 ///////////////////////////////////////////////////
-                //We now know that the public key was sent by the owner of its respective private key.
+                //We now know that the transaction was created by the owner of its respective private key.
                 ///////////////////////////////////////////////////
 
                 Connection conn = null;
@@ -192,14 +192,18 @@ public class Main {
                     Ledger sourceLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.source));
                     Ledger targetLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.target));
 
-                    Transaction transaction = new Transaction(conn, sourceLedger, targetLedger, request.amount,
-                            request.nonce,
-                            request.signature,
-                            request.previousSignature, Transaction.TransactionTypes.SENDING);
-                    // checkout the amount from the source ledger
-                    sourceLedger.setAmount(sourceLedger.getAmount() - request.amount);
-                    transaction.persist(conn);
-                    sourceLedger.persist(conn);
+                    // mutual exclusion is necessary to ensure the new transaction ID obtained in "new Transaction"
+                    // is still correct/"fresh" when "transaction.persist" is called.
+                    synchronized (ledgerLock) {
+                        Transaction transaction = new Transaction(conn, sourceLedger, targetLedger, request.amount,
+                                request.nonce,
+                                request.signature,
+                                request.previousSignature, Transaction.TransactionTypes.SENDING);
+                        // checkout the amount from the source ledger
+                        sourceLedger.setAmount(sourceLedger.getAmount() - request.amount);
+                        transaction.persist(conn);
+                        sourceLedger.persist(conn);
+                    }
                     conn.commit();
                     response.status = SUCCESS;
                     log.log(Level.INFO, "Transaction created with success.");
@@ -216,6 +220,7 @@ public class Main {
                 } finally {
                     if ((response.status == null || !response.status.equals(SUCCESS)) && conn != null) {
                         conn.rollback();
+                        log.log(Level.SEVERE, "The transaction created was not persisted, due to an error.");
                     }
                 }
 
@@ -252,7 +257,7 @@ public class Main {
                     System.out.println("Pending" + ledger.getPendingTransactions(conn, clientPublicKey));
                     response.balance = ledger.getAmount();
                     response.pendingTransactions = serializeTransactions(ledger.getPendingTransactions(conn, clientPublicKey));
-                    System.out.printf("Balance: " + response.balance);
+                    System.out.println("Balance: " + response.balance);
 
                     response.status = SUCCESS;
                     log.log(Level.INFO, "Successful check account operation of the ledger with " +
@@ -475,5 +480,4 @@ public class Main {
         }
         return serializedTransactions;
     }
-
 }

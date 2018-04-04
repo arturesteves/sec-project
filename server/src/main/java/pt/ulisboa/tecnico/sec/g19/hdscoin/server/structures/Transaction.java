@@ -16,7 +16,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class Transaction {
-    private final static Logger log = Logger.getLogger(Ledger.class.getName());
+    private final static Logger log = Logger.getLogger(Transaction.class.getName());
 
     public enum TransactionTypes implements TransactionType {SENDING, RECEIVING}
 
