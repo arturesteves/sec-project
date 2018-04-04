@@ -120,20 +120,14 @@ public class Utils {
     }
 
     public static void initLogger (Logger log) {
-        ConsoleHandler consoleHandler = new ConsoleHandler ();
-        consoleHandler.setLevel (Level.ALL);
-        consoleHandler.setFormatter (new SimpleFormatter());
         try {
             FileHandler fileHandler = new FileHandler ("logs.log");
             fileHandler.setEncoding("UTF-8");
             fileHandler.setLevel(Level.ALL);
             fileHandler.setFormatter(new SimpleFormatter ());
             log.addHandler (fileHandler);
-
         } catch (IOException e) {
             e.printStackTrace ();
         }
-        log.addHandler (consoleHandler);
-        log.setLevel(Level.ALL);
     }
 }
