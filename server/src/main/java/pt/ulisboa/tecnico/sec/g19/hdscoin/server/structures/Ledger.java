@@ -35,9 +35,9 @@ public final class Ledger {
         this.id = id;
     }
 
-    public Ledger(Connection connection, ECPublicKey publicKey, int amount) throws KeyException, SQLException,
-            InvalidKeyException, InvalidAmountException, InvalidLedgerException {
-        this(-1, publicKey, amount);
+    public Ledger(Connection connection, ECPublicKey publicKey, Serialization.Transaction initialTransaction) throws KeyException, SQLException,
+            InvalidValueException, InvalidAmountException, InvalidLedgerException {
+        this(-1, publicKey, initialTransaction.amount);
         if (publicKey == null) {
             log.log(Level.WARNING, "Null key when trying to initialize a ledger.");
             throw new InvalidKeyException("Null key when trying to initialize a ledger.");
@@ -61,8 +61,7 @@ public final class Ledger {
         // generate new ID for ledger based on highest ID in the database
         setId(getNextId(connection));
 
-        // GENERATE 1st transaction (dummy, but required)
-        generateFirstTransaction(connection);
+        storeFirstTransaction(connection, initialTransaction);
         log.log(Level.INFO, "The first transaction was generated to the ledger with the following " +
                 "public key base 64: " + Serialization.publicKeyToBase64(publicKey));
     }
@@ -98,7 +97,7 @@ public final class Ledger {
         prepStmt.setString(2, Serialization.publicKeyToBase64(getPublicKey()));
         prepStmt.setInt(3, getAmount());
         prepStmt.executeUpdate();
-        log.log(Level.INFO, "A ledger was persisted. Public key of that ledger: " + getPublicKey());
+        log.log(Level.INFO, "A ledger was persisted. Public key of that ledger: " + Serialization.publicKeyToBase64(getPublicKey()));
     }
 
     // useful for the audit
@@ -132,27 +131,28 @@ public final class Ledger {
         return Transaction.loadResults(connection, prepStmt);
     }
 
-    private void generateFirstTransaction(Connection connection) {
-        try {
-            String base64PublicKey = Serialization.publicKeyToBase64(this.publicKey);
-            // values to hash a transaction, true: because is_send = true, and null because the previous hash is null
-            String txValuesToHash = base64PublicKey + base64PublicKey + Boolean.toString(true) +
-                    Integer.toString(this.amount) + null;
-            // hash
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            String hash = Arrays.toString(digest.digest(txValuesToHash.getBytes(StandardCharsets.UTF_8)));
+    private void storeFirstTransaction(Connection connection, Serialization.Transaction tx) throws InvalidLedgerException,
+            InvalidAmountException, InvalidValueException, KeyException, SQLException {
+        String base64PublicKey = Serialization.publicKeyToBase64(this.publicKey);
 
-            Transaction tx = new Transaction(connection, this, this, this.amount, Utils.randomNonce(),
-                    hash, null, Transaction.SpecialTransactionType.FIRST);
-            tx.setPending(false);   // is not pending
-
-            tx.persist(connection);
-            // persist a transaction
-
-        } catch (NoSuchAlgorithmException | SQLException | KeyException | InvalidLedgerException |
-                InvalidAmountException | InvalidValueException e) {
-
+        if (!base64PublicKey.equals(tx.source) || !base64PublicKey.equals(tx.target)) {
+            throw new InvalidLedgerException("Invalid initial transaction, source and target must be the same " +
+                    "and match the server");
         }
+
+        if (tx.previousSignature != null && !tx.previousSignature.isEmpty()) {
+            throw new InvalidLedgerException("Invalid initial transaction, must not have previous signature");
+        }
+
+        if (tx.isSend) {
+            throw new InvalidLedgerException("Invalid initial transaction, must not be sending transaction");
+        }
+
+        Transaction dbTx = new Transaction(connection, this, this, this.amount, tx.nonce,
+                tx.signature, null, Transaction.SpecialTransactionType.FIRST);
+        dbTx.setPending(false);   // is not pending
+
+        dbTx.persist(connection);
     }
 
     public static Transaction getPendingTransaction(Connection connection, ECPublicKey publicKey,

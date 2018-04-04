@@ -35,19 +35,18 @@ public class Serialization {
     private static ObjectMapper mapper = new ObjectMapper();
 
     public static class RegisterRequest implements Signable, NonceContainer  {
-        public String key;
-        public int amount;
-        public String nonce;
+        public Transaction initialTransaction;
 
         @Override
         @JsonIgnore
         public String getSignable() {
-            return key + Integer.toString(amount) + nonce;
+            return initialTransaction.getSignable();
         }
 
         @Override
+        @JsonIgnore
         public String getNonce() {
-            return nonce;
+            return initialTransaction.getNonce();
         }
     }
 
@@ -96,7 +95,7 @@ public class Serialization {
 
     public static class CheckAccountResponse extends Response implements Signable {
         public int balance;
-        public Object pendingTransactions;    // todo: change this - exceptions occur
+        public List<Transaction> pendingTransactions;
 
 
         @Override
@@ -121,18 +120,24 @@ public class Serialization {
     }
 
     // TODO maybe SendAmountRequest and ReceiveAmountRequest can be eliminated and we can just use Transaction?
-    public static class Transaction implements Signable {
+    public static class Transaction implements Signable, NonceContainer {
         public String source;
         public String target; // who receives the money
         public boolean isSend;
         public int amount;
+        public String nonce;
         public String previousSignature;
         public String signature;
 
         @Override
         @JsonIgnore
         public String getSignable() {
-            return source + target + Boolean.toString(isSend) + Integer.toString(amount) + previousSignature;
+            return source + target + Boolean.toString(isSend) + Integer.toString(amount) + nonce + previousSignature;
+        }
+
+        @Override
+        public String getNonce() {
+            return nonce;
         }
     }
 

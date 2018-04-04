@@ -4,7 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateKeysException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.KeyGenerationException;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,19 +16,19 @@ import java.security.interfaces.ECPublicKey;
 
 public class GenerateKeyPairTest {
 
-    @Test(expected = CantGenerateKeysException.class)
-    public void testMainInvalidArguments () throws CantGenerateKeysException {
+    @Test(expected = KeyGenerationException.class)
+    public void testMainInvalidArguments () throws KeyGenerationException {
         GenerateKeyPair.main(new String[] {""});
     }
 
     @Test
-    public void testMainValidArguments () throws CantGenerateKeysException {
+    public void testMainValidArguments () throws KeyGenerationException {
         GenerateKeyPair.main(new String[] {"-n", "SERVER_KEYS_TEST"});
     }
 
     // check if the file with the keys was create
     @Test
-    public void testMainCheckFileExists () throws CantGenerateKeysException {
+    public void testMainCheckFileExists () throws KeyGenerationException {
         String serverID = "SERVER_KEYS_TEST";
         GenerateKeyPair.main(new String[] {"-n", serverID});
         // compose path
@@ -41,7 +41,7 @@ public class GenerateKeyPairTest {
     }
 
     @Test
-    public void testMainCheckFileContainsKeys () throws CantGenerateKeysException, KeyException, IOException {
+    public void testMainCheckFileContainsKeys () throws KeyGenerationException, KeyException, IOException {
         String serverID = "SERVER_KEYS_TEST";
         GenerateKeyPair.main(new String[] {"-n", serverID});
         // compose path

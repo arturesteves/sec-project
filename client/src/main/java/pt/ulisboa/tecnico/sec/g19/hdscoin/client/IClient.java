@@ -60,6 +60,7 @@ public interface IClient {
     /**
      * Obtain the full transaction history of the account associated with key.
      * @param publicKey The public key of the account to be audited
+     * @throws AuditException If there is a problem validating the transaction history.
      */
     List<Serialization.Transaction> audit(ECPublicKey publicKey) throws AuditException;
 

@@ -3,24 +3,19 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 import org.apache.commons.cli.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateKeysException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.KeyGenerationException;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyException;
 import java.security.KeyPair;
-import java.security.interfaces.ECPrivateKey;
-import java.security.interfaces.ECPublicKey;
 
 
 public class GenerateKeyPair {
     public static final String ENTITY = "CLIENT";
 
-    public static void main(String[] args) throws CantGenerateKeysException {
+    public static void main(String[] args) throws KeyGenerationException {
         String clientName;
 
         // create options
@@ -35,7 +30,7 @@ public class GenerateKeyPair {
                 clientName = cmd.getOptionValue("n");
             } else {
                 usage (options);
-                throw new CantGenerateKeysException("Failed to generate a key pair. Missing the -n option.");
+                throw new KeyGenerationException("Failed to generate a key pair. Missing the -n option.");
             }
             String root = System.getProperty("user.dir");
             String filepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + clientName + ".keys";
@@ -52,7 +47,7 @@ public class GenerateKeyPair {
             System.out.println("-------------------------------------");
 
         } catch (ParseException | KeyException | IOException e) {
-            throw new CantGenerateKeysException("Failed to generate a key pair. " + e.getMessage(), e);
+            throw new KeyGenerationException("Failed to generate a key pair. " + e.getMessage(), e);
         }
     }
 

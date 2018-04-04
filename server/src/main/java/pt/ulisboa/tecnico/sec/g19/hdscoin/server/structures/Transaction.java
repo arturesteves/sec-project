@@ -81,7 +81,7 @@ public final class Transaction {
         setId(getNextId(connection));
     }
 
-    public int getID() {
+    public int getId() {
         return this.id;
     }
 
@@ -125,7 +125,7 @@ public final class Transaction {
         return this.type;
     }
 
-    public void persist(Connection connection) throws SQLException, KeyException {
+    public void persist(Connection connection) throws SQLException {
         String stmt = "INSERT OR REPLACE INTO tx (id, ledger_id, other_id, is_send, amount, nonce, hash, " +
                 "prev_hash, pending) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
@@ -186,12 +186,10 @@ public final class Transaction {
         builder.append("\n-----------------------------\n");
         builder.append("\t\tTransaction\n");
         builder.append("\t\t-----------\n");
-        builder.append((this.type == TransactionTypes.SENDING) ?
-                getReadableKeysFormat(this.source, this.target) : getReadableKeysFormat(this.target, this.source))
-                .append("\n");
+        builder.append(getReadableKeysFormat(this.target, this.source));
         builder.append("Amount: ").append(this.amount).append(" HDS Coins\n");
         builder.append("Type: ").append(this.type).append("\n");
-        builder.append("State: ").append((this.pending ? "PENDING" : "COMPLETED"));
+        builder.append("State: ").append((this.pending ? "PENDING" : "COMPLETED")).append("\n");
         builder.append("Nonce: ").append(this.nonce).append("\n");
         builder.append("Signature: ").append(this.hash).append("\n");
         builder.append("Signature prev. Transaction: ").append(this.previousHash).append("\n");
@@ -201,17 +199,15 @@ public final class Transaction {
 
     private String getReadableKeysFormat (Ledger source, Ledger target) {
         StringBuilder builder = new StringBuilder();
-        builder.append("Source Public Key: ").append(source.getPublicKey());
         try {
-            builder.append("Source Public Key b64: ").append(Serialization.publicKeyToBase64(source.getPublicKey()));
+            builder.append("Source Public Key: ").append(Serialization.publicKeyToBase64(source.getPublicKey())).append("\n");
         } catch (KeyException e) {
-            builder.append("Source Public Key b64: --------------");
+            builder.append("Source Public Key: --------------").append("\n");
         }
-        builder.append("Target Public Key: ").append(target.getPublicKey());
         try {
-            builder.append("Target Public Key b64: " + Serialization.publicKeyToBase64(target.getPublicKey()));
+            builder.append("Target Public Key: " + Serialization.publicKeyToBase64(target.getPublicKey())).append("\n");
         } catch (KeyException e) {
-            builder.append("Target Public Key b64: --------------");
+            builder.append("Target Public Key: --------------").append("\n");
         }
         return builder.toString();
     }

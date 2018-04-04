@@ -6,7 +6,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.RegisterException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateSignatureException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.SignatureException;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -64,7 +64,7 @@ public class RegisterTest {
     }
 
     @Test
-    public void testRegisterValidArguments () throws RegisterException, CantGenerateKeysException {
+    public void testRegisterValidArguments () throws RegisterException, KeyGenerationException {
         Assume.assumeTrue(type == Type.INVALID_COMMAND_LINE_ARGS);
         GenerateKeyPair.main(new String[] {flagName, name});    // needs to generate a key pair first
         Register.main(new String[] {flagName, name, flagAmount, amount});
@@ -91,7 +91,7 @@ public class RegisterTest {
     // nonce: L!+7>i?]ebwJR3^e*i?<
     // server signature : MEUCICP0JI/bly4aHZASl9/pdpCAKMjKg6VT4hCxc5/l+YJuAiEAm4GJx4NdDYwQMTPTv8DrfuVrc4oZWGLqdx/34QGSWag=
     @BeforeClass
-    public static void setup () throws KeyException, CantGenerateSignatureException {
+    public static void setup () throws KeyException, SignatureException {
         httpClientMock = new HttpClientMock("http://example.com:4567");
         // Setup register mock service
         httpClientMock

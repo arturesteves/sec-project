@@ -9,6 +9,7 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Signable;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidKeyException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.SignatureException;
 
 import java.io.IOException;
 import java.net.URL;
@@ -39,16 +40,21 @@ public class Client implements IClient {
         try {
             String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
             Serialization.RegisterRequest request = new Serialization.RegisterRequest();
-            request.amount = amount;
-            request.key = b64PublicKey;
-            request.nonce = Utils.randomNonce();
+            request.initialTransaction = new Serialization.Transaction();
+            request.initialTransaction.source = b64PublicKey;
+            request.initialTransaction.target = b64PublicKey;
+            request.initialTransaction.amount = amount;
+            request.initialTransaction.isSend = false;
+            request.initialTransaction.previousSignature = "";
+            request.initialTransaction.nonce = Utils.randomNonce();
+            request.initialTransaction.signature = Utils.generateSignature(request.initialTransaction.getSignable(), privateKey);
             // log
             System.out.println();
             System.out.println("---------------------");
             System.out.println("---Sending Request---");
             System.out.println("Base 64 Public Key: " + b64PublicKey);
             System.out.println("Amount: " + amount);
-            System.out.println("Nonce: " + request.nonce);
+            System.out.println("Nonce: " + request.initialTransaction.nonce);
             System.out.println("---------------------");
             System.out.println();
 
@@ -76,7 +82,7 @@ public class Client implements IClient {
                 }
             }
 
-        } catch (HttpRequest.HttpRequestException | IOException | KeyException | CantGenerateSignatureException |
+        } catch (HttpRequest.HttpRequestException | IOException | KeyException | SignatureException |
                 InvalidServerResponseException | InvalidClientSignatureException | InvalidKeyException |
                 InvalidLedgerException | InvalidAmountException | ServerErrorException e) {
             throw new RegisterException("Failed to register the public key provided. " + e, e);
@@ -113,7 +119,7 @@ public class Client implements IClient {
                         throw new ServerErrorException("Error on the server side.");
                 }
             }
-        } catch (HttpRequest.HttpRequestException | IOException | KeyException | CantGenerateSignatureException |
+        } catch (HttpRequest.HttpRequestException | IOException | KeyException | SignatureException |
                 InvalidServerResponseException | InvalidClientSignatureException | ServerErrorException e) {
             throw new SendAmountException("Failed to create a transaction. " + e);
         }
@@ -155,7 +161,7 @@ public class Client implements IClient {
             // todo: return an object with the balance and the transactions
             return 0;
         } catch (InvalidKeyException | InvalidLedgerException | ServerErrorException | IOException | KeyException |
-                InvalidServerResponseException | CantGenerateSignatureException e) {
+                InvalidServerResponseException | SignatureException e) {
             throw new CheckAccountException("Failed to check the account of the public key provided. " + e);
         }
     }
@@ -211,12 +217,12 @@ public class Client implements IClient {
                     throw new ServerErrorException("Error on the server side.");
             }
         } catch (InvalidKeyException | InvalidLedgerException | ServerErrorException | IOException | KeyException |
-                InvalidServerResponseException | CantGenerateSignatureException e) {
+                InvalidServerResponseException | SignatureException e) {
             throw new AuditException("Failed to audit the account of the public key provided. " + e);
         }
     }
 
-    private <T> T sendPostRequest(String url, ECPrivateKey privateKey, Object payload, Class<T> responseValueType) throws HttpRequest.HttpRequestException, IOException, CantGenerateSignatureException, InvalidServerResponseException, InvalidClientSignatureException {
+    private <T> T sendPostRequest(String url, ECPrivateKey privateKey, Object payload, Class<T> responseValueType) throws HttpRequest.HttpRequestException, IOException, SignatureException, InvalidServerResponseException, InvalidClientSignatureException {
         String payloadJson = Serialization.serialize(payload);
         String nonce = ((NonceContainer) payload).getNonce();
 
@@ -266,7 +272,7 @@ public class Client implements IClient {
         return response;
     }
 
-    private <T> T sendGetRequest(String url, Class<T> responsValueType) throws HttpRequest.HttpRequestException, IOException, InvalidServerResponseException, CantGenerateSignatureException {
+    private <T> T sendGetRequest(String url, Class<T> responsValueType) throws HttpRequest.HttpRequestException, IOException, InvalidServerResponseException, SignatureException {
         String nonce = Utils.randomNonce();
         HttpRequest request = HttpRequest
                 .get(url)

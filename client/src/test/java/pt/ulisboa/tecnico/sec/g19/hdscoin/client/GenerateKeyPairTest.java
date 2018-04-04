@@ -1,7 +1,6 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -9,7 +8,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateKeysException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.KeyGenerationException;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,21 +49,21 @@ public class GenerateKeyPairTest {
     }
 
 
-    @Test (expected = CantGenerateKeysException.class)
-    public void testMainInvalidArguments () throws CantGenerateKeysException {
+    @Test (expected = KeyGenerationException.class)
+    public void testMainInvalidArguments () throws KeyGenerationException {
         Assume.assumeTrue(type == Type.INVALID_COMMAND_LINE_ARGS);
         GenerateKeyPair.main(new String[] {flag, value});
     }
 
     @Test
-    public void testMainValidArguments () throws CantGenerateKeysException {
+    public void testMainValidArguments () throws KeyGenerationException {
         Assume.assumeTrue(type == Type.VALID_COMMAND_LINE_ARGS);
         GenerateKeyPair.main(new String[] {flag, value});
     }
 
     // check if the file with the keys was create
     @Test
-    public void testMainCheckFileExists () throws CantGenerateKeysException {
+    public void testMainCheckFileExists () throws KeyGenerationException {
         Assume.assumeTrue(type == Type.VALID_COMMAND_LINE_ARGS);
         GenerateKeyPair.main(new String[] {flag, value});
         // compose path
@@ -77,7 +76,7 @@ public class GenerateKeyPairTest {
     }
 
     @Test
-    public void testMainCheckFileContainsKeys () throws CantGenerateKeysException, KeyException, IOException {
+    public void testMainCheckFileContainsKeys () throws KeyGenerationException, KeyException, IOException {
         Assume.assumeTrue(type == Type.VALID_COMMAND_LINE_ARGS);
         GenerateKeyPair.main(new String[] {flag, value});
 
