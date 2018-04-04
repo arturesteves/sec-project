@@ -20,6 +20,10 @@ import java.util.logging.Logger;
 public final class Transaction {
     private final static Logger log = Logger.getLogger(Transaction.class.getName());
 
+    static {
+        Utils.initLogger(log);
+    }
+
     public enum TransactionTypes implements TransactionType {SENDING, RECEIVING}
 
     public enum SpecialTransactionType implements TransactionType {FIRST}
@@ -45,7 +49,6 @@ public final class Transaction {
      * @param type
      */
     private Transaction(int id, Ledger source, Ledger target, int amount, String nonce, String hash, String previousHash, TransactionType type, boolean pending) {
-        Utils.initLogger(log);
         this.id = id;
         this.source = source;
         this.target = target;

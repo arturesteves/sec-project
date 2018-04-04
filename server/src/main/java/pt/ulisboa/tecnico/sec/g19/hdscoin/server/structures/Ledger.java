@@ -25,12 +25,16 @@ import java.util.logging.Logger;
 public final class Ledger {
     private final static Logger log = Logger.getLogger(Ledger.class.getName());
 
+    static {
+        Utils.initLogger(log);
+    }
+
     private int id;
     private ECPublicKey publicKey;    // can't change
+
     private int amount;
 
     private Ledger(int id, ECPublicKey publicKey, int amount) {
-        Utils.initLogger(log);
         this.publicKey = publicKey;
         this.amount = amount;
         this.id = id;
