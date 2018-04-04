@@ -85,16 +85,16 @@ public class SendAmount {
             ECPublicKey targetPublicKey = Utils.readPublicKeyFromFile(pathTarget.toString());
             ECPublicKey serverPublicKey = Utils.readPublicKeyFromFile(serverKeyPath.toString());
 
-            String previousHash = "";
             IClient client = new Client(new URL(SERVER_URL), serverPublicKey);
             // get the hash of our last transaction, so we can include it in the new transaction
             // client.audit verifies the transaction chain for us
             List<Serialization.Transaction> transactions = client.audit(sourcePublickey);
             // transactions.size() should always be > 0 because of the dummy transaction required to open an account
-            if(transactions.size() > 0) {
-                previousHash = transactions.get(transactions.size() - 1).signature;
+            if(transactions.size() == 0) {
+                throw new SendAmountException("Ledger has too few transactions (account appears to not have been initialized on the server)");
             }
-            client.sendAmount(sourcePublickey, targetPublicKey, amount, sourcePrivateKey, previousHash);
+            String previousSignature = transactions.get(transactions.size() - 1).signature;
+            client.sendAmount(sourcePublickey, targetPublicKey, amount, sourcePrivateKey, previousSignature);
 
         } catch (KeyException | IOException e) {
             throw new SendAmountException("Failed to create a transaction. " + e);

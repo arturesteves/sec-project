@@ -8,6 +8,7 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.SignatureException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.InvalidValueException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.MissingLedgerException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.MissingTransactionException;
 
 import java.security.KeyException;
 import java.sql.*;
@@ -43,7 +44,7 @@ public final class Transaction {
      * @param previousHash
      * @param type
      */
-    private Transaction(int id, Ledger source, Ledger target, int amount, String nonce, String hash, String previousHash, TransactionType type) {
+    private Transaction(int id, Ledger source, Ledger target, int amount, String nonce, String hash, String previousHash, TransactionType type, boolean pending) {
         Utils.initLogger(log);
         this.id = id;
         this.source = source;
@@ -53,12 +54,12 @@ public final class Transaction {
         this.hash = hash;
         this.previousHash = previousHash;
         this.type = type;
-        this.pending = true;
+        this.pending = pending;
     }
 
     public Transaction(Connection connection, Ledger source, Ledger target, int amount, String nonce, String hash, String previousHash, TransactionType type)
             throws SQLException, InvalidLedgerException, InvalidAmountException, InvalidValueException, SignatureException {
-        this(-1, source, target, amount, nonce, hash, previousHash, type);
+        this(-1, source, target, amount, nonce, hash, previousHash, type, type == TransactionTypes.SENDING);
 
         if (type != SpecialTransactionType.FIRST) {    // the first transaction can have null on the previous hash
             if (previousHash == null) {
@@ -161,7 +162,7 @@ public final class Transaction {
             prepStmt.executeUpdate();
             log.log(Level.INFO, "The following transaction was persisted. " + this.toString());
         } finally {
-            if(prepStmt != null) {
+            if (prepStmt != null) {
                 prepStmt.close();
             }
         }
@@ -178,40 +179,55 @@ public final class Transaction {
         return next;
     }
 
-
-    public static List<Transaction> loadResults(Connection connection, PreparedStatement prepStmt) throws SQLException {
+    public static Transaction getTransactionByHash(Connection connection, String hash) throws SQLException,
+            MissingTransactionException {
+        String stmt = "SELECT * FROM tx WHERE hash = ?";
+        PreparedStatement prepStmt = null;
         try {
-            List<Transaction> ret = new ArrayList<>();
-            ResultSet results = prepStmt.executeQuery();
-            while (results.next()) {
-                int id = results.getInt(1);
-                int sourceLedgerIdId = results.getInt(2);
-                int targetLedgerId = results.getInt(3);
-                TransactionType type = results.getInt(4) == 1 ? TransactionTypes.SENDING : TransactionTypes.RECEIVING;
-                int amount = results.getInt(5);
-                String nonce = results.getString(6);
-                String hash = results.getString(7);
-                String previousHash = results.getString(8);
-                boolean pending = results.getInt(9) == 1;
+            prepStmt = connection.prepareStatement(stmt);
+            prepStmt.setString(1, hash);
 
-                Ledger source = null;
-                Ledger target = null;
-                try {
-                    source = Ledger.load(connection, sourceLedgerIdId);
-                    target = Ledger.load(connection, targetLedgerId);
-                } catch (MissingLedgerException | KeyException e) {
-                    // this can never happen, unless our own database is corrupt
-                }
-
-                Transaction tx = new Transaction(id, source, target, amount, nonce, hash, previousHash, type);
-                tx.setPending(pending);
-
-                ret.add(tx);
+            List<Transaction> results = loadResults(connection, prepStmt);
+            if (results.size() == 0) {
+                log.log(Level.WARNING, "A transaction with the specified hash was not found. Hash: " + hash);
+                throw new MissingTransactionException("A transaction with the specified hash was not found.");
             }
-            return ret;
+            return results.get(0);
         } finally {
             prepStmt.close();
         }
+    }
+
+
+    static List<Transaction> loadResults(Connection connection, PreparedStatement prepStmt) throws SQLException {
+        List<Transaction> ret = new ArrayList<>();
+        ResultSet results = prepStmt.executeQuery();
+        while (results.next()) {
+            int id = results.getInt(1);
+            int sourceLedgerIdId = results.getInt(2);
+            int targetLedgerId = results.getInt(3);
+            TransactionType type = results.getInt(4) == 1 ? TransactionTypes.SENDING : TransactionTypes.RECEIVING;
+            int amount = results.getInt(5);
+            String nonce = results.getString(6);
+            String hash = results.getString(7);
+            String previousHash = results.getString(8);
+            boolean pending = results.getInt(9) == 1;
+
+            Ledger source = null;
+            Ledger target = null;
+            try {
+                source = Ledger.load(connection, sourceLedgerIdId);
+                target = Ledger.load(connection, targetLedgerId);
+            } catch (MissingLedgerException | KeyException e) {
+                // this can never happen, unless our own database is corrupt
+            }
+
+            Transaction tx = new Transaction(id, source, target, amount, nonce, hash, previousHash, type, pending);
+
+            ret.add(tx);
+        }
+        return ret;
+
     }
 
     public String toString() {

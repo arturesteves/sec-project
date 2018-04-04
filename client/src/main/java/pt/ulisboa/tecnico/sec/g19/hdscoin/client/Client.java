@@ -169,8 +169,52 @@ public class Client implements IClient {
     }
 
     @Override
-    public void receiveAmount(ECPublicKey publicKey, ECPrivateKey privateKey, String transactionSignature) throws ReceiveAmountException {
-        // todo: handle
+    public void receiveAmount(ECPublicKey sourcePublicKey, String targetPublicKey, int amount,
+                              ECPrivateKey sourcePrivateKey, String previousSignature, String incomingSignature)
+            throws ReceiveAmountException {
+        try {
+            String b64SourcePublicKey = Serialization.publicKeyToBase64(sourcePublicKey);
+            String b64DestinationPublicKey = targetPublicKey;
+
+            Serialization.ReceiveAmountRequest request = new Serialization.ReceiveAmountRequest();
+            request.transaction = new Serialization.Transaction();
+            request.transaction.source = b64SourcePublicKey;
+            request.transaction.target = b64DestinationPublicKey;
+            request.transaction.amount = amount;
+            request.transaction.nonce = Utils.randomNonce();
+            request.transaction.previousSignature = previousSignature;
+            // signature for just the transaction:
+            request.transaction.signature = Utils.generateSignature(request.transaction.getSignable(), sourcePrivateKey);
+            request.pendingTransactionHash = incomingSignature;
+            // signature for the whole request (including transaction):
+
+            Serialization.Response response = sendPostRequest(url.toString() + "/receiveAmount", sourcePrivateKey,
+                    request, Serialization.Response.class);
+
+            if (response.statusCode == 200) {
+                System.out.println();
+                System.out.println("---------------------------------------");
+                System.out.println("---Transaction accepted successfully---");
+                System.out.println("---------------------------------------");
+                System.out.println();
+
+            } else {
+                switch (response.status) {
+                    case ERROR_INVALID_LEDGER:
+                        throw new InvalidLedgerException("Source or destination is invalid");
+                    case ERROR_INVALID_KEY:
+                        throw new InvalidLedgerException("One of the keys provided is invalid");
+                    case ERROR_INVALID_VALUE:
+                        throw new InvalidLedgerException("One of the values provided is invalid");
+                    case ERROR_SERVER_ERROR:
+                        throw new ServerErrorException("Error on the server side.");
+                }
+            }
+        } catch (HttpRequest.HttpRequestException | IOException | KeyException | SignatureException |
+                InvalidServerResponseException | InvalidClientSignatureException | ServerErrorException |
+                InvalidLedgerException e) {
+            throw new ReceiveAmountException("Failed to create a receiving transaction. " + e);
+        }
     }
 
     @Override
@@ -258,7 +302,7 @@ public class Client implements IClient {
         String responseNonce = ((NonceContainer) response).getNonce();
         System.out.println("Client NONCE: " + nonce);
         System.out.println("Server NONCE: " + responseNonce);
-        System.out.println("SIGN : " + responseSignature);
+        System.out.println("Server SIGN : " + responseSignature);
         if (!responseNonce.equals(nonce)) {
             throw new InvalidServerResponseException("The nonce received by the server do not match the one " +
                     "the client sent previously.");
@@ -302,10 +346,6 @@ public class Client implements IClient {
         if (!responseNonce.equals(nonce)) {
             throw new InvalidServerResponseException("The nonce received by the server do not match the one " +
                     "the client sent previously.");
-        }
-
-        if (responseCode != 200) {
-            // todo: handle
         }
 
         return response;

@@ -14,9 +14,9 @@ public interface IClient {
      * Register the account and associated public key in the system before first use.
      * Initialize the proper structures to enable the use of the HDS coins.
      *
-     * @param publicKey     Public key of the client.
-     * @param privateKey    Private key of the client, used to sign the message.
-     * @param amount        Initial amount.
+     * @param publicKey  Public key of the client.
+     * @param privateKey Private key of the client, used to sign the message.
+     * @param amount     Initial amount.
      * @throws RegisterException If there are any problems while trying to register a public key.
      */
     void register(ECPublicKey publicKey, ECPrivateKey privateKey, int amount) throws RegisterException;
@@ -38,9 +38,8 @@ public interface IClient {
 
     /**
      * Obtain the balance of the account associated with key.
-
-     * @param publicKey Public key of the client
      *
+     * @param publicKey Public key of the client
      * @return CheckAccountResult containing the balance and pending transactions of the account
      */
     CheckAccountResult checkAccount(ECPublicKey publicKey) throws CheckAccountException;
@@ -50,15 +49,21 @@ public interface IClient {
      * a pending incoming transfer that was previously authorized by the
      * source.
      *
-     * @param publicKey            Public key of the client.
-     * @param privateKey           Private key of the client, used to sign the message.
-     * @param transactionSignature Signature of the pending incoming transaction.
+     * @param sourcePublicKey   Public key of the client (who receives money).
+     * @param targetPublicKey   Public key of the ledger who sends money, in base 64 (as provided in the checkAccount response)
+     * @param amount            The amount to receive (must match with the pending transaction)
+     * @param sourcePrivateKey  Private key of the client, used to sign the message.
+     * @param previousSignature Signature of the previous transaction of the client (who receives money)
+     * @param incomingSignature Signature of the pending incoming transaction.
      * @throws ReceiveAmountException If there are any problems while trying to complete a transaction.
      */
-    void receiveAmount (ECPublicKey publicKey, ECPrivateKey privateKey, String transactionSignature) throws ReceiveAmountException;
+    void receiveAmount(ECPublicKey sourcePublicKey, String targetPublicKey, int amount,
+                       ECPrivateKey sourcePrivateKey, String previousSignature, String incomingSignature)
+            throws ReceiveAmountException;
 
     /**
      * Obtain the full transaction history of the account associated with key.
+     *
      * @param publicKey The public key of the account to be audited
      * @throws AuditException If there is a problem validating the transaction history.
      */

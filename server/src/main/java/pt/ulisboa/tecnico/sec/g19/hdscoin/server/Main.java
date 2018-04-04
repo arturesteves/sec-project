@@ -8,7 +8,9 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.SignatureException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.FailedToLoadKeysException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidLedgerException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.InvalidValueException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.MissingLedgerException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.MissingTransactionException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.Ledger;
 
 import java.io.IOException;
@@ -84,7 +86,7 @@ public class Main {
                         "\tCLIENT BASE 64 PUBLIC KEY: " + request.initialTransaction.source + "\n" +
                         "\tAMOUNT: " + request.initialTransaction.amount);
 
-                Boolean result = false; // false to defend
+                boolean result = false; // false to defend
                 try {
                     //Recreate the hash with the data received
                     result = Utils.checkSignature(
@@ -153,7 +155,6 @@ public class Main {
         });
 
         post("/sendAmount", "application/json", (req, res) -> {
-
             try {
                 Serialization.SendAmountRequest request = Serialization.parse(req,
                         Serialization.SendAmountRequest.class);
@@ -169,15 +170,14 @@ public class Main {
                 response.nonce = request.nonce;
 
                 //Recreate the hash with the data received
-                Boolean result = Utils.checkSignature(
+                boolean result = Utils.checkSignature(
                         req.headers(Serialization.SIGNATURE_HEADER_NAME),
                         request.getSignable(),
                         request.source);
 
                 if (!result) {
                     res.status(401);
-                    log.log(Level.WARNING, "The message received from the client doesn't match with the " +
-                            "signature of the message.");
+                    log.log(Level.WARNING, "Mismatch in request signatures");
                     response.status = ERROR_NO_SIGNATURE_MATCH;
                     return prepareResponse(serverPrivateKey, req, res, response);
                 }
@@ -294,76 +294,95 @@ public class Main {
         });
 
         post("/receiveAmount", "application/json", (req, res) -> {
-
             try {
                 Serialization.ReceiveAmountRequest request = Serialization.parse(req,
                         Serialization.ReceiveAmountRequest.class);
-
                 log.log(Level.INFO, "Request received at: /receiveAmount \n" +
                         "data on the request:" +
                         "SIGNATURE: " + req.headers(Serialization.SIGNATURE_HEADER_NAME) + "\n" +
-                        "NONCE: " + req.headers(Serialization.NONCE_HEADER_NAME) + "\n" +
-                        "SOURCE CLIENT BASE 64 PUBLIC KEY: " + request.source + "\n" +
-                        "Transaction Signature: " + request.transactionSignature);
+                        "NONCE: " + request.transaction.nonce + "\n" +
+                        "AMOUNT:" + request.transaction.amount + "\n" +
+                        "SOURCE PUBLIC KEY: " + request.transaction.source + "\n" +
+                        "TARGET PUBLIC KEY: " + request.transaction.target + "\n" +
+                        "PENDING TRANSACTION: " + request.pendingTransactionHash);
 
                 Serialization.Response response = new Serialization.Response();
+                response.nonce = request.transaction.nonce;
 
                 //Recreate the hash with the data received
-                Boolean result = Utils.checkSignature(
+                boolean result = Utils.checkSignature(
                         req.headers(Serialization.SIGNATURE_HEADER_NAME),
                         request.getSignable(),
-                        request.source);
+                        request.transaction.source);
 
                 if (!result) {
                     res.status(401);
-                    log.log(Level.WARNING, "The message received from the client doesn't match with the " +
-                            "signature of the message.");
+                    log.log(Level.WARNING, "Mismatch in request signatures");
                     response.status = ERROR_NO_SIGNATURE_MATCH;
                     return prepareResponse(serverPrivateKey, req, res, response);
                 }
 
                 ///////////////////////////////////////////////////
-                //We now know that the public key was sent by the owner of its respective private key.
+                //We now know that *the whole request* was created by the owner of its respective private key.
                 ///////////////////////////////////////////////////
+
+                // now check the transaction itself
+                result = Utils.checkSignature(
+                        request.transaction.signature,
+                        request.transaction.getSignable(),
+                        request.transaction.source);
+
+                if (!result) {
+                    res.status(401);
+                    log.log(Level.WARNING, "Mismatch in transaction signatures");
+                    response.status = ERROR_NO_SIGNATURE_MATCH;
+                    return prepareResponse(serverPrivateKey, req, res, response);
+                }
 
                 Connection conn = null;
                 try {
                     conn = Database.getConnection();
-                    ECPublicKey publicKey = Serialization.base64toPublicKey(request.source);
-                    Ledger targetLedger = Ledger.load(conn, publicKey);
+                    Ledger sourceLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.transaction.source));
+                    Ledger targetLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.transaction.target));
 
-                    /*Transaction txReceived = Ledger.getPendingTransaction(conn, publicKey, request.transactionSignature,
-                            Transaction.TransactionTypes.RECEIVING);
+                    // mutual exclusion is necessary to ensure the new transaction ID obtained in "new Transaction"
+                    // is still correct/"fresh" when "transaction.persist" is called, and also that the latest
+                    // transaction is still the latest transaction
+                    synchronized (ledgerLock) {
+                        Transaction pendingTransaction = Transaction.getTransactionByHash(conn, request.pendingTransactionHash);
 
-                    if (txReceived != null) {
-                        Transaction txSent = Ledger.getPendingTransaction(conn, publicKey, request.transactionSignature,
-                                Transaction.TransactionTypes.SENDING);
-                    } else {
-                        // nothing ..
-                    }*/
-
-                    /*
-                    Transaction txSent = sourceLedger.getPendingTransaction(conn, publicKey, request.transactionSignature,
-                            Transaction.TransactionTypes.SENDING);
-                    if (txSent != null) {
-                        Transaction txReceived = sourceLedger.getPendingTransaction(conn, publicKey, request.transactionSignature,
-                                Transaction.TransactionTypes.RECEIVING);
-                        txSent.setPending(false);
-                        if (txReceived != null) {
-                            // sum the amount to the target
-                            txSent.getTargetLedger().setAmount(txSent.getTargetLedger().getAmount() + txSent.getAmount());
-
-                            txReceived.setPending(false);
-                            // actualizar o balanco da account
-                            txSent.persist(conn);
-                            txSent.getTargetLedger().persist(conn);
-                            //// transaction finalized!
+                        if (!pendingTransaction.isPending()) {
+                            throw new MissingTransactionException("Transaction mentioned in the request is invalid or not pending");
                         }
-                    } else {
-                        // no transaction - error - operation no t successful
 
+                        Transaction transaction = new Transaction(conn, sourceLedger, targetLedger,
+                                request.transaction.amount,
+                                request.transaction.nonce,
+                                request.transaction.signature,
+                                request.transaction.previousSignature, Transaction.TransactionTypes.RECEIVING);
+
+                        // the Transaction constructor already did some validation, now validate the things that
+                        // are specific to RECEIVING transactions
+                        if (transaction.getSourceLedger().getId() != pendingTransaction.getTargetLedger().getId() ||
+                                transaction.getTargetLedger().getId() != pendingTransaction.getSourceLedger().getId()) {
+                            throw new MissingTransactionException("Transaction source/target do not match with pending transaction");
+                        }
+
+                        if (transaction.getAmount() != pendingTransaction.getAmount()) {
+                            throw new InvalidAmountException("Transaction amount does not match with pending transaction", transaction.getAmount());
+                        }
+                        // add the amount to the source ledger
+                        sourceLedger.setAmount(sourceLedger.getAmount() + request.transaction.amount);
+
+                        // the sending transaction is not pending anymore
+                        pendingTransaction.setPending(false);
+                        pendingTransaction.persist(conn);
+                        transaction.persist(conn);
+                        sourceLedger.persist(conn);
                     }
-                    */
+                    conn.commit();
+                    response.status = SUCCESS;
+                    log.log(Level.INFO, "Transaction created with success.");
                 } catch (SQLException e) {
                     // servers fault
                     log.log(Level.SEVERE, "Error related to the database. " + e);
@@ -372,22 +391,27 @@ public class Main {
                 // these exceptions are the client's fault
                 catch (MissingLedgerException e) {
                     response.status = ERROR_INVALID_LEDGER;
+                } catch (InvalidAmountException e) {
+                    response.status = ERROR_INVALID_AMOUNT;
+                } catch (MissingTransactionException e) {
+                    response.status = ERROR_INVALID_VALUE;
                 } catch (InvalidKeyException e) {
                     response.status = ERROR_INVALID_KEY;
+                } catch (SignatureException e) {
+                    response.status = ERROR_NO_SIGNATURE_MATCH;
                 } finally {
-                    if (!response.status.equals(SUCCESS) && conn != null) {
+                    if ((response.status == null || !response.status.equals(SUCCESS)) && conn != null) {
                         conn.rollback();
                         log.log(Level.SEVERE, "The transaction created was not persisted, due to an error.");
                     }
                 }
 
                 return prepareResponse(serverPrivateKey, req, res, response);
-
             } catch (Exception ex) {
                 res.status(500);
                 Serialization.Response response = new Serialization.Response();
                 response.status = ERROR_SERVER_ERROR;
-                log.log(Level.SEVERE, "Error on processing a receive amount request. " + ex);
+                log.log(Level.SEVERE, "Error on processing a send amount request. " + ex);
                 return prepareResponse(serverPrivateKey, req, res, response);
             }
         });

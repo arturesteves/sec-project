@@ -107,10 +107,17 @@ public final class Ledger {
                 "JOIN ledger AS l ON t.ledger_id = l.id " +
                 "WHERE l.public_key = ? " +
                 "ORDER BY t.id";
-        PreparedStatement prepStmt = connection.prepareStatement(stmt);
-        prepStmt.setString(1, Serialization.publicKeyToBase64(publicKey));
+        PreparedStatement prepStmt = null;
+        try {
+            prepStmt = connection.prepareStatement(stmt);
+            prepStmt.setString(1, Serialization.publicKeyToBase64(publicKey));
 
-        return Transaction.loadResults(connection, prepStmt);
+            return Transaction.loadResults(connection, prepStmt);
+        } finally {
+            if(prepStmt != null) {
+                prepStmt.close();
+            }
+        }
     }
 
     // useful for the check account
@@ -171,31 +178,6 @@ public final class Ledger {
         dbTx.setPending(false);   // is not pending
 
         dbTx.persist(connection);
-    }
-
-    public static Transaction getPendingTransaction(Connection connection, ECPublicKey publicKey,
-                                                    String transactionSignature) throws SQLException, KeyException,
-            MissingLedgerException {
-
-        String stmt = "SELECT * FROM tx AS t " +
-                "JOIN ledger AS l ON t.other_id = l.id " +
-                "WHERE l.public_key = ? " +
-                "AND t.pending = 1 " +
-                "AND t.hash = ?";
-
-        PreparedStatement prepStmt = null;
-        try {
-            prepStmt = connection.prepareStatement(stmt);
-            prepStmt.setString(1, Serialization.publicKeyToBase64(publicKey));
-            prepStmt.setString(2, transactionSignature);
-
-            List<Transaction> txs = Transaction.loadResults(connection, prepStmt);
-            return txs.isEmpty() ? null : txs.get(0);
-        } finally {
-            if (prepStmt != null) {
-                prepStmt.close();
-            }
-        }
     }
 
     public static Ledger load(Connection connection, int id) throws SQLException, KeyException, MissingLedgerException {

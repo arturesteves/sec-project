@@ -23,7 +23,7 @@ public class Serialization {
 
     public enum StatusMessage {
         SUCCESS, ERROR_INVALID_LEDGER, ERROR_INVALID_AMOUNT, ERROR_NO_SIGNATURE_MATCH,
-        ERROR_INVALID_KEY, ERROR_MISSING_PARAMETER, ERROR_SERVER_ERROR
+        ERROR_INVALID_KEY, ERROR_MISSING_PARAMETER, ERROR_INVALID_VALUE, ERROR_SERVER_ERROR
     }
 
     public static final String CLIENT_PACKAGE_PATH = "\\src\\main\\java\\pt\\ulisboa\\tecnico\\sec\\g19\\hdscoin\\client";
@@ -56,15 +56,20 @@ public class Serialization {
         }
     }
 
-    public static class ReceiveAmountRequest implements Signable {
-        public String source;
-        public String transactionSignature;
+    public static class ReceiveAmountRequest implements Signable, NonceContainer {
+        public String pendingTransactionHash;
+        public Transaction transaction;
 
         @Override
         @JsonIgnore
         public String getSignable() {
-            // false: because is_send = false
-            return source + transactionSignature + Boolean.toString(false);
+            return transaction.getSignable() + pendingTransactionHash;
+        }
+
+        @Override
+        @JsonIgnore
+        public String getNonce() {
+            return transaction.getNonce();
         }
     }
 
@@ -114,7 +119,6 @@ public class Serialization {
         }
     }
 
-    // TODO maybe SendAmountRequest and ReceiveAmountRequest can be eliminated and we can just use Transaction?
     public static class Transaction implements Signable, NonceContainer {
         public String source;
         public String target; // who receives the money

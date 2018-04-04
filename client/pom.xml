@@ -79,6 +79,16 @@
                             <arguments></arguments>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>ReceiveAmount</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.client.ReceiveAmount</mainClass>
+                            <arguments></arguments>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>
