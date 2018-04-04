@@ -41,6 +41,23 @@ Open a terminal on the root directory of the client project and then type:
 Open a terminal on the root directory of the client project and then type:  
 `mvn exec:java@Audit -Dexec.args="-n Client_1 -s Server_1"`
 
+##### How to send money
+`-ns` specifies the name of the client sending the amount
+
+`-nt` specifies the name of the client who will receive
+
+`-a` specifies the amount to send
+
+Example:
+
+`mvn exec:java@SendAmount -Dexec.args="-ns Client_1 -nt Client_2 -s Server_1 -a 1000"`
+
+##### How to accept a pending transaction
+First, use `CheckAccount` to obtain the list of pending transactions.
+Take the signature of the transaction you want to accept and use `ReceiveAmount`:
+
+`mvn exec:java@ReceiveAmount -Dexec.args="-n Client_2 -s Server_1 -ts MEYCIQDEe4XFwURKGMjC0ge7eVIT5B2/Rgp/R77m9t17sIVPugIhAIZCXzIO0GikCYAjYPjiuEUPs7K7xDn/3A4us+6UUqID"`
+
 ## Tests
 
 ##### How to run tests on the server 
