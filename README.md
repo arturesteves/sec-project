@@ -35,7 +35,11 @@ Open a terminal on the root directory of the client project and then type:
 
 ##### How to check an account
 Open a terminal on the root directory of the client project and then type:  
-`mvn exec:java@CheckAccount -Dexec.args="-n Client_1"`
+`mvn exec:java@CheckAccount -Dexec.args="-n Client_1 -s Server_1"`
+
+##### How to audit an account
+Open a terminal on the root directory of the client project and then type:  
+`mvn exec:java@Audit -Dexec.args="-n Client_1 -s Server_1"`
 
 ## Tests
 

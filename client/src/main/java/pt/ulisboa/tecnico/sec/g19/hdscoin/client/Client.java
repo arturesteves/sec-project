@@ -100,6 +100,7 @@ public class Client implements IClient {
             request.source = b64SourcePublicKey;
             request.target = b64DestinationPublicKey;
             request.amount = amount;
+            request.nonce = Utils.randomNonce();
             request.previousSignature = previousSignature;
 
             Serialization.Response response = sendPostRequest(url.toString() + "/sendAmount", sourcePrivateKey,

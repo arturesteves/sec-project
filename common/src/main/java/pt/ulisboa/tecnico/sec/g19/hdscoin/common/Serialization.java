@@ -50,17 +50,9 @@ public class Serialization {
         }
     }
 
-    public static class SendAmountRequest implements Signable {
-        public String source;
-        public String target; // who receives the money
-        public int amount;
-        public String previousSignature;
-
-        @Override
-        @JsonIgnore
-        public String getSignable() {
-            // true: because is_send = true
-            return source + target + Boolean.toString(true) + Integer.toString(amount) + previousSignature;
+    public static class SendAmountRequest extends Transaction {
+        public SendAmountRequest() {
+            isSend = true;
         }
     }
 

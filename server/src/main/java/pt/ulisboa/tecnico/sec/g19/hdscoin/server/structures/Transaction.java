@@ -69,11 +69,11 @@ public final class Transaction {
         if (amount < 1) {
             throw new InvalidAmountException("Insufficient amount to create a transaction.", amount);
         }
-        if (nonce == null) {
-            throw new InvalidValueException("The nonce can't be null.");
+        if (nonce == null || nonce.isEmpty()) {
+            throw new InvalidValueException("The nonce can't be null nor empty.");
         }
-        if (hash == null) {
-            throw new InvalidValueException("The hash can't be null.");
+        if (hash == null || hash.isEmpty()) {
+            throw new InvalidValueException("The hash can't be null nor empty.");
         }
         if (type == null) {
             throw new InvalidValueException("The type of transaction can't be null.");
