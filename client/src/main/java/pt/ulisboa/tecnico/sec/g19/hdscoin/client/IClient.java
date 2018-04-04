@@ -52,7 +52,7 @@ public interface IClient {
      *
      * @param publicKey            Public key of the client.
      * @param privateKey           Private key of the client, used to sign the message.
-     * @param transactionSignature Signature of the transaction to receive the amount.
+     * @param transactionSignature Signature of the pending incoming transaction.
      * @throws ReceiveAmountException If there are any problems while trying to complete a transaction.
      */
     void receiveAmount (ECPublicKey publicKey, ECPrivateKey privateKey, String transactionSignature) throws ReceiveAmountException;

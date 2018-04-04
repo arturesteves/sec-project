@@ -39,7 +39,7 @@ public class Utils {
             ecdsaSign.update(hash.getBytes("UTF-8"));
             return new String(Base64.getEncoder().encode(ecdsaSign.sign()), StandardCharsets.UTF_8);
         } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | UnsupportedEncodingException | java.security.SignatureException e) {
-            throw new SignatureException("Couldn't sign the message. " + e.getMessage (), e);
+            throw new SignatureException("Couldn't sign the message. " + e.getMessage ());
         }
     }
 
@@ -59,7 +59,7 @@ public class Utils {
 
             return ecdsaVerify.verify(signatureBytes);
         } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | UnsupportedEncodingException | java.security.SignatureException e) {
-            throw new SignatureException("Couldn't check the signature. " + e.getMessage (), e);
+            throw new SignatureException("Couldn't check the signature. " + e.getMessage ());
         }
     }
 

@@ -117,12 +117,17 @@ public class Client implements IClient {
 
             } else {
                 switch (response.status) {
+                    case ERROR_INVALID_LEDGER:
+                        throw new InvalidLedgerException("Source or destination is invalid");
+                    case ERROR_INVALID_KEY:
+                        throw new InvalidLedgerException("One of the keys provided is invalid");
                     case ERROR_SERVER_ERROR:
                         throw new ServerErrorException("Error on the server side.");
                 }
             }
         } catch (HttpRequest.HttpRequestException | IOException | KeyException | SignatureException |
-                InvalidServerResponseException | InvalidClientSignatureException | ServerErrorException e) {
+                InvalidServerResponseException | InvalidClientSignatureException | ServerErrorException |
+                InvalidLedgerException e) {
             throw new SendAmountException("Failed to create a transaction. " + e);
         }
     }

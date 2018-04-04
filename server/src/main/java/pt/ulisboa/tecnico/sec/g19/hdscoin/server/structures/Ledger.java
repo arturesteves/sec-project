@@ -5,6 +5,7 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidLedgerException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.SignatureException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.*;
 
 import java.nio.charset.StandardCharsets;
@@ -36,7 +37,7 @@ public final class Ledger {
     }
 
     public Ledger(Connection connection, ECPublicKey publicKey, Serialization.Transaction initialTransaction) throws KeyException, SQLException,
-            InvalidValueException, InvalidAmountException, InvalidLedgerException {
+            InvalidValueException, InvalidAmountException, InvalidLedgerException, SignatureException {
         this(-1, publicKey, initialTransaction.amount);
         if (publicKey == null) {
             log.log(Level.WARNING, "Null key when trying to initialize a ledger.");
@@ -109,18 +110,13 @@ public final class Ledger {
         PreparedStatement prepStmt = connection.prepareStatement(stmt);
         prepStmt.setString(1, Serialization.publicKeyToBase64(publicKey));
 
-        try {
-            return Transaction.loadResults(connection, prepStmt);
-        } catch (MissingLedgerException ex) {
-            // there's no way this should happen, if this happens, how did this ledger get instantiated?
-            throw new Error("MissingLedgerException on getAllTransactions of Ledger");
-        }
+        return Transaction.loadResults(connection, prepStmt);
     }
 
     // useful for the check account
     // get pending transactions where this ledger can receive money
     public List<Transaction> getPendingTransactions(Connection connection, ECPublicKey publicKey)
-            throws SQLException, KeyException, MissingLedgerException {
+            throws SQLException, KeyException {
         String stmt = "SELECT * FROM tx AS t " +
                 "JOIN ledger AS l ON t.other_id = l.id " +
                 "WHERE l.public_key = ? " +
@@ -131,8 +127,30 @@ public final class Ledger {
         return Transaction.loadResults(connection, prepStmt);
     }
 
+    public Transaction getLatestTransaction(Connection connection) throws SQLException {
+        int latestId = getHighestTransactionId(connection);
+        String stmt = "SELECT * FROM tx AS t " +
+                "JOIN ledger AS l ON t.ledger_id = ? " +
+                "WHERE t.id = ?";
+        PreparedStatement prepStmt = null;
+        try {
+            prepStmt = connection.prepareStatement(stmt);
+            prepStmt.setInt(1, id);
+            prepStmt.setInt(2, latestId);
+
+            List<Transaction> results = Transaction.loadResults(connection, prepStmt);
+            if (results.size() > 0) {
+                return results.get(0);
+            }
+            return null;
+        } finally {
+            if (prepStmt != null)
+                prepStmt.close();
+        }
+    }
+
     private void storeFirstTransaction(Connection connection, Serialization.Transaction tx) throws InvalidLedgerException,
-            InvalidAmountException, InvalidValueException, KeyException, SQLException {
+            InvalidAmountException, InvalidValueException, KeyException, SignatureException, SQLException {
         String base64PublicKey = Serialization.publicKeyToBase64(this.publicKey);
 
         if (!base64PublicKey.equals(tx.source) || !base64PublicKey.equals(tx.target)) {
@@ -165,64 +183,70 @@ public final class Ledger {
                 "AND t.pending = 1 " +
                 "AND t.hash = ?";
 
-        PreparedStatement prepStmt = connection.prepareStatement(stmt);
-        prepStmt.setString(1, Serialization.publicKeyToBase64(publicKey));
-        prepStmt.setString(2, transactionSignature);
+        PreparedStatement prepStmt = null;
+        try {
+            prepStmt = connection.prepareStatement(stmt);
+            prepStmt.setString(1, Serialization.publicKeyToBase64(publicKey));
+            prepStmt.setString(2, transactionSignature);
 
-        List<Transaction> txs = Transaction.loadResults(connection, prepStmt);
-        return txs.isEmpty() ? null : txs.get(0);
-    }
-
-    // todo: create on a non static method, where a ledger can retrieve only its peding transactions (need to change the sql query)
-    public static Transaction getPendingTransaction(Connection connection, ECPublicKey publicKey, String transactionSignature,
-                                                    Transaction.TransactionTypes type) throws SQLException, KeyException,
-            MissingLedgerException {
-
-        String stmt = "SELECT * FROM tx AS t " +
-                "JOIN ledger AS l ON t.ledger_id = l.id " +
-                "WHERE l.public_key = ? " +
-                "AND t.pending = 1 " +
-                ((type == Transaction.TransactionTypes.SENDING) ? "AND t.prev_hash = ?" : "AND t.hash = ?");
-
-
-        PreparedStatement prepStmt = connection.prepareStatement(stmt);
-        prepStmt.setString(1, Serialization.publicKeyToBase64(publicKey));
-        prepStmt.setString(2, transactionSignature);
-
-        List<Transaction> txs = Transaction.loadResults(connection, prepStmt);
-        return txs.isEmpty() ? null : txs.get(0);
+            List<Transaction> txs = Transaction.loadResults(connection, prepStmt);
+            return txs.isEmpty() ? null : txs.get(0);
+        } finally {
+            if (prepStmt != null) {
+                prepStmt.close();
+            }
+        }
     }
 
     public static Ledger load(Connection connection, int id) throws SQLException, KeyException, MissingLedgerException {
         String stmt = "SELECT * FROM ledger WHERE id = ?";
-        PreparedStatement prepStmt = connection.prepareStatement(stmt);
-        prepStmt.setInt(1, id);
+        PreparedStatement prepStmt = null;
+        try {
+            prepStmt = connection.prepareStatement(stmt);
+            prepStmt.setInt(1, id);
 
-        List<Ledger> results = loadResults(prepStmt);
-        if (results.size() == 0) {
-            throw new MissingLedgerException("A ledger with the specified ID was not found");
+            List<Ledger> results = loadResults(prepStmt);
+            if (results.size() == 0) {
+                throw new MissingLedgerException("A ledger with the specified ID was not found");
+            }
+            return results.get(0);
+        } finally {
+            if (prepStmt != null) {
+                prepStmt.close();
+            }
         }
-        return results.get(0);
     }
 
     public static Ledger load(Connection connection, ECPublicKey pk) throws SQLException, KeyException, MissingLedgerException {
         String stmt = "SELECT * FROM ledger WHERE public_key = ?";
-        PreparedStatement prepStmt = connection.prepareStatement(stmt);
-        prepStmt.setString(1, Serialization.publicKeyToBase64(pk));
+        PreparedStatement prepStmt = null;
+        try {
+            prepStmt = connection.prepareStatement(stmt);
+            prepStmt.setString(1, Serialization.publicKeyToBase64(pk));
 
-        List<Ledger> results = loadResults(prepStmt);
-        if (results.size() == 0) {
-            log.log(Level.WARNING, "A ledger with the specified public key was not found. Public Key: " + pk);
-            throw new MissingLedgerException("A ledger with the specified public key was not found.");
+            List<Ledger> results = loadResults(prepStmt);
+            if (results.size() == 0) {
+                log.log(Level.WARNING, "A ledger with the specified public key was not found. Public Key: " + pk);
+                throw new MissingLedgerException("A ledger with the specified public key was not found.");
+            }
+            return results.get(0);
+        } finally {
+            prepStmt.close();
         }
-        return results.get(0);
     }
 
     public static List<Ledger> loadAll(Connection connection) throws SQLException, KeyException, MissingLedgerException {
         String stmt = "SELECT * FROM ledger";
-        PreparedStatement prepStmt = connection.prepareStatement(stmt);
+        PreparedStatement prepStmt = null;
+        try {
+            prepStmt = connection.prepareStatement(stmt);
 
-        return loadResults(prepStmt);
+            return loadResults(prepStmt);
+        } finally {
+            if (prepStmt != null) {
+                prepStmt.close();
+            }
+        }
     }
 
     private static List<Ledger> loadResults(PreparedStatement prepStmt) throws SQLException, KeyException {
@@ -237,13 +261,39 @@ public final class Ledger {
         return ret;
     }
 
+    private int getHighestTransactionId(Connection connection) throws SQLException {
+        String stmt = "select max(id) from tx where ledger_id = ?";
+        PreparedStatement prepStmt = null;
+        try {
+            prepStmt = connection.prepareStatement(stmt);
+            prepStmt.setInt(1, id);
+            ResultSet rs = prepStmt.executeQuery();
+
+            while (rs.next()) {
+                return rs.getInt(1);
+            }
+            return -1;
+        } finally {
+            if (prepStmt != null) {
+                prepStmt.close();
+            }
+        }
+    }
+
     private static int getNextId(Connection connection) throws SQLException {
         int next = 0;
-        Statement statement = connection.createStatement();
-        ResultSet rs = statement.executeQuery("select max(id) from ledger");
-        while (rs.next()) {
-            next = rs.getInt(1) + 1;
+        Statement statement = null;
+        try {
+            statement = connection.createStatement();
+
+            ResultSet rs = statement.executeQuery("select max(id) from ledger");
+            while (rs.next()) {
+                next = rs.getInt(1) + 1;
+            }
+            return next;
+        } finally {
+            if (statement != null)
+                statement.close();
         }
-        return next;
     }
 }

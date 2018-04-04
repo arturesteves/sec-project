@@ -193,7 +193,8 @@ public class Main {
                     Ledger targetLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.target));
 
                     // mutual exclusion is necessary to ensure the new transaction ID obtained in "new Transaction"
-                    // is still correct/"fresh" when "transaction.persist" is called.
+                    // is still correct/"fresh" when "transaction.persist" is called, and also that the latest
+                    // transaction is still the latest transaction
                     synchronized (ledgerLock) {
                         Transaction transaction = new Transaction(conn, sourceLedger, targetLedger, request.amount,
                                 request.nonce,
@@ -217,6 +218,8 @@ public class Main {
                     response.status = ERROR_INVALID_LEDGER;
                 } catch (InvalidKeyException e) {
                     response.status = ERROR_INVALID_KEY;
+                } catch (SignatureException e) {
+                    response.status = ERROR_NO_SIGNATURE_MATCH;
                 } finally {
                     if ((response.status == null || !response.status.equals(SUCCESS)) && conn != null) {
                         conn.rollback();
@@ -278,7 +281,6 @@ public class Main {
                 } finally {
                     if (conn != null && !committed) {
                         conn.rollback();
-                        log.log(Level.SEVERE, "Error committing read-only transaction");
                     }
                 }
                 return prepareResponse(serverPrivateKey, req, res, errorResponse);
@@ -330,7 +332,7 @@ public class Main {
                     ECPublicKey publicKey = Serialization.base64toPublicKey(request.source);
                     Ledger targetLedger = Ledger.load(conn, publicKey);
 
-                    Transaction txReceived = Ledger.getPendingTransaction(conn, publicKey, request.transactionSignature,
+                    /*Transaction txReceived = Ledger.getPendingTransaction(conn, publicKey, request.transactionSignature,
                             Transaction.TransactionTypes.RECEIVING);
 
                     if (txReceived != null) {
@@ -338,7 +340,7 @@ public class Main {
                                 Transaction.TransactionTypes.SENDING);
                     } else {
                         // nothing ..
-                    }
+                    }*/
 
                     /*
                     Transaction txSent = sourceLedger.getPendingTransaction(conn, publicKey, request.transactionSignature,
@@ -364,7 +366,7 @@ public class Main {
                     */
                 } catch (SQLException e) {
                     // servers fault
-                    log.log(Level.SEVERE, "Error related to the databas. " + e);
+                    log.log(Level.SEVERE, "Error related to the database. " + e);
                     response.status = ERROR_SERVER_ERROR;
                 }
                 // these exceptions are the client's fault
