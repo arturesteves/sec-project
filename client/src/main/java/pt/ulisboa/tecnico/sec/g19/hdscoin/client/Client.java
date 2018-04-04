@@ -102,6 +102,7 @@ public class Client implements IClient {
             request.amount = amount;
             request.nonce = Utils.randomNonce();
             request.previousSignature = previousSignature;
+            request.signature = Utils.generateSignature(request.getSignable(), sourcePrivateKey);
 
             Serialization.Response response = sendPostRequest(url.toString() + "/sendAmount", sourcePrivateKey,
                     request, Serialization.Response.class);
@@ -195,7 +196,7 @@ public class Client implements IClient {
                         throw new AuditException("Error checking signature of transaction");
                     }
                     // now we know tx.signature is correct... but is it signing the right prevHash?
-                    if (prevHash != null && !prevHash.equals(tx.signature)) {
+                    if (prevHash != null && !prevHash.equals(tx.previousSignature)) {
                         throw new AuditException("Transaction chain is broken: the previous signature contained in " +
                                 "one transaction does not match the signature of the transaction that precedes it");
                     }

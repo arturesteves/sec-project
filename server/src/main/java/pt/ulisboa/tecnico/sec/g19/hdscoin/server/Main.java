@@ -160,12 +160,13 @@ public class Main {
                 log.log(Level.INFO, "Request received at: /sendAmount \n" +
                         "data on the request:" +
                         "SIGNATURE: " + req.headers(Serialization.SIGNATURE_HEADER_NAME) + "\n" +
-                        "NONCE: " + req.headers(Serialization.NONCE_HEADER_NAME) + "\n" +
+                        "NONCE: " + request.nonce + "\n" +
                         "AMOUNT:" + request.amount + "\n" +
                         "SOURCE CLIENT BASE 64 PUBLIC KEY: " + request.source + "\n" +
                         "TARGET CLIENT BASE 64 PUBLIC KEY: " + request.target);
 
                 Serialization.Response response = new Serialization.Response();
+                response.nonce = request.nonce;
 
                 //Recreate the hash with the data received
                 Boolean result = Utils.checkSignature(
@@ -192,8 +193,8 @@ public class Main {
                     Ledger targetLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.target));
 
                     Transaction transaction = new Transaction(conn, sourceLedger, targetLedger, request.amount,
-                            req.headers(Serialization.NONCE_HEADER_NAME),
-                            req.headers(Serialization.SIGNATURE_HEADER_NAME),
+                            request.nonce,
+                            request.signature,
                             request.previousSignature, Transaction.TransactionTypes.SENDING);
                     // checkout the amount from the source ledger
                     sourceLedger.setAmount(sourceLedger.getAmount() - request.amount);
@@ -204,7 +205,7 @@ public class Main {
                     log.log(Level.INFO, "Transaction created with success.");
                 } catch (SQLException e) {
                     // servers fault
-                    log.log(Level.SEVERE, "Error related to the databas. " + e);
+                    log.log(Level.SEVERE, "Error related to the database. " + e);
                     response.status = ERROR_SERVER_ERROR;
                 }
                 // these exceptions are the client's fault
@@ -213,9 +214,8 @@ public class Main {
                 } catch (InvalidKeyException e) {
                     response.status = ERROR_INVALID_KEY;
                 } finally {
-                    if (!response.status.equals(SUCCESS) && conn != null) {
+                    if ((response.status == null || !response.status.equals(SUCCESS)) && conn != null) {
                         conn.rollback();
-                        log.log(Level.SEVERE, "The transaction created was not persisted, due to an error.");
                     }
                 }
 

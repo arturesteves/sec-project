@@ -83,10 +83,10 @@ public final class Ledger {
     }
 
     public void setAmount(int amount) throws InvalidAmountException {
-        if (amount >= 0) {
-            this.amount = amount;
+        if (amount < 0) {
+            throw new InvalidAmountException("The balance of the ledger can't be negative.", amount);
         }
-        throw new InvalidAmountException("The balance of the ledger can't be negative.", amount);
+        this.amount = amount;
     }
 
     public void persist(Connection connection) throws SQLException, KeyException {
