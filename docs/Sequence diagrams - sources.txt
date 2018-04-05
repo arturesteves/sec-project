@@ -1,0 +1,115 @@
+title Register Sequence
+
+User->+Client: register(\npublicKey,\nprivateKey,\namount)
+note over Client: Creates transaction\nsource=target=publicKey\namount=amount\nis_send=false\nnonce=random(NONCE_LENGTH)\nprev_hash=null\nhash=sign(fields above)
+Client->Server: POST /register\ntransaction
+note right of Server: Checks:\nverifies signature ("hash")\nsource==target\nsource has not registered yet
+alt checks succeed
+    Server->Client: AccountCreated
+    note over Client: checks signature, nonce
+    alt signature, nonce ok
+        Client->User: Success!
+    else
+        Client->User: throws Exception
+    end
+else checks fail
+    Server->Client: Error
+    note over Client: checks signature, nonce
+        Client->User: throws Exception
+end
+deactivate Client
+
+
+
+
+
+title Check Account Sequence
+
+User->+Client: checkAccount(sourcePublicKey)
+Client->Server: GET /checkAccount
+Server->Client: balance,\npending incoming transactions
+
+note over Client: checks signature, nonce
+alt signature, nonce ok
+    Client->User: balance,\npending incoming transactions
+else
+    Client->User: throws Exception
+end
+deactivate Client
+
+
+
+
+title Audit Sequence
+
+User->+Client: audit(sourcePublicKey)
+Client->Server: GET /audit
+Server->Client: transaction history
+note over Client: checks signature, nonce
+alt signature, nonce ok
+    note over Client: checks\ntransaction\nchain
+    alt chain ok
+        Client->User: transaction history
+    else
+        Client->User: throws Exception
+    end
+else
+    Client->User: throws Exception
+end
+deactivate Client
+
+
+
+
+
+title Send Amount Sequence
+
+note over User: retrieves hash of\nprevious transaction\nprevTxSig=audit(sourcePublicKey)
+
+User->+Client: sendAmount(\nsourcePublicKey,\ntargetPublicKey,\namount,\nsourcePrivateKey,\nprevTxSig)
+note over Client: Creates transaction\nsource=sourcePublicKey\ntarget=targetPublicKey\namount=amount\nis_send=true\nnonce=random(NONCE_LENGTH)\nprev_hash=prevTxSig\nhash=sign(fields above)
+Client->Server: POST /sendAmount\ntransaction
+note right of Server: Checks:\nverifies signature ("hash")\nsource, destination exist\nbalances do not go < 0\nprevHash is correct
+alt checks succeed
+    Server->Client: AmountSent
+    note over Client: checks signature, nonce
+    alt signature, nonce ok
+        Client->User: Success!
+    else
+        Client->User: throws Exception
+    end
+else checks fail
+    Server->Client: Error
+    note over Client: checks signature, nonce
+        Client->User: throws Exception
+end
+deactivate Client
+
+
+
+
+
+title Receive Amount Sequence
+
+note over User, Client, Server: in Receive transactions,\nthe "source" is who receives the amount
+note over User: retrieves info of\npending transaction\npend=checkAccount(sourcePublicKey).pending[hash]
+note over User: retrieves hash of\nprevious transaction\nprevTxSig=audit(sourcePublicKey)
+
+User->+Client: receiveAmount(\nprev.target,\nprev.source,\nprev.amount,\nsourcePrivateKey,\nprevTxSig)
+note over Client: Creates transaction\nsource=prev.target\ntarget=prev.source\namount=prev.amount\nis_send=false\nnonce=random(NONCE_LENGTH)\nprev_hash=prevTxSig\nhash=sign(fields above)
+Client->Server: POST /receiveAmount\ntransaction, pend.hash
+note right of Server: Checks:\nverifies signature ("hash")\nsource, destination exist\npend.hash is a pending transaction\nprevHash is correct
+alt checks succeed
+    Server->Client: AmountReceived
+    note over Client: checks signature, nonce
+    alt signature, nonce ok
+        Client->User: Success!
+    else
+        Client->User: throws Exception
+    end
+else checks fail
+    Server->Client: Error
+    note over Client: checks signature, nonce
+        Client->User: throws Exception
+end
+deactivate Client

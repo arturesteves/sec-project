@@ -65,9 +65,8 @@ Open a terminal on the root directory of any project and then type:
 `mvn clean test -DskipTests=false`
 
 ## Documentation
-The client side programs documentation can be found at [CLIENT-DOC](docs/CLIENT-DOCUMENTATION.md).   
-The server side programs documentation can be found at [SERVER-DOC](docs/SERVER-DOCUMENTATION.md).  
-The web server api documentation can be found at [SERVER-API-DOC](docs/SERVER-API-DOCUMENTATION.md).
+A small report documenting the solution and its security features at a high level, as well as sequence diagrams for each
+of the five main operations supported by the server and client, can be found in the `docs` folder.
 
 ## License  
 Licensed under MIT. See [LICENSE](LICENSE) for more information. 
