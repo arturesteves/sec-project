@@ -1,11 +1,11 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
-
+import static org.mockito.Mockito.*;
 import com.github.paweladamski.httpclientmock.HttpClientMock;
-import org.junit.AfterClass;
-import org.junit.Assume;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.eclipse.jetty.client.HttpClient;
+//import org.apache.http.client.HttpClient;
+
+import org.junit.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantRegisterException;
@@ -24,7 +24,11 @@ import java.util.Collection;
 
 //@RunWith(Parameterized.class)
 public class RegisterTest {
-    private static HttpClientMock httpClientMock;
+
+    //@Mock
+    private HttpClient mockHttpClient;
+
+    //private static HttpClientMock httpClientMock;
 
     /*
     enum Type {INVALID_COMMAND_LINE_ARGS, VALID_COMMAND_LINE_ARGS }
@@ -89,17 +93,33 @@ public class RegisterTest {
 
     @Test
     public void testSimple () throws CantRegisterException {
+        System.err.println("TEST SIMPLE");
         Register.main(new String[] {"-n", "Client_1", "-a", "10"});
+        System.out.println("END TEST SIMPLE");
         //todo: criar forma de alterar as mensagens, pq agora da jeito usar um nonce predefinido.
             // isto depois tambem ajuda para simular os ataques.
+    }
+
+    @Test (expected = CantRegisterException.class)
+    public void testSimple2 () throws CantRegisterException {
+        System.err.println("TEST SIMPLE 2");
+        Register.main(new String[] {"-n", "Client_", "-a", "10"});
+        System.out.println("END TEST SIMPLE 2");
     }
 
     // statusCode: 200,
     // status: "SUCCESS"
     // nonce: L!+7>i?]ebwJR3^e*i?<
     // server signature : MEUCICP0JI/bly4aHZASl9/pdpCAKMjKg6VT4hCxc5/l+YJuAiEAm4GJx4NdDYwQMTPTv8DrfuVrc4oZWGLqdx/34QGSWag=
-    @BeforeClass
-    public static void setup () throws KeyException, CantGenerateSignatureException {
+    @Before
+    public void setup () throws KeyException, CantGenerateSignatureException {
+        // install dependency mockito
+        //mockHttpClient = mock(HttpClient.class);    // confirmar
+        //MockitoAnnotations.initMocks(RegisterTest.class); // check if need .class
+        //when(mockHttpClient.execute(any())).thenReturn(/*stub json*/);
+
+        /*
+        // esqueçer isto, e preciso configurar em algum lado (desconhecido) onde e que a classe deve usar este httpclient e nao o default1
         httpClientMock = new HttpClientMock("http://example.com:4567");
         // Setup register mock service
         httpClientMock
@@ -128,7 +148,7 @@ public class RegisterTest {
                         "}") // 2nd request returns ERROR ...
                 .withHeader("SIGNATURE", "")
                 .withStatus(500);
-
+*/
         /*
         String pk = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/oPH6wF/95MfKaddTaH9vNthLmCHV86x2x+KTVghgjOzQEliExrpxb/McrO86JLGRREJVinKO/6QaWYXz0WzzA==";
         String p = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgEiqXHRtwcJz0zlfQ5RtfMhKTCZMEImKKieUJcD9MQPygCgYIKoZIzj0DAQehRANCAAQLTQWfpfICeLo/Mx9zeaM6pqEy8hTjqHKyXVfHVXe9Yivuf9h+EYeyv3pxH9g+ssbR9yy64WsmSYEypVgin+oJ";
@@ -143,6 +163,7 @@ public class RegisterTest {
         //HttpClientMock httpClientMock = new httpClientMock();
         //httpClientMocknew = new HttpClientMock("http://example.com:8080");
         //httpClientMock.onGet("/login?user=john").doReturnJSON("{permission:1}");
+
     }
     //@AfterClass
     public static void clean () {

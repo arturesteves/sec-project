@@ -90,5 +90,11 @@
             <artifactId>commons-cli</artifactId>
             <version>RELEASE</version>
         </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>1.10.19</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
