@@ -3,23 +3,20 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 import static org.mockito.Mockito.*;
 import com.github.paweladamski.httpclientmock.HttpClientMock;
 import org.eclipse.jetty.client.HttpClient;
-//import org.apache.http.client.HttpClient;
 
 import org.junit.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CantRegisterException;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.RegisterException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateKeysException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateSignatureException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.SignatureException;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyException;
-import java.util.Arrays;
-import java.util.Collection;
 
 
 //@RunWith(Parameterized.class)
@@ -63,20 +60,20 @@ public class RegisterTest {
         this.amount = amount;
     }
 
-    @Test (expected = CantRegisterException.class)
-    public void testRegisterInvalidArguments () throws CantRegisterException {
+    @Test (expected = RegisterException.class)
+    public void testRegisterInvalidArguments () throws RegisterException {
         Assume.assumeTrue(type == Type.INVALID_COMMAND_LINE_ARGS);
         Register.main(new String[] {flagName, name, flagAmount, amount});
     }
 
-    @Test (expected = CantRegisterException.class)
-    public void testRegisterWithNoGeneratedKey () throws CantRegisterException {
+    @Test (expected = RegisterException.class)
+    public void testRegisterWithNoGeneratedKey () throws RegisterException {
         // no key was generated under the name Cli_1
         Register.main(new String[] {"-n", "Cli_1", "-a", "10"});
     }
 
     @Test
-    public void testRegisterValidArguments () throws CantRegisterException, CantGenerateKeysException {
+    public void testRegisterValidArguments () throws RegisterException, KeyGenerationException {
         Assume.assumeTrue(type == Type.INVALID_COMMAND_LINE_ARGS);
         GenerateKeyPair.main(new String[] {flagName, name});    // needs to generate a key pair first
         Register.main(new String[] {flagName, name, flagAmount, amount});
@@ -91,17 +88,16 @@ public class RegisterTest {
     // client nonce: L!+7>i?]ebwJR3^e*i?<
     // mensage signature for register (public key + amount + nonce): MEQCIGWVj8dH6aeAqvUOgUnHhXRWDBgLYr5Ub57mm6AqGvaGAiAdNMZfyWkuGNpAjFiNhGX+voSN7MQ29d0hs0rKsSo/ZQ==
 
-    @Test
-    public void testSimple () throws CantRegisterException {
-        System.err.println("TEST SIMPLE");
+
+    public void testSimple () throws RegisterException {
         Register.main(new String[] {"-n", "Client_1", "-a", "10"});
         System.out.println("END TEST SIMPLE");
         //todo: criar forma de alterar as mensagens, pq agora da jeito usar um nonce predefinido.
             // isto depois tambem ajuda para simular os ataques.
     }
 
-    @Test (expected = CantRegisterException.class)
-    public void testSimple2 () throws CantRegisterException {
+    @Test (expected = RegisterException.class)
+    public void testSimple2 () throws RegisterException {
         System.err.println("TEST SIMPLE 2");
         Register.main(new String[] {"-n", "Client_", "-a", "10"});
         System.out.println("END TEST SIMPLE 2");
@@ -112,7 +108,7 @@ public class RegisterTest {
     // nonce: L!+7>i?]ebwJR3^e*i?<
     // server signature : MEUCICP0JI/bly4aHZASl9/pdpCAKMjKg6VT4hCxc5/l+YJuAiEAm4GJx4NdDYwQMTPTv8DrfuVrc4oZWGLqdx/34QGSWag=
     @Before
-    public void setup () throws KeyException, CantGenerateSignatureException {
+    public void setup () {
         // install dependency mockito
         //mockHttpClient = mock(HttpClient.class);    // confirmar
         //MockitoAnnotations.initMocks(RegisterTest.class); // check if need .class
@@ -120,6 +116,10 @@ public class RegisterTest {
 
         /*
         // esqueçer isto, e preciso configurar em algum lado (desconhecido) onde e que a classe deve usar este httpclient e nao o default1
+=======
+    @BeforeClass
+    public static void setup () throws KeyException, SignatureException {
+>>>>>>> 047782ab7d072ea0e6b19754470ba2ee4eb12e82
         httpClientMock = new HttpClientMock("http://example.com:4567");
         // Setup register mock service
         httpClientMock

@@ -4,9 +4,11 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidKeyException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidLedgerException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.SignatureException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.InvalidValueException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.MissingLedgerException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.MissingTransactionException;
 
 import java.security.KeyException;
 import java.sql.*;
@@ -16,7 +18,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class Transaction {
-    private final static Logger log = Logger.getLogger(Ledger.class.getName());
+    private final static Logger log = Logger.getLogger(Transaction.class.getName());
+
+    static {
+        Utils.initLogger(log);
+    }
 
     public enum TransactionTypes implements TransactionType {SENDING, RECEIVING}
 
@@ -25,7 +31,7 @@ public final class Transaction {
     private int id;
     private Ledger source;
     private Ledger target;
-    private double amount;
+    private int amount;
     private String nonce;
     private String hash;
     private String previousHash;
@@ -42,8 +48,7 @@ public final class Transaction {
      * @param previousHash
      * @param type
      */
-    private Transaction(int id, Ledger source, Ledger target, double amount, String nonce, String hash, String previousHash, TransactionType type) {
-        Utils.initLogger(log);
+    private Transaction(int id, Ledger source, Ledger target, int amount, String nonce, String hash, String previousHash, TransactionType type, boolean pending) {
         this.id = id;
         this.source = source;
         this.target = target;
@@ -52,16 +57,32 @@ public final class Transaction {
         this.hash = hash;
         this.previousHash = previousHash;
         this.type = type;
-        this.pending = true;
+        this.pending = pending;
     }
 
-    public Transaction(Connection connection, Ledger source, Ledger target, double amount, String nonce, String hash, String previousHash, TransactionType type) throws SQLException, InvalidLedgerException, InvalidAmountException, InvalidValueException {
-        this(-1, source, target, amount, nonce, hash, previousHash, type);
+    public Transaction(Connection connection, Ledger source, Ledger target, int amount, String nonce, String hash, String previousHash, TransactionType type)
+            throws SQLException, InvalidLedgerException, InvalidAmountException, InvalidValueException, SignatureException {
+        this(-1, source, target, amount, nonce, hash, previousHash, type, type == TransactionTypes.SENDING);
 
         if (type != SpecialTransactionType.FIRST) {    // the first transaction can have null on the previous hash
             if (previousHash == null) {
                 throw new InvalidValueException("The previous hash can't be null.");
             }
+
+            // get latest transaction to check if previousSignature is correct
+            Transaction latestTransaction = source.getLatestTransaction(connection);
+
+            if (latestTransaction == null) {
+                throw new SignatureException("The previous signature does not match the correct one");
+            }
+
+            if (latestTransaction == null && !previousHash.isEmpty()) {
+                throw new SignatureException("The previous signature is not empty as it should");
+            } else if (latestTransaction != null && !previousHash.equals(latestTransaction.getHash())) {
+                throw new SignatureException("The previous signature does not match the correct one");
+            }
+        } else if (previousHash != null && !previousHash.isEmpty()) {
+            throw new SignatureException("The previous hash must be null or empty for FIRST transactions");
         }
         if (source == null || target == null) {
             throw new InvalidLedgerException("Both the source and target ledgers can't be null.");
@@ -69,19 +90,30 @@ public final class Transaction {
         if (amount < 1) {
             throw new InvalidAmountException("Insufficient amount to create a transaction.", amount);
         }
-        if (nonce == null) {
-            throw new InvalidValueException("The nonce can't be null.");
+        if (nonce == null || nonce.isEmpty()) {
+            throw new InvalidValueException("The nonce can't be null nor empty.");
         }
-        if (hash == null) {
-            throw new InvalidValueException("The hash can't be null.");
+
+        if (hash == null || hash.isEmpty()) {
+            throw new InvalidValueException("The hash can't be null nor empty.");
         }
+
+        // the transaction must be unique (due to the inclusion of a nonce, all transactions should become unique).
+        // Otherwise an attacker could just repeat client requests to send money.
+        try {
+            getTransactionByHash(connection, hash);
+            throw new InvalidValueException("Repeated transaction");
+        } catch (MissingTransactionException e) {
+            // all good
+        }
+
         if (type == null) {
             throw new InvalidValueException("The type of transaction can't be null.");
         }
         setId(getNextId(connection));
     }
 
-    public int getID() {
+    public int getId() {
         return this.id;
     }
 
@@ -97,7 +129,7 @@ public final class Transaction {
         return this.target;
     }
 
-    public double getAmount() {
+    public int getAmount() {
         return this.amount;
     }
 
@@ -125,23 +157,29 @@ public final class Transaction {
         return this.type;
     }
 
-    public void persist(Connection connection) throws SQLException, KeyException {
+    public void persist(Connection connection) throws SQLException {
         String stmt = "INSERT OR REPLACE INTO tx (id, ledger_id, other_id, is_send, amount, nonce, hash, " +
                 "prev_hash, pending) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        PreparedStatement prepStmt = null;
+        try {
+            prepStmt = connection.prepareStatement(stmt);
+            prepStmt.setInt(1, this.id);
+            prepStmt.setInt(2, this.getSourceLedger().getId());
+            prepStmt.setInt(3, this.getTargetLedger().getId());
+            prepStmt.setInt(4, type == TransactionTypes.SENDING ? 1 : 0);
+            prepStmt.setInt(5, this.amount);
+            prepStmt.setString(6, this.nonce);
+            prepStmt.setString(7, this.hash);
+            prepStmt.setString(8, this.previousHash);
+            prepStmt.setInt(9, this.pending ? 1 : 0);
 
-        PreparedStatement prepStmt = connection.prepareStatement(stmt);
-        prepStmt.setInt(1, this.id);
-        prepStmt.setInt(2, this.getSourceLedger().getId());
-        prepStmt.setInt(3, this.getTargetLedger().getId());
-        prepStmt.setInt(4, type == TransactionTypes.RECEIVING ? 0 : 1);
-        prepStmt.setDouble(5, this.amount);
-        prepStmt.setString(6, this.nonce);
-        prepStmt.setString(7, this.hash);
-        prepStmt.setString(8, this.previousHash);
-        prepStmt.setInt(9, this.pending ? 1 : 0);
-
-        prepStmt.executeUpdate();
-        log.log(Level.INFO, "The following transaction was persisted. " + this.toString());
+            prepStmt.executeUpdate();
+            log.log(Level.INFO, "The following transaction was persisted. " + this.toString());
+        } finally {
+            if (prepStmt != null) {
+                prepStmt.close();
+            }
+        }
     }
 
 
@@ -155,8 +193,26 @@ public final class Transaction {
         return next;
     }
 
+    public static Transaction getTransactionByHash(Connection connection, String hash) throws SQLException,
+            MissingTransactionException {
+        String stmt = "SELECT * FROM tx WHERE hash = ?";
+        PreparedStatement prepStmt = null;
+        try {
+            prepStmt = connection.prepareStatement(stmt);
+            prepStmt.setString(1, hash);
 
-    public static List<Transaction> loadResults(Connection connection, PreparedStatement prepStmt) throws SQLException, KeyException, MissingLedgerException {
+            List<Transaction> results = loadResults(connection, prepStmt);
+            if (results.size() == 0) {
+                log.log(Level.WARNING, "A transaction with the specified hash was not found. Hash: " + hash);
+                throw new MissingTransactionException("A transaction with the specified hash was not found.");
+            }
+            return results.get(0);
+        } finally {
+            prepStmt.close();
+        }
+    }
+
+    static List<Transaction> loadResults(Connection connection, PreparedStatement prepStmt) throws SQLException {
         List<Transaction> ret = new ArrayList<>();
         ResultSet results = prepStmt.executeQuery();
         while (results.next()) {
@@ -164,54 +220,56 @@ public final class Transaction {
             int sourceLedgerIdId = results.getInt(2);
             int targetLedgerId = results.getInt(3);
             TransactionType type = results.getInt(4) == 1 ? TransactionTypes.SENDING : TransactionTypes.RECEIVING;
-            double amount = results.getDouble(5);
+            int amount = results.getInt(5);
             String nonce = results.getString(6);
             String hash = results.getString(7);
             String previousHash = results.getString(8);
             boolean pending = results.getInt(9) == 1;
 
-            Ledger source = Ledger.load(connection, sourceLedgerIdId);
-            Ledger target = Ledger.load(connection, targetLedgerId);
+            Ledger source = null;
+            Ledger target = null;
+            try {
+                source = Ledger.load(connection, sourceLedgerIdId);
+                target = Ledger.load(connection, targetLedgerId);
+            } catch (MissingLedgerException | KeyException e) {
+                // this can never happen, unless our own database is corrupt
+            }
 
-            Transaction tx = new Transaction(id, source, target, amount, nonce, hash, previousHash, type);
-            tx.setPending(pending);
+            Transaction tx = new Transaction(id, source, target, amount, nonce, hash, previousHash, type, pending);
 
             ret.add(tx);
         }
         return ret;
+
     }
 
-    public String toString () {
+    public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("\n-----------------------------\n");
         builder.append("\t\tTransaction\n");
         builder.append("\t\t-----------\n");
-        builder.append((this.type == TransactionTypes.SENDING) ?
-                getReadableKeysFormat(this.source, this.target) : getReadableKeysFormat(this.target, this.source))
-                .append("\n");
+        builder.append(getReadableKeysFormat(this.target, this.source));
         builder.append("Amount: ").append(this.amount).append(" HDS Coins\n");
         builder.append("Type: ").append(this.type).append("\n");
-        builder.append("State: ").append((this.pending ? "PENDING" : "COMPLETED"));
+        builder.append("State: ").append((this.pending ? "PENDING" : "COMPLETED")).append("\n");
         builder.append("Nonce: ").append(this.nonce).append("\n");
         builder.append("Signature: ").append(this.hash).append("\n");
         builder.append("Signature prev. Transaction: ").append(this.previousHash).append("\n");
         builder.append("-----------------------------");
-        return builder.toString ();
+        return builder.toString();
     }
 
-    private String getReadableKeysFormat (Ledger source, Ledger target) {
+    private String getReadableKeysFormat(Ledger source, Ledger target) {
         StringBuilder builder = new StringBuilder();
-        builder.append("Source Public Key: ").append(source.getPublicKey());
         try {
-            builder.append("Source Public Key b64: ").append(Serialization.publicKeyToBase64(source.getPublicKey()));
+            builder.append("Source Public Key: ").append(Serialization.publicKeyToBase64(source.getPublicKey())).append("\n");
         } catch (KeyException e) {
-            builder.append("Source Public Key b64: --------------");
+            builder.append("Source Public Key: --------------").append("\n");
         }
-        builder.append("Target Public Key: ").append(target.getPublicKey());
         try {
-            builder.append("Target Public Key b64: " + Serialization.publicKeyToBase64(target.getPublicKey()));
+            builder.append("Target Public Key: " + Serialization.publicKeyToBase64(target.getPublicKey())).append("\n");
         } catch (KeyException e) {
-            builder.append("Target Public Key b64: --------------");
+            builder.append("Target Public Key: --------------").append("\n");
         }
         return builder.toString();
     }

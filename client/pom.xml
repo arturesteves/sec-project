@@ -12,6 +12,11 @@
 
     <artifactId>client</artifactId>
 
+    <!-- skip tests by default as they fail if the server is not running (as during mvn install) -->
+    <properties>
+        <skipTests>true</skipTests>
+    </properties>
+
     <build>
         <plugins>
             <plugin>
@@ -59,17 +64,50 @@
                             <arguments></arguments>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>Audit</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.client.Audit</mainClass>
+                            <arguments></arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>SendAmount</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.client.SendAmount</mainClass>
+                            <arguments></arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>ReceiveAmount</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.client.ReceiveAmount</mainClass>
+                            <arguments></arguments>
+                        </configuration>
+                    </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.21.0</version>
+                <configuration>
+                    <skipTests>${skipTests}</skipTests>
+                </configuration>
             </plugin>
         </plugins>
     </build>
 
     <dependencies>
-        <dependency>
-            <groupId>com.github.kevinsawicki</groupId>
-            <artifactId>http-request</artifactId>
-            <version>6.0</version>
-        </dependency>
         <dependency>
             <groupId>pt.ulisboa.tecnico.sec.g19.hdscoin</groupId>
             <artifactId>common</artifactId>
@@ -93,7 +131,7 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>1.10.19</version>
+            <version>2.17.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

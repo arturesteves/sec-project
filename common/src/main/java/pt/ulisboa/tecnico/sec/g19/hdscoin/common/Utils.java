@@ -1,12 +1,10 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.common;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateKeysException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantGenerateSignatureException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.CantWritePublicKeyToFileException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.KeyGenerationException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.SignatureException;
 
 import java.io.*;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
@@ -31,7 +29,7 @@ public class Utils {
     }
 
     //Returns a signature in base64 over an hash input
-    public static String generateSignature(String hashInput, ECPrivateKey privateKey) throws CantGenerateSignatureException{
+    public static String generateSignature(String hashInput, ECPrivateKey privateKey) throws SignatureException {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             String hash = Arrays.toString(digest.digest(hashInput.getBytes(StandardCharsets.UTF_8)));
@@ -40,16 +38,16 @@ public class Utils {
             ecdsaSign.initSign(privateKey);
             ecdsaSign.update(hash.getBytes("UTF-8"));
             return new String(Base64.getEncoder().encode(ecdsaSign.sign()), StandardCharsets.UTF_8);
-        } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | UnsupportedEncodingException | SignatureException e) {
-            throw new CantGenerateSignatureException ("Couldn't sign the message. " + e.getMessage (), e);
+        } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | UnsupportedEncodingException | java.security.SignatureException e) {
+            throw new SignatureException("Couldn't sign the message. " + e.getMessage ());
         }
     }
 
-    public static boolean checkSignature(String signature, String hashInput, String publicKey) throws CantGenerateSignatureException, KeyException {
+    public static boolean checkSignature(String signature, String hashInput, String publicKey) throws SignatureException, KeyException {
         return checkSignature(signature, hashInput, Serialization.base64toPublicKey(publicKey));
     }
 
-    public static boolean checkSignature(String signature, String hashInput, ECPublicKey publicKey) throws CantGenerateSignatureException {
+    public static boolean checkSignature(String signature, String hashInput, ECPublicKey publicKey) throws SignatureException {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             String hash = Arrays.toString(digest.digest(hashInput.getBytes(StandardCharsets.UTF_8)));
@@ -60,12 +58,12 @@ public class Utils {
             ecdsaVerify.update(hash.getBytes("UTF-8"));
 
             return ecdsaVerify.verify(signatureBytes);
-        } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | UnsupportedEncodingException | SignatureException e) {
-            throw new CantGenerateSignatureException ("Couldn't sign the message. " + e.getMessage (), e);
+        } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | UnsupportedEncodingException | java.security.SignatureException e) {
+            throw new SignatureException("Couldn't check the signature. " + e.getMessage ());
         }
     }
 
-    public static KeyPair generateKeyPair () throws CantGenerateKeysException {
+    public static KeyPair generateKeyPair () throws KeyGenerationException {
         ECGenParameterSpec ecGenSpec = new ECGenParameterSpec("secp256r1");
 
         KeyPairGenerator keyPairGenerator = null;
@@ -74,7 +72,7 @@ public class Utils {
             keyPairGenerator.initialize(ecGenSpec, new SecureRandom());
 
         } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException e) {
-            throw new CantGenerateKeysException("Coudn't generate a key pair. " + e.getMessage(), e);
+            throw new KeyGenerationException("Couldn't generate a key pair. " + e.getMessage(), e);
         }
         return keyPairGenerator.generateKeyPair();
     }
@@ -122,20 +120,14 @@ public class Utils {
     }
 
     public static void initLogger (Logger log) {
-        ConsoleHandler consoleHandler = new ConsoleHandler ();
-        consoleHandler.setLevel (Level.ALL);
-        consoleHandler.setFormatter (new SimpleFormatter());
         try {
-            FileHandler fileHandler = new FileHandler ("logs.log");
+            FileHandler fileHandler = new FileHandler ("log-"+ log.getName() + ".log");
             fileHandler.setEncoding("UTF-8");
             fileHandler.setLevel(Level.ALL);
             fileHandler.setFormatter(new SimpleFormatter ());
             log.addHandler (fileHandler);
-
         } catch (IOException e) {
             e.printStackTrace ();
         }
-        log.addHandler (consoleHandler);
-        log.setLevel(Level.ALL);
     }
 }

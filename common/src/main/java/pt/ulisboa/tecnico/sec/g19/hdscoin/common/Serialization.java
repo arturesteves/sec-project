@@ -15,6 +15,7 @@ import java.security.interfaces.ECPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
@@ -22,7 +23,7 @@ public class Serialization {
 
     public enum StatusMessage {
         SUCCESS, ERROR_INVALID_LEDGER, ERROR_INVALID_AMOUNT, ERROR_NO_SIGNATURE_MATCH,
-        ERROR_INVALID_KEY, ERROR_SERVER_ERROR
+        ERROR_INVALID_KEY, ERROR_MISSING_PARAMETER, ERROR_INVALID_VALUE, ERROR_SERVER_ERROR
     }
 
     public static final String CLIENT_PACKAGE_PATH = "\\src\\main\\java\\pt\\ulisboa\\tecnico\\sec\\g19\\hdscoin\\client";
@@ -33,53 +34,49 @@ public class Serialization {
 
     private static ObjectMapper mapper = new ObjectMapper();
 
-    public static class RegisterRequest implements Signable, NonceContainer  {
-        public String key;
-        public double amount;
-        public String nonce;
+    public static class RegisterRequest implements Signable, NonceContainer {
+        public Transaction initialTransaction;
 
         @Override
         @JsonIgnore
         public String getSignable() {
-            return key + Double.toString(amount) + nonce;
+            return initialTransaction.getSignable();
         }
 
         @Override
+        @JsonIgnore
         public String getNonce() {
-            return nonce;
+            return initialTransaction.getNonce();
         }
     }
 
-    public static class SendAmountRequest implements Signable {
-        public String source;
-        public String target; // who receives the money
-        public double amount;
-        public String previousSignature;
+    public static class SendAmountRequest extends Transaction {
+        public SendAmountRequest() {
+            isSend = true;
+        }
+    }
+
+    public static class ReceiveAmountRequest implements Signable, NonceContainer {
+        public String pendingTransactionHash;
+        public Transaction transaction;
 
         @Override
         @JsonIgnore
         public String getSignable() {
-            // true: because is_send = true
-            return source + target + Boolean.toString(true) + Double.toString(amount) + previousSignature;
+            return transaction.getSignable() + pendingTransactionHash;
         }
-    }
-
-    public static class ReceiveAmountRequest implements Signable {
-        public String source;
-        public String transactionSignature;
 
         @Override
         @JsonIgnore
-        public String getSignable() {
-            // false: because is_send = false
-            return source + transactionSignature + Boolean.toString(false);
+        public String getNonce() {
+            return transaction.getNonce();
         }
     }
 
     public static class Response implements Signable, NonceContainer {
         public int statusCode = -1;
         public StatusMessage status;
-        public String nonce; // nonce that the client sent and now we send back, as part of what's signed
+        public String nonce = ""; // nonce that the client sent and now we send back, as part of what's signed
 
         @Override
         @JsonIgnore
@@ -94,14 +91,52 @@ public class Serialization {
     }
 
     public static class CheckAccountResponse extends Response implements Signable {
-        public double balance;
-        public Object pendingTransactions;    // todo: change this - exceptions occur
-
+        public int balance;
+        public List<Transaction> pendingTransactions = new ArrayList<>();
 
         @Override
         @JsonIgnore
         public String getSignable() {
-            return super.getSignable() + balance + pendingTransactions;
+            StringBuilder signable = new StringBuilder(super.getSignable()).append(balance);
+            for (Transaction tx : pendingTransactions) {
+                signable.append(tx.getSignable());
+            }
+            return signable.toString();
+        }
+    }
+
+    public static class AuditResponse extends Response implements Signable {
+        public List<Transaction> transactions = new ArrayList<>();
+
+        @Override
+        @JsonIgnore
+        public String getSignable() {
+            StringBuilder signable = new StringBuilder(super.getSignable());
+            for (Transaction tx : transactions) {
+                signable.append(tx.getSignable());
+            }
+            return signable.toString();
+        }
+    }
+
+    public static class Transaction implements Signable, NonceContainer {
+        public String source;
+        public String target; // who receives the money
+        public boolean isSend;
+        public int amount;
+        public String nonce;
+        public String previousSignature;
+        public String signature;
+
+        @Override
+        @JsonIgnore
+        public String getSignable() {
+            return source + target + Boolean.toString(isSend) + Integer.toString(amount) + nonce + previousSignature;
+        }
+
+        @Override
+        public String getNonce() {
+            return nonce;
         }
     }
 

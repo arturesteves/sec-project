@@ -116,3 +116,5 @@ common/common.iml
 server/server.iml
 client/client.iml
 server/hdscoin.db
+*.keys
+*.log.*
