@@ -1,7 +1,6 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import static org.mockito.Mockito.*;
-import com.github.paweladamski.httpclientmock.HttpClientMock;
 import org.eclipse.jetty.client.HttpClient;
 
 import org.junit.*;
