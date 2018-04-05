@@ -62,7 +62,7 @@ Take the signature of the transaction you want to accept and use `ReceiveAmount`
 
 ##### How to run tests on the server 
 Open a terminal on the root directory of any project and then type:  
-`mvn clean test`
+`mvn clean test -DskipTests=false`
 
 ## Documentation
 The client side programs documentation can be found at [CLIENT-DOC](docs/CLIENT-DOCUMENTATION.md).   
