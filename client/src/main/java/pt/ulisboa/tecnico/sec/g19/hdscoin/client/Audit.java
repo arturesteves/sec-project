@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyException;
 import java.security.interfaces.ECPublicKey;
+import java.util.List;
 
 public class Audit {
     public static final String SERVER_URL = "http://localhost:4567";
@@ -62,7 +63,22 @@ public class Audit {
             ECPublicKey serverPublicKey = Utils.readPublicKeyFromFile(serverKeyPath.toString());
 
             IClient client = new Client(new URL(SERVER_URL), serverPublicKey);
-            client.audit(clientPublickey);
+            List<Serialization.Transaction> transactions = client.audit(clientPublickey);
+
+            System.out.println("Transactions:");
+            for (Serialization.Transaction tx : transactions) {
+                System.out.println("  Signature: " + tx.signature);
+                if(tx.isSend) {
+                    System.out.printf("  Sent: %d to %s\n", tx.amount, tx.target);
+                } else {
+                    if(tx.source.equals(tx.target)) {
+                        System.out.printf("  Account opened with %d\n", tx.amount);
+                    } else {
+                        System.out.printf("  Received: %d from %s\n", tx.amount, tx.source);
+                    }
+                }
+                System.out.println("--------");
+            }
 
         } catch (KeyException | IOException e) {
             throw new AuditException("Failed to audit the account of the public key provided. " + e);
