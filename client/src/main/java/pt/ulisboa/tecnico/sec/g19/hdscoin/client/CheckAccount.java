@@ -47,7 +47,7 @@ public class CheckAccount {
             throw new CheckAccountException("Can't check account, server name is missing.");
         }
 
-        String root = System.getProperty("user.dir");
+        String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\client";
 
         // This is more or less a simulation of a CA
         // Note that we could obtain the private key of the server here, but we won't do it (we assume that if a CA was

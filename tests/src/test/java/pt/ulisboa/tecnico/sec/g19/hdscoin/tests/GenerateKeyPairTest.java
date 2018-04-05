@@ -1,10 +1,13 @@
-package pt.ulisboa.tecnico.sec.g19.hdscoin.server;
+package pt.ulisboa.tecnico.sec.g19.hdscoin.tests;
 
 import org.junit.Assert;
 import org.junit.Test;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.KeyGenerationException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.GenerateKeyPair;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.Main;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.FailedToLoadKeysException;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,7 +19,8 @@ import java.security.interfaces.ECPublicKey;
 
 public class GenerateKeyPairTest {
 
-    @Test(expected = KeyGenerationException.class)
+
+    @Test (expected = KeyGenerationException.class)
     public void testMainInvalidArguments () throws KeyGenerationException {
         GenerateKeyPair.main(new String[] {""});
     }
@@ -25,6 +29,8 @@ public class GenerateKeyPairTest {
     public void testMainValidArguments () throws KeyGenerationException {
         GenerateKeyPair.main(new String[] {"-n", "SERVER_KEYS_TEST"});
     }
+/*
+
 
     // check if the file with the keys was create
     @Test
@@ -58,4 +64,6 @@ public class GenerateKeyPairTest {
         Assert.assertNotEquals (publicKey, "");
         Assert.assertEquals(privateKey.getAlgorithm(), "EC");
     }
+*/
 }
+

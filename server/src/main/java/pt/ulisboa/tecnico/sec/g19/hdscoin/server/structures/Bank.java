@@ -1,6 +1,6 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures;
 
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidLedgerException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidLedgerException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.MissingLedgerException;
 
 import java.security.interfaces.ECPublicKey;

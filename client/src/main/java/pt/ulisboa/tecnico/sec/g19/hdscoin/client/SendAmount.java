@@ -71,7 +71,7 @@ public class SendAmount {
             throw new SendAmountException("Can't send amount, the amount is missing.");
         }
 
-        String root = System.getProperty("user.dir");
+        String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\client";
         String filepathSource = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + clientNameSource + ".keys";
         String filepathTarget = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + clientNameTarget + ".keys";
         Path pathSource = Paths.get(filepathSource).normalize(); // create path and normalize it

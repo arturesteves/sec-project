@@ -7,9 +7,9 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.NonceContainer;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Signable;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.*;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidKeyException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.SignatureException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.*;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidKeyException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.SignatureException;
 
 import java.io.IOException;
 import java.net.URL;

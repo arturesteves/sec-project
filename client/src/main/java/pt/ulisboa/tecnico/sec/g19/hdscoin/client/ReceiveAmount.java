@@ -58,7 +58,7 @@ public class ReceiveAmount {
             throw new ReceiveAmountException("Can't check account, server name is missing.");
         }
 
-        String root = System.getProperty("user.dir");
+        String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\client";
         String filepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + clientName + ".keys";
         Path path = Paths.get(filepath).normalize(); // create path and normalize it
         String serverKeyFilepath = root + "\\..\\server\\" + Serialization.SERVER_PACKAGE_PATH + "\\keys\\" + serverName + ".keys";

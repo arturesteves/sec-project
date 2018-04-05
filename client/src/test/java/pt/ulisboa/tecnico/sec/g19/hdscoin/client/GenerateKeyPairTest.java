@@ -8,7 +8,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.KeyGenerationException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.KeyGenerationException;
 
 import java.io.File;
 import java.io.IOException;

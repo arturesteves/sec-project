@@ -3,9 +3,9 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures;
 import org.bouncycastle.jcajce.provider.asymmetric.ec.KeyFactorySpi;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidAmountException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidLedgerException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.SignatureException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidAmountException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidLedgerException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.SignatureException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.*;
 
 import java.nio.charset.StandardCharsets;

@@ -3,7 +3,7 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 import org.apache.commons.cli.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.KeyGenerationException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.KeyGenerationException;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -32,7 +32,7 @@ public class GenerateKeyPair {
                 usage (options);
                 throw new KeyGenerationException("Failed to generate a key pair. Missing the -n option.");
             }
-            String root = System.getProperty("user.dir");
+            String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\client";
             String filepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + clientName + ".keys";
             Path path = Paths.get (filepath).normalize(); // create path and normalize it
 

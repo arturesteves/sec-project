@@ -48,7 +48,8 @@ public class Audit {
             throw new AuditException("Can't audit account, server name is missing.");
         }
 
-        String root = System.getProperty("user.dir");
+        String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\client";
+
 
         // This is more or less a simulation of a CA
         // Note that we could obtain the private keys here, but we won't do it (we assume that if a CA was

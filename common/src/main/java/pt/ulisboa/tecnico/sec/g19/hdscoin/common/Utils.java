@@ -1,8 +1,8 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.common;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.KeyGenerationException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.SignatureException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.KeyGenerationException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.SignatureException;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;

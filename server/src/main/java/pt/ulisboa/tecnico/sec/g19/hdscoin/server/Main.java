@@ -4,16 +4,17 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.SignatureException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.SignatureException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.FailedToLoadKeysException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidAmountException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.InvalidLedgerException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidAmountException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidLedgerException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.InvalidValueException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.MissingLedgerException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.MissingTransactionException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.Ledger;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.*;
@@ -56,6 +57,8 @@ public class Main {
         } catch (KeyException | IOException e) {
             log.log(Level.SEVERE, "Failed to load keys from file. " + e);
             throw new FailedToLoadKeysException("Failed to load keys from file. " + e.getMessage(), e);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
         }
 
         try {
@@ -444,7 +447,7 @@ public class Main {
                 errorResponse.status = ERROR_INVALID_KEY;
             } catch (SQLException e) {
                 // servers fault
-                log.log(Level.SEVERE, "Error related to the databas. " + e);
+                log.log(Level.SEVERE, "Error related with the database. " + e);
                 errorResponse.status = ERROR_SERVER_ERROR;
             } finally {
                 if (conn != null) {
@@ -482,8 +485,8 @@ public class Main {
         return Serialization.serialize(response);
     }
 
-    private static void loadKeys(String serverName) throws KeyException, IOException {
-        String root = System.getProperty("user.dir");
+    private static void loadKeys(String serverName) throws KeyException, IOException, URISyntaxException {
+        String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\server";
         String filepath = root + Serialization.SERVER_PACKAGE_PATH + "\\keys\\" + serverName + ".keys";
         Path path = Paths.get(filepath).normalize();
 

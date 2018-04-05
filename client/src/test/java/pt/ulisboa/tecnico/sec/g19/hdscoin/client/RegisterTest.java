@@ -10,7 +10,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.RegisterException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.execeptions.SignatureException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.SignatureException;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -170,7 +170,7 @@ public class RegisterTest {
 
         // destroy all the key files present on the keys directory.
         // compose path
-        String root = System.getProperty("user.dir");
+        String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\client";
         String filepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys";
         Path path = Paths.get (filepath).normalize();
 
