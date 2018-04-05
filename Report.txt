@@ -14,7 +14,7 @@ for communication between the clients and the server. The server exposes a REST
 API and uses JSON serialization for transferring objects, such as transaction
 requests and account audit data. Signatures (generated/verified using the ECDSA
 private/public keys of each party, respectively) provide message integrity and
-non-repudation where needed. The server stores ledgers and their transaction
+non-repudiation where needed. The server stores ledgers and their transaction
 history in a SQLite database; the clients do not store any information other
 than their key pairs.
 
@@ -40,7 +40,7 @@ transaction by rejecting transactions with the same signature as a previous one,
 protecting against message duplication. Transaction signatures, checked by the
 server, protect against message manipulation.
 
-Message freshness, integrity and non-repudation is provided with each server
+Message freshness, integrity and non-repudiation is provided with each server
 response, which is especially important in the checkAccount and audit
 operations, as clients rely on their result to know the state of their
 accounts and to sign future transactions - clients don't store any information;
