@@ -93,9 +93,20 @@ public final class Transaction {
         if (nonce == null || nonce.isEmpty()) {
             throw new InvalidValueException("The nonce can't be null nor empty.");
         }
+
         if (hash == null || hash.isEmpty()) {
             throw new InvalidValueException("The hash can't be null nor empty.");
         }
+
+        // the transaction must be unique (due to the inclusion of a nonce, all transactions should become unique).
+        // Otherwise an attacker could just repeat client requests to send money.
+        try {
+            getTransactionByHash(connection, hash);
+            throw new InvalidValueException("Repeated transaction");
+        } catch (MissingTransactionException e) {
+            // all good
+        }
+
         if (type == null) {
             throw new InvalidValueException("The type of transaction can't be null.");
         }
@@ -200,7 +211,6 @@ public final class Transaction {
             prepStmt.close();
         }
     }
-
 
     static List<Transaction> loadResults(Connection connection, PreparedStatement prepStmt) throws SQLException {
         List<Transaction> ret = new ArrayList<>();
