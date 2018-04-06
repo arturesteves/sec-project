@@ -15,7 +15,7 @@ import java.security.interfaces.ECPublicKey;
 
 public class Register {
 
-    public static final String SERVER_URL = "http://localhost:9000";
+    public static final String SERVER_URL = "http://localhost:4567";
 
     public static void main(String[] args) throws RegisterException {
         String clientName;

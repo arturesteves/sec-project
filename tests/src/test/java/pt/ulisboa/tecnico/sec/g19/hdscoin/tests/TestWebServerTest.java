@@ -12,6 +12,7 @@ import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpTemplate;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.Register;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.RegisterException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.KeyGenerationException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.Main;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.FailedToLoadKeysException;
 
@@ -67,7 +68,11 @@ public class TestWebServerTest {
         return transactionsClient1.get(transactionsClient1.size() - 1).signature;
     }
 
-    private Bundle createTestBundle(String client1, String client2, String server) throws KeyException, IOException {
+    private Bundle createTestBundle(String client1, String client2, String server) throws KeyException, IOException, KeyGenerationException {
+        pt.ulisboa.tecnico.sec.g19.hdscoin.client.GenerateKeyPair.main(new String[] {"-n", client1});
+        pt.ulisboa.tecnico.sec.g19.hdscoin.client.GenerateKeyPair.main(new String[] {"-n", client2});
+        pt.ulisboa.tecnico.sec.g19.hdscoin.server.GenerateKeyPair.main(new String[] {"-n", server});
+
         String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\client";
         String client1KeyFilepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + client1 + ".keys";
         Path client1KeyPath = Paths.get(client1KeyFilepath).normalize(); // create path and normalize it
@@ -101,10 +106,12 @@ public class TestWebServerTest {
     @Test
     public void simpleSendAmountTest() throws RegisterException,
             FailedToLoadKeysException, SendAmountException,
-            KeyException, IOException, AuditException, CheckAccountException, ReceiveAmountException {
+            KeyException, IOException, AuditException, CheckAccountException, ReceiveAmountException, KeyGenerationException {
+
+        Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
         Main.main(new String[] {"Server_1"});
         URL serverURL = new URL("http://localhost:4567");
-        Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
+
 
         Client client = new Client(serverURL, bundle.PublicKeyServer);
         client.register(bundle.PublicKeyClient1, bundle.PrivateKeyClient1, 10); //Register client1
