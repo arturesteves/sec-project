@@ -8,7 +8,6 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.SignatureException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.FailedToLoadKeysException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidLedgerException;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.InvalidValueException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.MissingLedgerException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.MissingTransactionException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.Ledger;
@@ -33,7 +32,6 @@ import spark.Response;
 import static pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization.StatusMessage.*;
 import static spark.Spark.post;
 import static spark.Spark.get;
-import static spark.Spark.trace;
 
 
 public class Main {
