@@ -183,6 +183,7 @@ public class TestWebServerTest {
 
     }
 
+    /*
     @Test (expected = SendAmountException.class)
     public void testSendAmountTamperingWithNonceClient() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, AuditException, SendAmountException {
         Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
@@ -231,6 +232,74 @@ public class TestWebServerTest {
         client.register(bundle.PublicKeyClient2, bundle.PrivateKeyClient2, 40); //Register client2
         String prevHash = getPreviousHash(client, bundle.PublicKeyClient1);
         client.sendAmount(bundle.PublicKeyClient1, bundle.PublicKeyClient2, 30, bundle.PrivateKeyClient1, prevHash);
+
+    } */
+
+
+    @Test (expected = ReceiveAmountException.class)
+    public void testReceiveAmountTamperingWithNonceClient() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, AuditException, SendAmountException, CheckAccountException, ReceiveAmountException {
+        Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
+        Main.main(new String[] {"Server_1"});
+
+        // no tampering
+        mockServerClient
+                .when(
+                        request()
+                                .withMethod("POST")
+                                .withPath("/register"))
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
+                );
+
+        // no tampering
+        mockServerClient
+                .when(
+                        request()
+                                .withMethod("POST")
+                                .withPath("/sendAmount"))
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
+
+                );
+
+        // tampering
+        mockServerClient
+                .when(
+                        request()
+                                .withMethod("POST")
+                                .withPath("/receiveAmount"))
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorWithTamperingOnRequestCallback")
+
+                );
+
+        // forward - no tampering
+        mockServerClient
+                .when(
+                        request()
+                                .withMethod("GET"))
+                .forward(
+                        forward()
+                                .withHost("localhost")
+                                .withPort(4567)
+                );
+
+
+        //Register.main(new String[] {"-n", "Client_1", "-s", "Server_1", "-a", "10", "-p", "3456"});
+        URL serverURL = new URL("http://localhost:3456");
+
+        Client client = new Client(serverURL, bundle.PublicKeyServer);
+        client.register(bundle.PublicKeyClient1, bundle.PrivateKeyClient1, 1000); //Register client1
+        client.register(bundle.PublicKeyClient2, bundle.PrivateKeyClient2, 40); //Register client2
+        String prevHash = getPreviousHash(client, bundle.PublicKeyClient1);
+        client.sendAmount(bundle.PublicKeyClient1, bundle.PublicKeyClient2, 30, bundle.PrivateKeyClient1, prevHash);
+        CheckAccountResult result0 = client.checkAccount(bundle.PublicKeyClient2);
+        Serialization.Transaction transaction = result0.pendingTransactions.get(result0.pendingTransactions.size()-1);
+        String prevHashClient2 = getPreviousHash(client, bundle.PublicKeyClient2);
+        client.receiveAmount(bundle.PublicKeyClient2, transaction.source, transaction.amount, bundle.PrivateKeyClient2, prevHashClient2, transaction.signature);
 
     }
 }

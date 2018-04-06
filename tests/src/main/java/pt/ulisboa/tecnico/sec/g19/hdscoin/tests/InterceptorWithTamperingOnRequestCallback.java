@@ -37,7 +37,7 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
 
                 //Log.getLog().warn("BODYTESTE: " + body);
                 return response()
-                        .withStatusCode(200)
+                        .withStatusCode(request.code())
                         .withHeader("SIGNATURE", responseSignature)
                         .withBody(Serialization.serialize(response));
 
@@ -56,19 +56,19 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
 
                 //httpRequest.getBody().getValue().toString().getBytes();
-                Serialization.RegisterRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.RegisterRequest.class);
+                Serialization.SendAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.SendAmountRequest.class);
                 //Spend 20 units more
-                req.initialTransaction.amount  = req.initialTransaction.amount + 20;
-
+                req.amount  = req.amount + 20;
+                Log.getLog().warn("SERI: " + Serialization.serialize(req));
                 request.send(Serialization.serialize(req));
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
                 String body = request.body();
                 Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
 
-                //Log.getLog().warn("BODYTESTE: " + body);
+                Log.getLog().warn("BODYTESTE: " + body);
                 return response()
-                        .withStatusCode(200)
+                        .withStatusCode(request.code())
                         .withHeader("SIGNATURE", responseSignature)
                         .withBody(Serialization.serialize(response));
 
@@ -85,9 +85,9 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
                 //httpRequest.getBody().getValue().toString().getBytes();
-                Serialization.RegisterRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.RegisterRequest.class);
+                Serialization.ReceiveAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.ReceiveAmountRequest.class);
                 //Spend 20 units more
-                req.initialTransaction.amount  = req.initialTransaction.amount + 20;
+                req.transaction.amount  = req.transaction.amount + 20;
 
                 request.send(Serialization.serialize(req));
 
@@ -96,7 +96,7 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
                 Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
 
                 return response()
-                        .withStatusCode(200)
+                        .withStatusCode(request.code())
                         .withHeader("SIGNATURE", responseSignature)
                         .withBody(Serialization.serialize(response));
 
