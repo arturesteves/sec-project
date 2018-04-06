@@ -24,15 +24,19 @@ public class InterceptorWithTamperingOnResponseCallback implements ExpectationCa
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
-                request.send(httpRequest.getBody().getValue().toString().getBytes());
+
+                //httpRequest.getBody().getValue().toString().getBytes();
+                Serialization.RegisterRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.RegisterRequest.class);
+                request.send(Serialization.serialize(req));
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
                 String body = request.body();
                 Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
+                response.nonce = "bananas2";
 
-                Log.getLog().warn("BODYTESTE: " + body);
+                //Log.getLog().warn("BODYTESTE: " + body);
                 return response()
-                        .withStatusCode(200)
+                        .withStatusCode(request.code())
                         .withHeader("SIGNATURE", responseSignature)
                         .withBody(Serialization.serialize(response));
 
@@ -40,33 +44,62 @@ public class InterceptorWithTamperingOnResponseCallback implements ExpectationCa
                 e.printStackTrace();
             }
 
+        } else if(httpRequest.getPath().getValue().endsWith("/sendAmount")) {
 
+            try {
 
-            return httpResponse;
-        } else {
-            return notFoundResponse();
+                com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
+                        .post(new URL("http://localhost:4567/sendAmount"));
+
+                request.header(Serialization.SIGNATURE_HEADER_NAME,
+                        httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
+
+                //httpRequest.getBody().getValue().toString().getBytes();
+                Serialization.SendAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.SendAmountRequest.class);
+                Log.getLog().warn("SERI: " + Serialization.serialize(req));
+                request.send(Serialization.serialize(req));
+
+                String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
+                String body = request.body();
+                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
+                response.nonce = "banana4";
+
+                Log.getLog().warn("BODYTESTE: " + body);
+                return response()
+                        .withStatusCode(request.code())
+                        .withHeader("SIGNATURE", responseSignature)
+                        .withBody(Serialization.serialize(response));
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        } else if(httpRequest.getPath().getValue().endsWith("/receiveAmount")) {
+            try {
+
+                com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
+                        .post(new URL("http://localhost:4567/receiveAmount"));
+
+                request.header(Serialization.SIGNATURE_HEADER_NAME,
+                        httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
+                //httpRequest.getBody().getValue().toString().getBytes();
+                Serialization.ReceiveAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.ReceiveAmountRequest.class);
+                request.send(Serialization.serialize(req));
+
+                String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
+                String body = request.body();
+                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
+                response.nonce = "banana4";
+                return response()
+                        .withStatusCode(request.code())
+                        .withHeader("SIGNATURE", responseSignature)
+                        .withBody(Serialization.serialize(response));
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
         }
+        return notFoundResponse();
     }
-
-    public static HttpResponse httpResponse = response()
-            .withStatusCode(200)
-            .withHeader("SIGNATURE", "MEUCIC/m/0b8EHyAcuhmdyE+CQr03jL6kgBfHDfETETzxL1XAiEAgqZHB4cqMjUtKbOChZMijjj33HdSxU6YQ3G/I0BjfcA=")
-            .withBody("{\n" +
-                    "    \"statusCode\": 400,\n" +
-                    "    \"status\": \"ERROR_NO_SIGNATURE_MATCH\",\n" +
-                    "    \"nonce\": \"abc\"\n" +
-                    "}");
-            /*.withBody("{\n" +
-                    "\t\"initialTransaction\": \n" +
-                    "\t{\n" +
-                    "\t\t\"source\": \"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEba/fCx1A3jn0wa7tupGBoCPqJvXvbCyqtaFmvXZXkoUklrc9jCenyveUamhC0ZH3Ne1roZWL+MTCZ9lpOMhHnQ==\",\n" +
-                    "\t\t\"target\": \"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEba/fCx1A3jn0wa7tupGBoCPqJvXvbCyqtaFmvXZXkoUklrc9jCenyveUamhC0ZH3Ne1roZWL+MTCZ9lpOMhHnQ==\",\n" +
-                    "\t\t\"isSend\": \"true\",\n" +
-                    "\t\t\"amount\": 15,\n" +
-                    "\t\t\"nonce\" : \"abc\",\n" +
-                    "\t    \"previousSignature\": \"MEQCIGWVj8dH6aeAqvUOgUnHhXRWDBgLYr5Ub57mm6AqGvaGAiAdNMZfyWkuGNpAjFiNhGX+voSN7MQ29d0hs0rKsSo/ZQ==\",\n" +
-                    "\t    \"signature\": \"MEQCIGWVj8dH6aeAqvUOgUnHhXRWDBgLYr5Ub57mm6AqGvaGAiAdNMZfyWkuGNpAjFiNhGX+voSN7MQ29d0hs0rKsSo/ZQ==\"\n" +
-                    "\t}\n" +
-                    "}");
-                    */
 }
