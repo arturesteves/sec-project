@@ -31,9 +31,7 @@ import spark.Request;
 import spark.Response;
 
 import static pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization.StatusMessage.*;
-import static spark.Spark.post;
-import static spark.Spark.get;
-import static spark.Spark.trace;
+import static spark.Spark.*;
 
 
 public class Main {
@@ -54,6 +52,11 @@ public class Main {
             loadKeys(args[0]);
             log.log(Level.INFO, "Loaded keys of the server.");
 
+            if(args.length == 2) {
+                log.log(Level.INFO, "Using port number " + args[1]);
+                port(Integer.parseInt(args[1]));
+            }
+
         } catch (KeyException | IOException e) {
             log.log(Level.SEVERE, "Failed to load keys from file. " + e);
             throw new FailedToLoadKeysException("Failed to load keys from file. " + e.getMessage(), e);
@@ -69,6 +72,8 @@ public class Main {
             e.printStackTrace();
             System.exit(-1);
         }
+
+
 
         post("/register", "application/json", (req, res) -> {
 

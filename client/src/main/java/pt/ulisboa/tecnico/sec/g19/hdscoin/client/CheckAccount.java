@@ -74,6 +74,7 @@ public class CheckAccount {
             } else {
                 System.out.println("No pending incoming transactions");
             }
+
         } catch (KeyException | IOException e) {
             throw new CheckAccountException("Failed to check the account of the public key provided. " + e);
         }

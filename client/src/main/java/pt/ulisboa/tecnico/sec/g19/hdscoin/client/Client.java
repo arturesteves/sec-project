@@ -168,6 +168,7 @@ public class Client implements IClient {
         }
     }
 
+    //
     @Override
     public void receiveAmount(ECPublicKey sourcePublicKey, String targetPublicKey, int amount,
                               ECPrivateKey sourcePrivateKey, String previousSignature, String incomingSignature)
