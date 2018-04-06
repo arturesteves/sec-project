@@ -269,7 +269,7 @@ public class Client implements IClient {
         }
     }
 
-    private <T> T sendPostRequest(String url, ECPrivateKey privateKey, Object payload, Class<T> responseValueType) throws HttpRequest.HttpRequestException, IOException, SignatureException, InvalidServerResponseException, InvalidClientSignatureException {
+    public <T> T sendPostRequest(String url, ECPrivateKey privateKey, Object payload, Class<T> responseValueType) throws HttpRequest.HttpRequestException, IOException, SignatureException, InvalidServerResponseException, InvalidClientSignatureException {
         String payloadJson = Serialization.serialize(payload);
         String nonce = ((NonceContainer) payload).getNonce();
 
@@ -305,8 +305,8 @@ public class Client implements IClient {
         System.out.println("Server NONCE: " + responseNonce);
         System.out.println("Server SIGN : " + responseSignature);
         if (!responseNonce.equals(nonce)) {
-            throw new InvalidServerResponseException("The nonce received by the server do not match the one " +
-                    "the client sent previously.");
+            throw new InvalidServerResponseException("The nonce received by the client do not match the one " +
+                    "he sent previously.");
         }
 
         if (responseCode != 200) {
@@ -319,7 +319,7 @@ public class Client implements IClient {
         return response;
     }
 
-    private <T> T sendGetRequest(String url, Class<T> responsValueType) throws HttpRequest.HttpRequestException, IOException, InvalidServerResponseException, SignatureException {
+    public <T> T sendGetRequest(String url, Class<T> responsValueType) throws HttpRequest.HttpRequestException, IOException, InvalidServerResponseException, SignatureException {
         String nonce = Utils.randomNonce();
         HttpRequest request = HttpRequest
                 .get(url)

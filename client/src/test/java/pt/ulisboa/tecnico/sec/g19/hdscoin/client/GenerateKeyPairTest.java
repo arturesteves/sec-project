@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -95,7 +96,7 @@ public class GenerateKeyPairTest {
         Assert.assertEquals(privateKey.getAlgorithm(), "EC");
     }
 
-    //@AfterClass
+    @AfterClass
     public static void clean () {
         // destroy all the key files present on the keys directory.
         String root = System.getProperty("user.dir");

@@ -4,19 +4,13 @@ import org.junit.*;
 import org.mockserver.client.server.MockServerClient;
 import org.mockserver.junit.MockServerRule;
 
-import org.mockserver.model.HttpTemplate;
-import org.mockserver.model.HttpRequest;
-import org.mockserver.model.HttpResponse;
-
-import org.mockserver.model.HttpResponse;
-import org.mockserver.model.HttpTemplate;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.Register;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.RegisterException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.KeyGenerationException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.Main;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.FailedToLoadKeysException;
 
-import static org.mockserver.model.HttpForward.forward;
+import static org.mockserver.model.HttpClassCallback.callback;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
@@ -26,13 +20,13 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.client.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.server.Main;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.FailedToLoadKeysException;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback;
 import java.security.KeyException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
@@ -139,71 +133,35 @@ public class TestWebServerTest {
 
 
     @Test
-    public void testRegisterClient() throws RegisterException, FailedToLoadKeysException {
+    public void testRegisterClient() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException {
+        Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
         Main.main(new String[] {"Server_1"});
 
-        // test inicar sv com uma key e usar outro sv key para ssinar - deve falhar
-        //mockServerClient.when(HttpRequest.request("/register")).respond(HttpResponse.response().withStatusCode(200));
-
-        // request.queryStringParameters['userId'] returns an array of values because headers and queryStringParameters have multiple values
-        String template = "return {\n" +
-                "    'path' : \"/register\",\n" +
-                "    'headers' : {\n" +
-                "        'Host' : [ \"localhost:4567\" ]\n" +
-                "    },\n" +
-                "    'body': JSON.stringify(" +
-                "{" +
-                    "'initialTransaction': " +
-                    "{" +
-                        "'source': 'a', " +
-                        "'target': 'a', " +
-                        "'isSend' : true, " +
-                        "'amount' : 15, " +
-                        "'nonce' : 'abc', " +
-                        "'previousSignature': 'a', " +
-                        "'signature': 'a'" +
-                    "}" +
-                "})" +
-                "};";
 
         mockServerClient
                 .when(
                         request()
                                 .withMethod("POST")
                                 .withPath("/register"))
-                .forward(
-                        template(
-                                HttpTemplate.TemplateType.JAVASCRIPT,
-                                template)
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
                 );
-        Register.main(new String[] {"-n", "Client_1", "-s", "Server_1", "-a", "10"});
-        /*
+        //Register.main(new String[] {"-n", "Client_1", "-s", "Server_1", "-a", "10", "-p", "3456"});
+        URL serverURL = new URL("http://localhost:3456");
+
+        Client client = new Client(serverURL, bundle.PublicKeyServer);
+        client.register(bundle.PublicKeyClient1, bundle.PrivateKeyClient1, 10); //Register client1
 
 
-                forward()
-                                .withHost("mock-server.com")
-                                .withPort(80)
-        )*/
-                /*
-                .respond(
-                        response()
-                                .withStatusCode(401)
-                                .withHeaders(
-                                        new Header("Content-Type", "application/json; charset=utf-8"),
-                                        new Header("Cache-Control", "public, max-age=86400"))
-                                .withBody("{ message: 'incorrect username and password combination' }")
-                                .withDelay(TimeUnit.SECONDS,1)
-                */
-
-        //Register.main(new String[] {"-n", "Client_1", "-s", "Server_1", "-a", "10"});
-
-        //Register.main(new String[] {"-n", "Client_1", "-s", "SERVER_KEYS_TEST", "-a", "10"});
     }
+
 
     /*
     @Test
-    public void testTamperedNonce() throws KeyGenerationException, RegisterException {
-        GenerateKeyPair.main(new String[] {"-n", "CLIENT_TAMPERED"});
+    public void testTamperedNonce() throws KeyGenerationException, RegisterException, KeyException, IOException {
+        Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
+        //GenerateKeyPair.main(new String[] {"-n", "CLIENT_TAMPERED"});
         Register.main(new String[] {"-n", "CLIENT_TAMPERED", "-s", "SERVER_KEYS_TEST", "-a", "10"});
 
     }
