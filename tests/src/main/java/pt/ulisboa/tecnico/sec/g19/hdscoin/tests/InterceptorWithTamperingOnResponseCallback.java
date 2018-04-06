@@ -4,25 +4,16 @@ import org.eclipse.jetty.util.log.Log;
 import org.mockserver.mock.action.ExpectationCallback;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.client.Client;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.Transaction;
 
 import java.io.IOException;
 import java.net.URL;
-import java.net.URLEncoder;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.KeyException;
-import java.security.interfaces.ECPrivateKey;
-import java.security.interfaces.ECPublicKey;
 
 import static org.mockserver.model.HttpResponse.notFoundResponse;
 import static org.mockserver.model.HttpResponse.response;
 
 
-public class InterceptorCallback implements ExpectationCallback {
+public class InterceptorWithTamperingOnResponseCallback implements ExpectationCallback {
 
     public HttpResponse handle(HttpRequest httpRequest) {
         if (httpRequest.getPath().getValue().endsWith("/register")) {
@@ -49,8 +40,9 @@ public class InterceptorCallback implements ExpectationCallback {
                 e.printStackTrace();
             }
 
-            return httpResponse;
 
+
+            return httpResponse;
         } else {
             return notFoundResponse();
         }

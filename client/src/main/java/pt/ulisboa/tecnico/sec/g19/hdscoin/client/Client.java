@@ -269,7 +269,7 @@ public class Client implements IClient {
         }
     }
 
-    public <T> T sendPostRequest(String url, ECPrivateKey privateKey, Object payload, Class<T> responseValueType) throws HttpRequest.HttpRequestException, IOException, SignatureException, InvalidServerResponseException, InvalidClientSignatureException {
+    private <T> T sendPostRequest(String url, ECPrivateKey privateKey, Object payload, Class<T> responseValueType) throws HttpRequest.HttpRequestException, IOException, SignatureException, InvalidServerResponseException, InvalidClientSignatureException {
         String payloadJson = Serialization.serialize(payload);
         String nonce = ((NonceContainer) payload).getNonce();
 
@@ -319,7 +319,7 @@ public class Client implements IClient {
         return response;
     }
 
-    public <T> T sendGetRequest(String url, Class<T> responsValueType) throws HttpRequest.HttpRequestException, IOException, InvalidServerResponseException, SignatureException {
+    private <T> T sendGetRequest(String url, Class<T> responsValueType) throws HttpRequest.HttpRequestException, IOException, InvalidServerResponseException, SignatureException {
         String nonce = Utils.randomNonce();
         HttpRequest request = HttpRequest
                 .get(url)

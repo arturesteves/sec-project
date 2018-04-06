@@ -11,6 +11,7 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.server.Main;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.FailedToLoadKeysException;
 
 import static org.mockserver.model.HttpClassCallback.callback;
+import static org.mockserver.model.HttpForward.forward;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
@@ -137,7 +138,7 @@ public class TestWebServerTest {
         Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
         Main.main(new String[] {"Server_1"});
 
-
+        // no tampering
         mockServerClient
                 .when(
                         request()
@@ -151,19 +152,85 @@ public class TestWebServerTest {
         URL serverURL = new URL("http://localhost:3456");
 
         Client client = new Client(serverURL, bundle.PublicKeyServer);
-        client.register(bundle.PublicKeyClient1, bundle.PrivateKeyClient1, 10); //Register client1
+        client.register(bundle.PublicKeyClient1, bundle.PrivateKeyClient1, 234); //Register client1
 
 
     }
 
-
-    /*
-    @Test
-    public void testTamperedNonce() throws KeyGenerationException, RegisterException, KeyException, IOException {
+    @Test (expected = RegisterException.class)
+    public void testRegisterTamperingWithNonceClient() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException {
         Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
-        //GenerateKeyPair.main(new String[] {"-n", "CLIENT_TAMPERED"});
-        Register.main(new String[] {"-n", "CLIENT_TAMPERED", "-s", "SERVER_KEYS_TEST", "-a", "10"});
+        Main.main(new String[] {"Server_1"});
+
+        // simulating tampering
+        mockServerClient
+                .when(
+                        request()
+                                .withMethod("POST")
+                                .withPath("/register"))
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorWithTamperingOnRequestCallback")
+                );
+
+
+
+        //Register.main(new String[] {"-n", "Client_1", "-s", "Server_1", "-a", "10", "-p", "3456"});
+        URL serverURL = new URL("http://localhost:3456");
+
+        Client client = new Client(serverURL, bundle.PublicKeyServer);
+        client.register(bundle.PublicKeyClient1, bundle.PrivateKeyClient1, 340); //Register client1
 
     }
-*/
+
+    @Test (expected = SendAmountException.class)
+    public void testSendAmountTamperingWithNonceClient() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, AuditException, SendAmountException {
+        Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
+        Main.main(new String[] {"Server_1"});
+
+        // no tampering
+        mockServerClient
+                .when(
+                        request()
+                                .withMethod("POST")
+                                .withPath("/register"))
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
+                );
+
+        // tampering
+        mockServerClient
+                .when(
+                        request()
+                                .withMethod("POST")
+                                .withPath("/sendAmount"))
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorWithTamperingOnRequestCallback")
+
+                );
+
+        // forward - no tampering
+        mockServerClient
+                .when(
+                        request()
+                                .withMethod("GET"))
+                .forward(
+                        forward()
+                                .withHost("localhost")
+                                .withPort(4567)
+                );
+
+
+        //Register.main(new String[] {"-n", "Client_1", "-s", "Server_1", "-a", "10", "-p", "3456"});
+        URL serverURL = new URL("http://localhost:3456");
+
+        Client client = new Client(serverURL, bundle.PublicKeyServer);
+        client.register(bundle.PublicKeyClient1, bundle.PrivateKeyClient1, 1000); //Register client1
+        client.register(bundle.PublicKeyClient2, bundle.PrivateKeyClient2, 40); //Register client2
+        String prevHash = getPreviousHash(client, bundle.PublicKeyClient1);
+        client.sendAmount(bundle.PublicKeyClient1, bundle.PublicKeyClient2, 30, bundle.PrivateKeyClient1, prevHash);
+
+    }
 }
