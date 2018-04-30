@@ -37,7 +37,7 @@ import static spark.Spark.*;
 
 
 public class Main {
-    private final static Logger log = Logger.getLogger(Main.class.getName());
+    private static Logger log;
 
     private static ECPublicKey serverPublicKey;
     private static ECPrivateKey serverPrivateKey;
@@ -45,23 +45,23 @@ public class Main {
     private static Object ledgerLock = new Object();
 
     private static List<ServerInfo> servers;
-
-
+    
     public static void main(String[] args) throws FailedToLoadKeysException {
-        // set Logger
-        Utils.initLogger(log);
-        Security.addProvider(new BouncyCastleProvider());
-        log.log(Level.CONFIG, "Added bouncy castle security provider.");
 
         try {
             loadKeys(args[0]);
             Database.setDatabaseName(args[0] + "_database");
+            log = Logger.getLogger(args[0] + "_logs");
+
+            // set Logger
+            Utils.initLogger(log);
+            Security.addProvider(new BouncyCastleProvider());
+            log.log(Level.CONFIG, "Added bouncy castle security provider.");
+
             log.log(Level.INFO, "Loaded keys of the server.");
 
-            if(args.length == 2) {
-                log.log(Level.INFO, "Using port number " + args[1]);
-                port(Integer.parseInt(args[1]));
-            }
+            log.log(Level.INFO, "Using port number " + args[1]);
+            port(Integer.parseInt(args[1]));
 
             //Getting the replica servers information given by argument.
             servers = new ArrayList<>();
