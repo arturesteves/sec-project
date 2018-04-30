@@ -16,6 +16,7 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.Ledger;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.*;
@@ -43,7 +44,7 @@ public class Main {
 
     private static Object ledgerLock = new Object();
 
-    private ArrayList<ServerInfo> listServers;
+    private static List<ServerInfo> servers;
 
 
     public static void main(String[] args) throws FailedToLoadKeysException {
@@ -54,15 +55,21 @@ public class Main {
 
         try {
             loadKeys(args[0]);
+            Database.setDatabaseName(args[0] + "_database");
             log.log(Level.INFO, "Loaded keys of the server.");
 
-
-            /*
             if(args.length == 2) {
                 log.log(Level.INFO, "Using port number " + args[1]);
                 port(Integer.parseInt(args[1]));
             }
-            */
+
+            //Getting the replica servers information given by argument.
+            servers = new ArrayList<>();
+            for(int i = 2; i + 1 < args.length; i+=2) {
+                Keypair keypair = loadKeypair(args[i+1]);
+                ServerInfo serverInfo = new ServerInfo(new URL(args[i]), keypair.publicKey);
+                servers.add(serverInfo);
+            }
 
         } catch (KeyException | IOException e) {
             log.log(Level.SEVERE, "Failed to load keys from file. " + e);
@@ -80,10 +87,24 @@ public class Main {
             System.exit(-1);
         }
 
-
         get("/servers", "application/json", (req, res) -> {
+            try {
+                Serialization.ServerListResponse response = new Serialization.ServerListResponse();
+                response.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
 
-            return null;
+                log.log(Level.INFO, "Request received at: /servers \n" +
+                        "data on the request: \n" +
+                        "\tNONCE: " + req.headers(Serialization.NONCE_HEADER_NAME));
+
+                response.servers = Main.servers;
+                return prepareResponse(serverPrivateKey, req, res, response);
+            } catch (Exception ex) {
+                res.status(500);
+                Serialization.Response response = new Serialization.Response();
+                response.status = ERROR_SERVER_ERROR;
+                log.log(Level.SEVERE, "Error on processing a check account request. " + ex);
+                return prepareResponse(serverPrivateKey, req, res, response);
+            }
         });
 
         post("/register", "application/json", (req, res) -> {
@@ -508,6 +529,21 @@ public class Main {
 
         serverPublicKey = Utils.readPublicKeyFromFile(path.toString());
         serverPrivateKey = Utils.readPrivateKeyFromFile(path.toString());
+    }
+
+    static class Keypair {
+        public ECPublicKey publicKey;
+        public ECPrivateKey privateKey;
+    }
+
+    private static Keypair loadKeypair(String serverName) throws KeyException, IOException, URISyntaxException {
+        String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\server";
+        String filepath = root + Serialization.SERVER_PACKAGE_PATH + "\\keys\\" + serverName + ".keys";
+        Path path = Paths.get(filepath).normalize();
+        Keypair keypair = new Keypair();
+        keypair.publicKey = Utils.readPublicKeyFromFile(path.toString());
+        keypair.privateKey = Utils.readPrivateKeyFromFile(path.toString());
+        return keypair;
     }
 
     private static List<Serialization.Transaction> serializeTransactions(List<Transaction> transactions) throws KeyException {

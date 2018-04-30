@@ -3,10 +3,7 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 import com.github.kevinsawicki.http.HttpRequest;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.*;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.NonceContainer;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Signable;
-import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidKeyException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.SignatureException;
@@ -23,20 +20,93 @@ import static pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization.StatusMess
 
 public class Client implements IClient {
 
-    private URL url;
-    private ECPublicKey serverPublicKey;
+    //Base server for bootstrapping
+    private ServerInfo server;
+
+    private List<ServerInfo> servers;
 
     static {
         Security.addProvider(new BouncyCastleProvider());
     }
 
+    //Receives the bootstrap server to gather the cluster information
     public Client(URL url, ECPublicKey serverPublicKey) {
-        this.url = url;
-        this.serverPublicKey = serverPublicKey;
+        server = new ServerInfo(url, serverPublicKey);
+        this.servers = getServerList();
+    }
+
+    //Get the list of replicated servers using the bootstrap server url and public key
+    private List<ServerInfo> getServerList() {
+        try {
+            String requestPath = server.serverUrl.toString() +
+                    "/servers";
+
+            Serialization.ServerListResponse response = sendGetRequest(server.publicKey, requestPath,
+                    Serialization.ServerListResponse.class);
+
+            System.out.println("response.statusCode: " + response.statusCode);
+            System.out.println("response.status: " + response.status);
+
+            if (response.statusCode == 200) {
+                // check transaction chain
+                // transactions come ordered from the oldest to the newest
+
+                return response.servers;
+            }
+            switch (response.status) {
+                case ERROR_SERVER_ERROR:
+                default:
+                    throw new ServerErrorException("Error on the server side.");
+            }
+
+        } catch (ServerErrorException | IOException |
+                InvalidServerResponseException | SignatureException e) {
+            throw new RuntimeException("Could not gather server information.");
+        }
+
     }
 
     @Override
     public void register(ECPublicKey publicKey, ECPrivateKey privateKey, int amount) throws RegisterException {
+        for(ServerInfo server : this.servers) {
+            register(server, publicKey, privateKey, amount);
+        }
+    }
+
+    @Override
+    public void sendAmount(ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, int amount,
+                           ECPrivateKey sourcePrivateKey, String previousSignature) throws SendAmountException {
+        for(ServerInfo server : this.servers) {
+            sendAmount(server, sourcePublicKey, targetPublicKey, amount, sourcePrivateKey, previousSignature);
+        }
+    }
+
+    @Override
+    public CheckAccountResult checkAccount(ECPublicKey publicKey) throws CheckAccountException {
+        CheckAccountResult checkAccountResult = null;
+        for(ServerInfo server : this.servers) {
+            checkAccountResult = checkAccount(server, publicKey);
+        }
+        return checkAccountResult;
+    }
+
+    @Override
+    public void receiveAmount(ECPublicKey sourcePublicKey, String targetPublicKey, int amount,
+                              ECPrivateKey sourcePrivateKey, String previousSignature, String incomingSignature) throws ReceiveAmountException {
+        for(ServerInfo server : this.servers) {
+            receiveAmount(server, sourcePublicKey, targetPublicKey, amount, sourcePrivateKey, previousSignature, incomingSignature);
+        }
+    }
+    @Override
+    public List<Serialization.Transaction> audit(ECPublicKey publicKey) throws AuditException {
+        List<Serialization.Transaction> transactions = null;
+        for(ServerInfo server : this.servers) {
+            transactions = audit(server, publicKey);
+        }
+        return transactions;
+    }
+
+    private void register(ServerInfo server, ECPublicKey publicKey, ECPrivateKey privateKey, int amount) throws RegisterException {
         try {
             String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
             Serialization.RegisterRequest request = new Serialization.RegisterRequest();
@@ -59,7 +129,7 @@ public class Client implements IClient {
             System.out.println();
 
             // http post request
-            Serialization.Response response = sendPostRequest(url.toString() + "/register", privateKey, request,
+            Serialization.Response response = sendPostRequest(server.publicKey, server.serverUrl.toString() + "/register", privateKey, request,
                     Serialization.Response.class);
 
             if (response.statusCode == 200) {
@@ -89,8 +159,7 @@ public class Client implements IClient {
         }
     }
 
-    @Override
-    public void sendAmount(ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, int amount,
+    private void sendAmount(ServerInfo server, ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, int amount,
                            ECPrivateKey sourcePrivateKey, String previousSignature) throws SendAmountException {
         try {
             String b64SourcePublicKey = Serialization.publicKeyToBase64(sourcePublicKey);
@@ -104,7 +173,7 @@ public class Client implements IClient {
             request.previousSignature = previousSignature;
             request.signature = Utils.generateSignature(request.getSignable(), sourcePrivateKey);
 
-            Serialization.Response response = sendPostRequest(url.toString() + "/sendAmount", sourcePrivateKey,
+            Serialization.Response response = sendPostRequest(server.publicKey, server.serverUrl.toString() + "/sendAmount", sourcePrivateKey,
                     request, Serialization.Response.class);
 
             if (response.statusCode == 200) {
@@ -132,14 +201,13 @@ public class Client implements IClient {
         }
     }
 
-    @Override
-    public CheckAccountResult checkAccount(ECPublicKey publicKey) throws CheckAccountException {
+    private CheckAccountResult checkAccount(ServerInfo server, ECPublicKey publicKey) throws CheckAccountException {
         try {
             String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
-            String requestPath = url.toString() +
+            String requestPath = server.serverUrl.toString() +
                     "/checkAccount/" + URLEncoder.encode(b64PublicKey, "UTF-8");
 
-            Serialization.CheckAccountResponse response = sendGetRequest(requestPath,
+            Serialization.CheckAccountResponse response = sendGetRequest(server.publicKey, requestPath,
                     Serialization.CheckAccountResponse.class);
 
             System.out.println("response.statusCode: " + response.statusCode);
@@ -168,9 +236,7 @@ public class Client implements IClient {
         }
     }
 
-    //
-    @Override
-    public void receiveAmount(ECPublicKey sourcePublicKey, String targetPublicKey, int amount,
+    private void receiveAmount(ServerInfo server, ECPublicKey sourcePublicKey, String targetPublicKey, int amount,
                               ECPrivateKey sourcePrivateKey, String previousSignature, String incomingSignature)
             throws ReceiveAmountException {
         try {
@@ -189,7 +255,7 @@ public class Client implements IClient {
             request.pendingTransactionHash = incomingSignature;
             // signature for the whole request (including transaction):
 
-            Serialization.Response response = sendPostRequest(url.toString() + "/receiveAmount", sourcePrivateKey,
+            Serialization.Response response = sendPostRequest(server.publicKey, server.serverUrl.toString() + "/receiveAmount", sourcePrivateKey,
                     request, Serialization.Response.class);
 
             if (response.statusCode == 200) {
@@ -218,14 +284,13 @@ public class Client implements IClient {
         }
     }
 
-    @Override
-    public List<Serialization.Transaction> audit(ECPublicKey publicKey) throws AuditException {
+    private List<Serialization.Transaction> audit(ServerInfo server, ECPublicKey publicKey) throws AuditException {
         try {
             String b64PublicKey = Serialization.publicKeyToBase64(publicKey);
-            String requestPath = url.toString() +
+            String requestPath = server.serverUrl.toString() +
                     "/audit/" + URLEncoder.encode(b64PublicKey, "UTF-8");
 
-            Serialization.AuditResponse response = sendGetRequest(requestPath,
+            Serialization.AuditResponse response = sendGetRequest(server.publicKey, requestPath,
                     Serialization.AuditResponse.class);
 
             System.out.println("response.statusCode: " + response.statusCode);
@@ -269,7 +334,7 @@ public class Client implements IClient {
         }
     }
 
-    private <T> T sendPostRequest(String url, ECPrivateKey privateKey, Object payload, Class<T> responseValueType) throws HttpRequest.HttpRequestException, IOException, SignatureException, InvalidServerResponseException, InvalidClientSignatureException {
+    private <T> T sendPostRequest(ECPublicKey serverPublicKey, String url, ECPrivateKey privateKey, Object payload, Class<T> responseValueType) throws HttpRequest.HttpRequestException, IOException, SignatureException, InvalidServerResponseException, InvalidClientSignatureException {
         String payloadJson = Serialization.serialize(payload);
         String nonce = ((NonceContainer) payload).getNonce();
 
@@ -319,7 +384,7 @@ public class Client implements IClient {
         return response;
     }
 
-    private <T> T sendGetRequest(String url, Class<T> responsValueType) throws HttpRequest.HttpRequestException, IOException, InvalidServerResponseException, SignatureException {
+    private <T> T sendGetRequest(ECPublicKey serverPublicKey, String url, Class<T> responsValueType) throws HttpRequest.HttpRequestException, IOException, InvalidServerResponseException, SignatureException {
         String nonce = Utils.randomNonce();
         HttpRequest request = HttpRequest
                 .get(url)
