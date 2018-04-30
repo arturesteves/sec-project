@@ -4,6 +4,9 @@ echo.
 echo Bootstraping the servers...
 echo.
 
+::del src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/server/keys/*
+
+
 :: number of failure tolerated
 SET f=1
 :: number of replicas necessary to tolerate f failures 
@@ -23,14 +26,25 @@ echo Number of supported failures: %f%
 echo Number of Replicas: %N%
 echo.
 
+:: generate keys
 for /l %%x in (1, 1, %N%) do (
 	echo Generating a key pair for the following replica: %server_prefix%!i!
 	:: generate server key pair on a new command line
 	start cmd /c mvn exec:java@GenerateKeyPair -Dexec.args="-n %server_prefix%!i!"
-	TIMEOUT /t 10
-	
+	TIMEOUT /t 15 /nobreak
+
+	SET /a i=!i!+1
+	SET /a port=!port!+1
+)
+
+SET i=1
+SET port=4570
+
+:: init repicas
+for /l %%x in (1, 1, %N%) do (
 	echo Starting the following replica %server_prefix%!i!
 	start cmd /k mvn exec:java@WebServer -Dexec.args="Server_!i! !port!%serversInfo%"
+	TIMEOUT /t 5 /nobreak
 	SET /a i=!i!+1
 	SET /a port=!port!+1
 )

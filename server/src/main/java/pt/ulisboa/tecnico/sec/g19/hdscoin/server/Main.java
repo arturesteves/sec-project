@@ -60,6 +60,7 @@ public class Main {
 
             log.log(Level.INFO, "Loaded keys of the server.");
 
+            log.log(Level.INFO, "Server identification: " + args[0]);
             log.log(Level.INFO, "Using port number " + args[1]);
             port(Integer.parseInt(args[1]));
 
@@ -97,12 +98,14 @@ public class Main {
                         "\tNONCE: " + req.headers(Serialization.NONCE_HEADER_NAME));
 
                 response.servers = Main.servers;
+                response.status = SUCCESS;
                 return prepareResponse(serverPrivateKey, req, res, response);
             } catch (Exception ex) {
+                ex.printStackTrace();
                 res.status(500);
                 Serialization.Response response = new Serialization.Response();
                 response.status = ERROR_SERVER_ERROR;
-                log.log(Level.SEVERE, "Error on processing a check account request. " + ex);
+                log.log(Level.SEVERE, "Error on processing a get servers request. " + ex);
                 return prepareResponse(serverPrivateKey, req, res, response);
             }
         });
@@ -501,6 +504,7 @@ public class Main {
     }
 
     private static String prepareResponse(ECPrivateKey privateKey, Request sparkRequest, Response sparkResponse, Serialization.Response response) throws JsonProcessingException, SignatureException {
+
         if (response.statusCode < 0) {
             // try to guess a status code from the status string
             switch (response.status) {
