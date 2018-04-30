@@ -6,8 +6,15 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class Database {
+
+    private static String databaseName = "hdscoin.db";
+
+    public static void setDatabaseName(String dbName) {
+        databaseName = dbName + ".db";
+    }
+
     public static Connection getConnection() throws SQLException {
-        Connection conn=  DriverManager.getConnection("jdbc:sqlite:hdscoin.db");
+        Connection conn=  DriverManager.getConnection("jdbc:sqlite:" + databaseName);
         // we want explicit transactions and commits to avoid inconsistent states
         conn.setAutoCommit(false);
         return conn;
