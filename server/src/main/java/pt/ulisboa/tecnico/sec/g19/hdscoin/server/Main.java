@@ -58,10 +58,8 @@ public class Main {
             Database.setDatabaseName(args[0] + "_database");
             log.log(Level.INFO, "Loaded keys of the server.");
 
-            if(args.length == 2) {
-                log.log(Level.INFO, "Using port number " + args[1]);
-                port(Integer.parseInt(args[1]));
-            }
+            log.log(Level.INFO, "Using port number " + args[1]);
+            port(Integer.parseInt(args[1]));
 
             //Getting the replica servers information given by argument.
             servers = new ArrayList<>();
