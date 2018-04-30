@@ -23,11 +23,7 @@ import java.util.logging.Logger;
 
 
 public final class Ledger {
-    private final static Logger log = Logger.getLogger(Ledger.class.getName());
-
-    static {
-        Utils.initLogger(log);
-    }
+    public static Logger log;
 
     private int id;
     private ECPublicKey publicKey;    // can't change

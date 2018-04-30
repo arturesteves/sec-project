@@ -4,8 +4,11 @@ echo.
 echo Bootstraping the servers...
 echo.
 
-::del src/main/java/pt/ulisboa/tecnico/sec/g19/hdscoin/server/keys/*
-
+:: remove all previously generated keys
+SET dir=%cd%
+cd %cd%\src\main\java\pt\ulisboa\tecnico\sec\g19\hdscoin\server\keys\
+del /Q *.*
+cd %dir%
 
 :: number of failure tolerated
 SET f=1

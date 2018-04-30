@@ -30,8 +30,9 @@ public class Client implements IClient {
     }
 
     //Receives the bootstrap server to gather the cluster information
-    public Client(URL url, ECPublicKey serverPublicKey) {
-        server = new ServerInfo(url, serverPublicKey);
+    public Client(URL url, ECPublicKey serverPublicKey) throws KeyException {
+        server = new ServerInfo(url, Serialization.publicKeyToBase64 (serverPublicKey));
+        System.out.println ("Server Info: " + server.serverUrl.toString ());
         this.servers = getServerList();
     }
 
@@ -41,7 +42,7 @@ public class Client implements IClient {
             String requestPath = server.serverUrl.toString() +
                     "/servers";
 
-            Serialization.ServerListResponse response = sendGetRequest(server.publicKey, requestPath,
+            Serialization.ServerListResponse response = sendGetRequest(Serialization.base64toPublicKey (server.publicKeyBase64), requestPath,
                     Serialization.ServerListResponse.class);
 
             System.out.println("response.statusCode: " + response.statusCode);
@@ -59,8 +60,9 @@ public class Client implements IClient {
                     throw new ServerErrorException("Error on the server side.");
             }
 
-        } catch (ServerErrorException | IOException |
+        } catch (KeyException | ServerErrorException | IOException |
                 InvalidServerResponseException | SignatureException e) {
+            e.printStackTrace ();
             throw new RuntimeException("Could not gather server information.");
         }
 
@@ -129,7 +131,7 @@ public class Client implements IClient {
             System.out.println();
 
             // http post request
-            Serialization.Response response = sendPostRequest(server.publicKey, server.serverUrl.toString() + "/register", privateKey, request,
+            Serialization.Response response = sendPostRequest(Serialization.base64toPublicKey (server.publicKeyBase64), server.serverUrl.toString() + "/register", privateKey, request,
                     Serialization.Response.class);
 
             if (response.statusCode == 200) {
@@ -173,7 +175,7 @@ public class Client implements IClient {
             request.previousSignature = previousSignature;
             request.signature = Utils.generateSignature(request.getSignable(), sourcePrivateKey);
 
-            Serialization.Response response = sendPostRequest(server.publicKey, server.serverUrl.toString() + "/sendAmount", sourcePrivateKey,
+            Serialization.Response response = sendPostRequest(Serialization.base64toPublicKey (server.publicKeyBase64), server.serverUrl.toString() + "/sendAmount", sourcePrivateKey,
                     request, Serialization.Response.class);
 
             if (response.statusCode == 200) {
@@ -207,7 +209,7 @@ public class Client implements IClient {
             String requestPath = server.serverUrl.toString() +
                     "/checkAccount/" + URLEncoder.encode(b64PublicKey, "UTF-8");
 
-            Serialization.CheckAccountResponse response = sendGetRequest(server.publicKey, requestPath,
+            Serialization.CheckAccountResponse response = sendGetRequest(Serialization.base64toPublicKey (server.publicKeyBase64), requestPath,
                     Serialization.CheckAccountResponse.class);
 
             System.out.println("response.statusCode: " + response.statusCode);
@@ -255,7 +257,7 @@ public class Client implements IClient {
             request.pendingTransactionHash = incomingSignature;
             // signature for the whole request (including transaction):
 
-            Serialization.Response response = sendPostRequest(server.publicKey, server.serverUrl.toString() + "/receiveAmount", sourcePrivateKey,
+            Serialization.Response response = sendPostRequest(Serialization.base64toPublicKey (server.publicKeyBase64), server.serverUrl.toString() + "/receiveAmount", sourcePrivateKey,
                     request, Serialization.Response.class);
 
             if (response.statusCode == 200) {
@@ -290,7 +292,7 @@ public class Client implements IClient {
             String requestPath = server.serverUrl.toString() +
                     "/audit/" + URLEncoder.encode(b64PublicKey, "UTF-8");
 
-            Serialization.AuditResponse response = sendGetRequest(server.publicKey, requestPath,
+            Serialization.AuditResponse response = sendGetRequest(Serialization.base64toPublicKey (server.publicKeyBase64), requestPath,
                     Serialization.AuditResponse.class);
 
             System.out.println("response.statusCode: " + response.statusCode);

@@ -18,7 +18,7 @@ import java.util.List;
 
 public class SendAmount {
 
-    public static final String SERVER_URL = "http://localhost:4567";
+    public static final String SERVER_URL = "http://localhost:4570";
 
     public static void main(String[] args) throws SendAmountException {
         String clientNameSource;

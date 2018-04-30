@@ -13,7 +13,6 @@ import java.security.KeyPair;
 
 
 public class GenerateKeyPair {
-    public static final String ENTITY = "CLIENT";
 
     public static void main(String[] args) throws KeyGenerationException {
         String clientName;

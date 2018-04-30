@@ -14,7 +14,7 @@ import java.security.KeyException;
 import java.security.interfaces.ECPublicKey;
 
 public class CheckAccount {
-    public static final String SERVER_URL = "http://localhost:4567";
+    public static final String SERVER_URL = "http://localhost:4570";
 
     public static void main(String[] args) throws CheckAccountException {
         String clientName;

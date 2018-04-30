@@ -50,14 +50,18 @@ public class Main {
 
         try {
             loadKeys(args[0]);
-            Database.setDatabaseName(args[0] + "_database");
+            Database.setDatabaseName(args[0] + "_");
             log = Logger.getLogger(args[0] + "_logs");
+            Ledger.log = Logger.getLogger(args[0] + "_" + Ledger.class.getName() + "_logs");
+            Transaction.log = Logger.getLogger(args[0] + "_" + Transaction.class.getName() + "_logs");
 
-            // set Logger
+            // set Loggers
             Utils.initLogger(log);
+            Utils.initLogger(Ledger.log);
+            Utils.initLogger(Transaction.log);
+
             Security.addProvider(new BouncyCastleProvider());
             log.log(Level.CONFIG, "Added bouncy castle security provider.");
-
             log.log(Level.INFO, "Loaded keys of the server.");
 
             log.log(Level.INFO, "Server identification: " + args[0]);
@@ -68,7 +72,7 @@ public class Main {
             servers = new ArrayList<>();
             for(int i = 2; i + 1 < args.length; i+=2) {
                 Keypair keypair = loadKeypair(args[i+1]);
-                ServerInfo serverInfo = new ServerInfo(new URL(args[i]), keypair.publicKey);
+                ServerInfo serverInfo = new ServerInfo(new URL(args[i]), Serialization.publicKeyToBase64 (keypair.publicKey));
                 servers.add(serverInfo);
             }
 
