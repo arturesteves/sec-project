@@ -55,6 +55,7 @@ public class Main {
 
         try {
             loadKeys(args[0]);
+            Database.setDatabaseName(args[0] + "_database");
             log.log(Level.INFO, "Loaded keys of the server.");
 
             if(args.length == 2) {
@@ -85,7 +86,6 @@ public class Main {
             e.printStackTrace();
             System.exit(-1);
         }
-
 
         get("/servers", "application/json", (req, res) -> {
             try {
