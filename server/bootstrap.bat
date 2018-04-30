@@ -25,19 +25,12 @@ echo.
 
 for /l %%x in (1, 1, %N%) do (
 	echo Generating a key pair for the following replica: %server_prefix%!i!
-	echo.
 	:: generate server key pair on a new command line
 	start cmd /c mvn exec:java@GenerateKeyPair -Dexec.args="-n %server_prefix%!i!"
 	TIMEOUT /t 10
 	
 	echo Starting the following replica %server_prefix%!i!
-	echo.
 	start cmd /k mvn exec:java@WebServer -Dexec.args="Server_!i! !port!%serversInfo%"
-	echo.
-	echo.
-	echo.
-	echo.
-	echo !serversInfo!
 	SET /a i=!i!+1
 	SET /a port=!port!+1
 )

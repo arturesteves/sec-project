@@ -12,7 +12,6 @@
 
     <artifactId>client</artifactId>
 
-    <!-- skip tests by default as they fail if the server is not running (as during mvn install) -->
     <properties>
         <skipTests>true</skipTests>
     </properties>
