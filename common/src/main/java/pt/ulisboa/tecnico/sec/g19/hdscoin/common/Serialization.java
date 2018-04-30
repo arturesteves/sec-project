@@ -140,6 +140,20 @@ public class Serialization {
         }
     }
 
+    public static class ServerListResponse extends Response implements Signable{
+        public List<ServerInfo> servers = new ArrayList<> ();
+
+        @Override
+        @JsonIgnore
+        public String getSignable() {
+            StringBuilder signable = new StringBuilder(super.getSignable());
+            for (ServerInfo serverInfo : servers) {
+                signable.append(serverInfo.getSignable ());
+            }
+            return signable.toString();
+        }
+    }
+
     /**
      * Deserializes a request into the specified class
      *

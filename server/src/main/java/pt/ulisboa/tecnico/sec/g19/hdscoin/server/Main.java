@@ -3,6 +3,7 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.server;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.ServerInfo;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.SignatureException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.FailedToLoadKeysException;
@@ -42,6 +43,9 @@ public class Main {
 
     private static Object ledgerLock = new Object();
 
+    private ArrayList<ServerInfo> listServers;
+
+
     public static void main(String[] args) throws FailedToLoadKeysException {
         // set Logger
         Utils.initLogger(log);
@@ -52,10 +56,13 @@ public class Main {
             loadKeys(args[0]);
             log.log(Level.INFO, "Loaded keys of the server.");
 
+
+            /*
             if(args.length == 2) {
                 log.log(Level.INFO, "Using port number " + args[1]);
                 port(Integer.parseInt(args[1]));
             }
+            */
 
         } catch (KeyException | IOException e) {
             log.log(Level.SEVERE, "Failed to load keys from file. " + e);
@@ -74,6 +81,10 @@ public class Main {
         }
 
 
+        get("/servers", "application/json", (req, res) -> {
+
+            return null;
+        });
 
         post("/register", "application/json", (req, res) -> {
 
