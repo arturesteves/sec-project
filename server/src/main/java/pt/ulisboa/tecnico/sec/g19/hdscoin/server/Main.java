@@ -43,7 +43,7 @@ public class Main {
 
     private static Object ledgerLock = new Object();
 
-    private ArrayList<ServerInfo> listServers;
+    private static ArrayList<ServerInfo> servers;
 
 
     public static void main(String[] args) throws FailedToLoadKeysException {
@@ -55,6 +55,9 @@ public class Main {
         try {
             loadKeys(args[0]);
             log.log(Level.INFO, "Loaded keys of the server.");
+
+
+
 
 
             /*
@@ -82,8 +85,23 @@ public class Main {
 
 
         get("/servers", "application/json", (req, res) -> {
+            try {
+                Serialization.ServerListResponse response = new Serialization.ServerListResponse();
+                response.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
 
-            return null;
+                log.log(Level.INFO, "Request received at: /servers \n" +
+                        "data on the request: \n" +
+                        "\tNONCE: " + req.headers(Serialization.NONCE_HEADER_NAME));
+
+                response.servers = Main.servers;
+                return prepareResponse(serverPrivateKey, req, res, response);
+            } catch (Exception ex) {
+                res.status(500);
+                Serialization.Response response = new Serialization.Response();
+                response.status = ERROR_SERVER_ERROR;
+                log.log(Level.SEVERE, "Error on processing a check account request. " + ex);
+                return prepareResponse(serverPrivateKey, req, res, response);
+            }
         });
 
         post("/register", "application/json", (req, res) -> {

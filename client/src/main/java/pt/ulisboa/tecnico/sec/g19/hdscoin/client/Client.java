@@ -14,7 +14,6 @@ import java.net.URLEncoder;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
-import java.util.ArrayList;
 import java.util.List;
 
 import static pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization.StatusMessage.ERROR_NO_SIGNATURE_MATCH;
@@ -36,17 +35,35 @@ public class Client implements IClient {
         this.servers = getServerList();
     }
 
-    //todo - Get the serverlist securely
+    //Get the list of replicated servers using the bootstrap server url and public key
     private List<ServerInfo> getServerList() {
         try {
-            List<ServerInfo> servers = new ArrayList<>();
-            //todo Get request to the bootstrapping server to get the list of servers
+            String requestPath = server.serverUrl.toString() +
+                    "/servers";
 
+            Serialization.ServerListResponse response = sendGetRequest(server.publicKey, requestPath,
+                    Serialization.ServerListResponse.class);
 
-            return servers;
-        } catch (Exception ex) {
+            System.out.println("response.statusCode: " + response.statusCode);
+            System.out.println("response.status: " + response.status);
+
+            if (response.statusCode == 200) {
+                // check transaction chain
+                // transactions come ordered from the oldest to the newest
+
+                return response.servers;
+            }
+            switch (response.status) {
+                case ERROR_SERVER_ERROR:
+                default:
+                    throw new ServerErrorException("Error on the server side.");
+            }
+
+        } catch (ServerErrorException | IOException |
+                InvalidServerResponseException | SignatureException e) {
             throw new RuntimeException("Could not gather server information.");
         }
+
     }
 
     @Override
