@@ -17,4 +17,6 @@ public class ServerInfo implements Signable {
     @Override public String getSignable () {
         return serverUrl.toString() + publicKey;
     }
+
 }
+
