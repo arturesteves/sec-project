@@ -1,4 +1,4 @@
-# SEC Project - Secure Bank
+# SEC Project - HDS Coin System
   
 ## Installation  
 **Maven is required**  
@@ -8,6 +8,10 @@ Open a terminal on the project root directory and then type:
 
 ## Usage
 
+### The following link points to the 2nd Stage of the project
+[2nd Stage README](https://github.com/moraispgsi/sec-project/blob/secondPhase/README.md)
+
+### The following information is dedicated to the 1st Stage of the project
 #### Server Side
 1. First we need to generate a pair of keys (public and private key) which is based on the Elliptic-curve cryptography.
 2. We need to start the web server.
@@ -67,6 +71,11 @@ Open a terminal on the root directory of any project and then type:
 ## Documentation
 A small report documenting the solution and its security features at a high level, as well as sequence diagrams for each
 of the five main operations supported by the server and client, can be found in the `docs` folder.
+
+## Contributors
+* [Ricardo Morais](https://github.com/moraispgsi)
+* [Artur Esteves](https://github.com/arturesteves)
+* [Gabriel Maia](https://github.com/gbl08ma)
 
 ## License  
 Licensed under MIT. See [LICENSE](LICENSE) for more information. 
