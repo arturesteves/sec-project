@@ -19,6 +19,7 @@ import java.security.interfaces.ECPublicKey;
 import java.util.List;
 
 public class Audit {
+    // contains the protocol and host used and the initial port used
     public static final String SERVER_URL = "http://localhost:4570";
 
 

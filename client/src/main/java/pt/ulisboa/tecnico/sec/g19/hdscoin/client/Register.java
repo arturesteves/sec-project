@@ -15,7 +15,7 @@ import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 
 public class Register {
-
+    // contains the protocol and host used and the initial port used
     public static final String SERVER_URL = "http://localhost:4570";
 
     public static void main(String[] args) throws RegisterException {

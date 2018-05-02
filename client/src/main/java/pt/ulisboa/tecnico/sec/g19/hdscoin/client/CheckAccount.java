@@ -18,6 +18,7 @@ import java.security.cert.CertificateException;
 import java.security.interfaces.ECPublicKey;
 
 public class CheckAccount {
+    // contains the protocol and host used and the initial port used
     public static final String SERVER_URL = "http://localhost:4570";
 
     public static void main(String[] args) throws CheckAccountException {

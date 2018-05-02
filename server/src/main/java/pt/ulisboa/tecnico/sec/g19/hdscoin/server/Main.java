@@ -20,6 +20,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.*;
+import java.security.cert.CertificateException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.sql.Connection;
@@ -32,13 +33,19 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.Transaction;
 import spark.Request;
 import spark.Response;
 
+import static pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization.SERVER_PREFIX;
 import static pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization.StatusMessage.*;
 import static spark.Spark.*;
 
 
 public class Main {
+    // contains the protocol and host used and the initial port used
+    public static final String GENERIC_URL = "http://localhost:4570";
+
     private static Logger log;
 
+    private static KeyStore keyStore;
+    private static String password;
     private static ECPublicKey serverPublicKey;
     private static ECPrivateKey serverPrivateKey;
 
@@ -49,11 +56,26 @@ public class Main {
     public static void main(String[] args) throws FailedToLoadKeysException {
 
         try {
-            loadKeys(args[0]);
-            Database.setDatabaseName(args[0] + "_");
-            log = Logger.getLogger(args[0] + "_logs");
-            Ledger.log = Logger.getLogger(args[0] + "_" + Ledger.class.getName() + "_logs");
-            Transaction.log = Logger.getLogger(args[0] + "_" + Transaction.class.getName() + "_logs");
+            // fetch all relevant command line arguments
+            String serverName = args[0];
+            int port = Integer.parseInt (args[1]);
+            int numberOfServers = Integer.parseInt (args[2]);
+            String password = args[3];
+
+            String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\common";
+            String filepath = root + Serialization.COMMON_PACKAGE_PATH + "\\" + Serialization.KEY_STORE_FILE_NAME;
+            Path path = Paths.get (filepath).normalize();
+
+            // init key store
+            KeyStore keyStore = Utils.initKeyStore (path.toString ());
+            // load keys
+            serverPublicKey = Utils.loadPublicKeyFromKeyStore (keyStore, serverName);
+            serverPrivateKey = Utils.loadPrivateKeyFromKeyStore (path.toString (), serverName, password);
+
+            Database.setDatabaseName(serverName + "_");
+            log = Logger.getLogger(serverName + "_logs");
+            Ledger.log = Logger.getLogger(serverName + "_" + Ledger.class.getName() + "_logs");
+            Transaction.log = Logger.getLogger(serverName + "_" + Transaction.class.getName() + "_logs");
 
             // set Loggers
             Utils.initLogger(log);
@@ -64,22 +86,18 @@ public class Main {
             log.log(Level.CONFIG, "Added bouncy castle security provider.");
             log.log(Level.INFO, "Loaded keys of the server.");
 
-            log.log(Level.INFO, "Server identification: " + args[0]);
-            log.log(Level.INFO, "Using port number " + args[1]);
-            port(Integer.parseInt(args[1]));
+            log.log(Level.INFO, "Server identification: " + serverName);
+            log.log(Level.INFO, "Using port number " + port);
+            port(port);
 
             //Getting the replica servers information given by argument.
-            servers = new ArrayList<>();
-            for(int i = 2; i + 1 < args.length; i+=2) {
-                Keypair keypair = loadKeypair(args[i+1]);
-                ServerInfo serverInfo = new ServerInfo(new URL(args[i]), Serialization.publicKeyToBase64 (keypair.publicKey));
-                servers.add(serverInfo);
-            }
+            servers = getServersInfoFromKeyStore(new URL (GENERIC_URL), numberOfServers, path.toString ());
 
-        } catch (KeyException | IOException e) {
+            System.out.println ("Replica listening on port: " + port);
+        } catch (IOException e) {
             log.log(Level.SEVERE, "Failed to load keys from file. " + e);
             throw new FailedToLoadKeysException("Failed to load keys from file. " + e.getMessage(), e);
-        } catch (URISyntaxException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -530,28 +548,22 @@ public class Main {
         return Serialization.serialize(response);
     }
 
-    private static void loadKeys(String serverName) throws KeyException, IOException, URISyntaxException {
-        String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\server";
-        String filepath = root + Serialization.SERVER_PACKAGE_PATH + "\\keys\\" + serverName + ".keys";
-        Path path = Paths.get(filepath).normalize();
-
-        serverPublicKey = Utils.readPublicKeyFromFile(path.toString());
-        serverPrivateKey = Utils.readPrivateKeyFromFile(path.toString());
-    }
-
-    static class Keypair {
-        public ECPublicKey publicKey;
-        public ECPrivateKey privateKey;
-    }
-
-    private static Keypair loadKeypair(String serverName) throws KeyException, IOException, URISyntaxException {
-        String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\server";
-        String filepath = root + Serialization.SERVER_PACKAGE_PATH + "\\keys\\" + serverName + ".keys";
-        Path path = Paths.get(filepath).normalize();
-        Keypair keypair = new Keypair();
-        keypair.publicKey = Utils.readPublicKeyFromFile(path.toString());
-        keypair.privateKey = Utils.readPrivateKeyFromFile(path.toString());
-        return keypair;
+    private static List<ServerInfo> getServersInfoFromKeyStore (URL url, int numberOfServers, String keyStoreFilepath) {
+        List<ServerInfo> serverInfos = new ArrayList<> ();
+        try {
+            KeyStore keyStore = Utils.initKeyStore (keyStoreFilepath);
+            for (int i = 0; i < numberOfServers; i++) {
+                ServerInfo serverInfo = new ServerInfo ();
+                serverInfo.serverUrl = new URL (url.getProtocol () + "://" + url.getHost () + url.getPort () + i);
+                serverInfo.publicKeyBase64 =
+                        Serialization.publicKeyToBase64 (Utils.loadPublicKeyFromKeyStore (keyStore, SERVER_PREFIX + i));
+                serverInfos.add (serverInfo);
+            }
+            return serverInfos;
+        } catch(CertificateException | NoSuchAlgorithmException | KeyStoreException | IOException | KeyException e) {
+            e.printStackTrace ();
+            throw new RuntimeException (e);
+        }
     }
 
     private static List<Serialization.Transaction> serializeTransactions(List<Transaction> transactions) throws KeyException {

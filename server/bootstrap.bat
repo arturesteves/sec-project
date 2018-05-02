@@ -17,10 +17,7 @@ SET protocolHost=http://localhost
 SET port=4570
 SET server_prefix=Server_
 SET aliasPrefixPw=ABCD
-:: will contain the a list of server information, information compose by server url and server name
-SET serversInfo=
 
-call:getStringServers
 
 SET i=1
 echo Number of supported failures: %f%
@@ -45,31 +42,17 @@ SET port=4570
 echo Wait until init the replicas
 TIMEOUT /t 15 /nobreak
 
+SET password=
 :: init repicas
 for /l %%x in (1, 1, %N%) do (
 	echo Starting the following replica %server_prefix%!i!
-	start cmd /k mvn exec:java@WebServer -Dexec.args="Server_!i! !port!%serversInfo%"
+	SET password=!aliasPrefixPw!%%x
+	start cmd /k mvn exec:java@WebServer -Dexec.args="Server_!i! !port! %N% !password!"
 	TIMEOUT /t 5 /nobreak
 	SET /a i=!i!+1
 	SET /a port=!port!+1
 )
 
-echo All servers initialized with success!
+echo All replicas initialized with success!
 echo.
 
-
-:getStringServers
-	echo Generate a string with all the severs info
-	echo.
-	SET j=1
-	SET nextPort=%port%
-	SET server=%protocolHost%:!nextPort! %server_prefix%!j!
-		
-	for /l %%x in (1, 1, %N%) do (
-		SET serversInfo=!serversInfo! !server!
-		SET /a nextPort=!nextPort!+1
-		SET /a j=!j!+1
-		SET server=%protocolHost%:!nextPort! %server_prefix%!j!
-	)
-	
-GOTO:EOF
