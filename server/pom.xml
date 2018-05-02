@@ -19,6 +19,10 @@
 
     <artifactId>server</artifactId>
 
+    <properties>
+        <skipTests>true</skipTests>
+    </properties>
+
     <build>
         <plugins>
             <plugin>
@@ -43,6 +47,16 @@
                         </goals>
                         <configuration>
                             <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.server.GenerateKeyPair</mainClass>
+                            <arguments></arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>SavePrivateKeyOnKeyStore</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>pt.ulisboa.tecnico.sec.g19.hdscoin.server.SavePrivateKeyOnKeyStore</mainClass>
                             <arguments></arguments>
                         </configuration>
                     </execution>

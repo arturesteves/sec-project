@@ -9,13 +9,27 @@ Open a terminal on the project root directory and then type:
 ## Usage
 
 #### Server Side
-1. First we need to generate a pair of keys (public and private key) which is based on the Elliptic-curve cryptography.
-2. We need to start the web server.
+At this stage the system will have to tolerate **f** number of faults and to accomplish that 
+a **N** number of replicas will initiated.
+The replicas will follow a Fail-Arbitrary Algorithm: Authenticated-Data Byzantine Quorum to ensure
+the synchronization between them and provide a reliable service when the number of faults are under **f**.
+To bootstrap the replicas simply call the **bootstrap.bat** batch file under the root server directory.
+args  
+`1st arg` Specifies the number of failures to tolerate, the default value is 1, which will bootstrap a total of 4 replicas
+Example:  
+`...\server>bootstrap.bat` Tolerate a maximum of 1 failure
+or  
+`...\server>bootstrap.bat 3` Tolerate a maximum of 3 failures
 
 ##### How to generate a key pair
-Open a terminal on the root directory of the server project and then type:  
-`mvn exec:java@GenerateKeyPair -Dexec.args="-n Server_1"`
-  
+Open a terminal on the root directory of the server project and then invoke the following java file `GenerateKeyPair`.
+At this stage this process is executed automatically at the boostrap level.    
+Args:  
+`-n` Specifies the name of the server  
+`-pw` Specifies the password that will protect the keypair on the key store  
+Example:  
+`mvn exec:java@GenerateKeyPair -Dexec.args="-n Server_1 -pw abc"`
+
 ##### How to start the web server
 Open a terminal on the root directory of the server project and then type:  
 `mvn exec:java@WebServer -Dexec.args="Server_1"`

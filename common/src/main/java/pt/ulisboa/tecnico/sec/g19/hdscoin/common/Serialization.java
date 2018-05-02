@@ -26,8 +26,14 @@ public class Serialization {
         ERROR_INVALID_KEY, ERROR_MISSING_PARAMETER, ERROR_INVALID_VALUE, ERROR_SERVER_ERROR
     }
 
+    // paths
     public static final String CLIENT_PACKAGE_PATH = "\\src\\main\\java\\pt\\ulisboa\\tecnico\\sec\\g19\\hdscoin\\client";
     public static final String SERVER_PACKAGE_PATH = "\\src\\main\\java\\pt\\ulisboa\\tecnico\\sec\\g19\\hdscoin\\server";
+    public static final String COMMON_PACKAGE_PATH = "\\src\\main\\java\\pt\\ulisboa\\tecnico\\sec\\g19\\hdscoin\\common";
+
+    public static final String KEY_STORE_FILE_NAME = "keystore.ks";
+    // key store password explicitly here for simplicity, each alias has its own password
+    public static final String KEY_STORE__PASSWORD = "ABCDEF";
 
     public static final String SIGNATURE_HEADER_NAME = "SIGNATURE";
     public static final String NONCE_HEADER_NAME = "NONCE";
