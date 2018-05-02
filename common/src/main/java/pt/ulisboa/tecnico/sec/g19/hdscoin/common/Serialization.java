@@ -34,6 +34,8 @@ public class Serialization {
     public static final String KEY_STORE_FILE_NAME = "keystore.ks";
     // key store password explicitly here for simplicity, each alias has its own password
     public static final String KEY_STORE__PASSWORD = "ABCDEF";
+    public static final String SERVER_PREFIX = "Server_";
+    public static final String CLIENT_PREFIX = "Client_";
 
     public static final String SIGNATURE_HEADER_NAME = "SIGNATURE";
     public static final String NONCE_HEADER_NAME = "NONCE";

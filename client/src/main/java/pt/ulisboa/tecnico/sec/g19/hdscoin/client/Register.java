@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import org.apache.commons.cli.*;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.ReceiveAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.RegisterException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
@@ -19,14 +20,16 @@ public class Register {
 
     public static void main(String[] args) throws RegisterException {
         String clientName;
-        String serverName;
         int amount;
+        int numberOfServers;
+        String password;
 
         // create options
         Options registerOptions = new Options();
         registerOptions.addOption("n", true, "Client name");
-        registerOptions.addOption("s", true, "Server name");
         registerOptions.addOption("a", true, "Amount to initialize the account");
+        registerOptions.addOption ("ns", true, "Number of servers");
+        registerOptions.addOption ("pw", true, "Password to access to obtain the private key from the key store");
 
         CommandLineParser parser = new BasicParser();
         CommandLine cmd = null;
@@ -44,12 +47,6 @@ public class Register {
             usage(registerOptions);
             throw new RegisterException("Can't register, client name is missing.");
         }
-        if (cmd.hasOption("s") && !cmd.getOptionValue("s").trim().equals("")) {
-            serverName = cmd.getOptionValue("s");
-        } else {
-            usage(registerOptions);
-            throw new RegisterException("Can't register, server name is missing.");
-        }
         if (cmd.hasOption("a") && !cmd.getOptionValue("a").trim().equals("")) {
             try {
                 amount = Integer.parseInt(cmd.getOptionValue("a"));
@@ -60,25 +57,31 @@ public class Register {
             usage(registerOptions);
             throw new RegisterException("Can't register, amount is missing.");
         }
+        if (cmd.hasOption ("ns") && !cmd.getOptionValue ("ns").trim ().equals ("")) {
+            numberOfServers = Integer.parseInt (cmd.getOptionValue ("ns"));
+        } else {
+            usage (registerOptions);
+            throw new RegisterException ("Can't register, number of servers available is missing.");
+        }
+        if (cmd.hasOption ("pw") && !cmd.getOptionValue ("pw").trim ().equals ("")) {
+            password = cmd.getOptionValue ("pw");
+        } else {
+            usage (registerOptions);
+            throw new RegisterException ("Failed to register. Missing the -pw option.");
+        }
 
-        String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\client";
-
-        // This is more or less a simulation of a CA
-        // Note that we could obtain the private key of the server here, but we won't do it (we assume that if a CA was
-        // in place, we'd obtain the public keys from it, and not from a file).
-        String clientKeyFilepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + clientName + ".keys";
-        Path clientKeyPath = Paths.get(clientKeyFilepath).normalize(); // create path and normalize it
-        String serverKeyFilepath = root + "\\..\\server\\" + Serialization.SERVER_PACKAGE_PATH + "\\keys\\" + serverName + ".keys";
-        Path serverKeyPath = Paths.get(serverKeyFilepath).normalize(); // create path and normalize it
+        String root = Paths.get (System.getProperty ("user.dir")).getParent ().toString () + "\\common";
+        String filepath = root + Serialization.COMMON_PACKAGE_PATH + "\\" + Serialization.KEY_STORE_FILE_NAME;
+        Path path = Paths.get (filepath).normalize ();
 
         try {
-            ECPublicKey clientPublickey = Utils.readPublicKeyFromFile(clientKeyPath.toString());
-            ECPrivateKey clientPrivateKey = Utils.readPrivateKeyFromFile(clientKeyPath.toString());
-            ECPublicKey serverPublicKey = Utils.readPublicKeyFromFile(serverKeyPath.toString());
+            KeyStore keyStore = Utils.initKeyStore (path.toString ());
+            ECPublicKey clientPublicKey = Utils.loadPublicKeyFromKeyStore (keyStore, clientName);
+            ECPrivateKey clientPrivateKey = Utils.loadPrivateKeyFromKeyStore (path.toString (), clientName, password);
 
-            IClient client = new Client(new URL(SERVER_URL), serverPublicKey);
-            client.register(clientPublickey, clientPrivateKey, amount);
-        } catch (KeyException | IOException e) {
+            IClient client = new Client(new URL(SERVER_URL), numberOfServers, path.toString ());
+            client.register(clientPublicKey, clientPrivateKey, amount);
+        } catch (IOException e) {
             throw new RegisterException("Failed to register. " + e, e);
         } catch (Exception e) {
             throw new RegisterException("Failed to register, due to an unexpected error. " + e, e);
