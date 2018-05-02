@@ -29,7 +29,7 @@ public class Register {
         registerOptions.addOption("n", true, "Client name");
         registerOptions.addOption("a", true, "Amount to initialize the account");
         registerOptions.addOption ("ns", true, "Number of servers");
-        registerOptions.addOption ("pw", true, "Password to access to obtain the private key from the key store");
+        registerOptions.addOption ("pw", true, "Password to fetch the private key from the key store");
 
         CommandLineParser parser = new BasicParser();
         CommandLine cmd = null;

@@ -31,9 +31,8 @@ public class SendAmount {
 
         // create options
         Options registerOptions = new Options();
-        registerOptions.addOption("ns", true, "The name of the client that is sending the amount.");
-        registerOptions.addOption("nt", true, "The name of the client that is receiving.");
-        registerOptions.addOption("s", true, "Server name");
+        registerOptions.addOption("sn", true, "The name of the client that is sending the amount.");
+        registerOptions.addOption("tn", true, "The name of the client that is receiving.");
         registerOptions.addOption("a", true, "Amount to send.");
         registerOptions.addOption ("ns", true, "Number of servers");
         registerOptions.addOption ("pw", true, "Password to access to obtain the private key from the key store");
@@ -47,14 +46,14 @@ public class SendAmount {
             throw new SendAmountException("Can't send amount, because arguments are missing. " + e);
         }
 
-        if (cmd.hasOption("ns") && !cmd.getOptionValue("ns").trim().equals("")) {
-            clientNameSource = cmd.getOptionValue("ns");
+        if (cmd.hasOption("sn") && !cmd.getOptionValue("sn").trim().equals("")) {
+            clientNameSource = cmd.getOptionValue("sn");
         } else {
             usage(registerOptions);
             throw new SendAmountException("Can't send amount, the name of the source client is missing.");
         }
-        if (cmd.hasOption("nt") && !cmd.getOptionValue("nt").trim().equals("")) {
-            clientNameTarget = cmd.getOptionValue("nt");
+        if (cmd.hasOption("tn") && !cmd.getOptionValue("tn").trim().equals("")) {
+            clientNameTarget = cmd.getOptionValue("tn");
         } else {
             usage(registerOptions);
             throw new SendAmountException("Can't send amount, the name of the target client is missing.");
