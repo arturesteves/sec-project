@@ -15,14 +15,14 @@ The replicas will follow a Fail-Arbitrary Algorithm: Authenticated-Data Byzantin
 the synchronization between them and provide a reliable service when the number of faults are under **f**.
 To bootstrap the replicas simply call the **bootstrap.bat** batch file under the root server directory.
 args  
-`1st arg` Specifies the number of failures to tolerate, the default value is 1, which will bootstrap a total of 4 replicas
+`1st arg` Specifies the number of failures to tolerate, the default value is 1, which will bootstrap a total of 4 replicas  
 Example:  
 `...\server>bootstrap.bat` Tolerate a maximum of 1 failure
 or  
 `...\server>bootstrap.bat 3` Tolerate a maximum of 3 failures
 
 ##### How to generate a key pair
-Open a terminal on the root directory of the server project and then invoke the following java file `GenerateKeyPair`.
+Open a terminal on the root directory of the server project and then invoke the following java file `GenerateKeyPair`.  
 At this stage this process is executed automatically at the boostrap level.    
 Args:  
 `-n` Specifies the name of the server  
@@ -31,8 +31,14 @@ Example:
 `mvn exec:java@GenerateKeyPair -Dexec.args="-n Server_1 -pw abc"`
 
 ##### How to start the web server
-Open a terminal on the root directory of the server project and then type:  
-`mvn exec:java@WebServer -Dexec.args="Server_1"`
+Open a terminal on the root directory of the server project and then invoke the file `Main`
+Args:  
+`1st arg` Specifies the name of the server  
+`2nd arg` Specifies the port of the web server  
+`3rd arg` Specifies the number of servers available  
+`4th arg` Specifies the password to fetch the server private key from the key store  
+Example  
+`mvn exec:java@WebServer -Dexec.args="Server_1 4570 4 abc"`
 
 #### Client Side
 1. The client also requires a pair of keys (public and private key) which is based on the Elliptic-curve cryptography.  
@@ -43,13 +49,13 @@ Open a terminal on the root directory of the server project and then type:
 Open a terminal on the root directory of the client project and then invoke the following java file `GenerateKeyPair`.    
 Args:  
 `-n` Specifies the name of the client  
-`-pw` Specifies the password that will protect the keypair on the key store
-Example:
+`-pw` Specifies the password that will protect the keypair on the key store  
+Example:  
 `mvn exec:java@GenerateKeyPair -Dexec.args="-n Client_1 -pw abc"`
 
 ##### How to register a client
 Open a terminal on the root directory of the client project and then invoke the following java file `Register`.  
-Args:
+Args:  
 `n` Specifies the name of the client  
 `a` Specifies the amount to initialize the account  
 `ns` Specifies the number of servers available  
@@ -62,12 +68,12 @@ pen a terminal on the root directory of the client project and then invoke the f
 Args:  
 `n` Specifies the name of the client    
 `ns` Specifies the number of servers available  
-Example:
+Example:  
 `mvn exec:java@CheckAccount -Dexec.args="-n Client_1 -ns 4"`
 
 ##### How to audit an account
 Open a terminal on the root directory of the client project and then invoke the following java file `Audit`.  
-Args:
+Args:  
 `n` Specifies the name of the client    
 `ns` Specifies the number of servers available  
 Example:  
