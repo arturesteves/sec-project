@@ -1,4 +1,4 @@
-# SEC Project - Secure Bank
+# SEC Project - HDS Coin System
   
 ## Installation  
 **Maven is required**  
@@ -109,6 +109,11 @@ Open a terminal on the root directory of any project and then type:
 ## Documentation
 A small report documenting the solution and its security features at a high level, as well as sequence diagrams for each
 of the five main operations supported by the server and client, can be found in the `docs` folder.
+
+## Contributors
+* [Ricardo Morais](https://github.com/moraispgsi)
+* [Artur Esteves](https://github.com/arturesteves)
+* [Gabriel Maia](https://github.com/gbl08ma)
 
 ## License  
 Licensed under MIT. See [LICENSE](LICENSE) for more information. 

@@ -136,7 +136,7 @@ public class Utils {
 
     public static void initLogger (Logger log) {
         try {
-            FileHandler fileHandler = new FileHandler ("log-" + log.getName () + ".log");
+            FileHandler fileHandler = new FileHandler ("logs/log-" + log.getName () + ".log");
             fileHandler.setEncoding ("UTF-8");
             fileHandler.setLevel (Level.ALL);
             fileHandler.setFormatter (new SimpleFormatter ());

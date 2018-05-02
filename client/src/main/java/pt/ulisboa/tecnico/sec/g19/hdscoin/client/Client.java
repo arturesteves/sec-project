@@ -42,7 +42,7 @@ public class Client implements IClient {
         List<ServerInfo> serverInfos = new ArrayList<> ();
         try {
             KeyStore keyStore = Utils.initKeyStore (keyStoreFilepath);
-            for (int i = 0; i < numberOfServers; i++) {
+            for (int i = 1; i < numberOfServers+1; i++) {
                 ServerInfo serverInfo = new ServerInfo ();
                 serverInfo.serverUrl = new URL (url.getProtocol () + "://" + url.getHost () + url.getPort () + i);
                 serverInfo.publicKeyBase64 =

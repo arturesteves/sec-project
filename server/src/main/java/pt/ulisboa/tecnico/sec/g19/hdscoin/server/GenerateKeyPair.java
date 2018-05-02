@@ -67,6 +67,7 @@ public class GenerateKeyPair {
             System.out.println("---Key Pair securely saved at a   ---");
             System.out.println("--- keystore located  at:         ---");
             System.out.println(path.toString());
+            System.out.println("--- Stored under the alias: " + alias);
             System.out.println("-------------------------------------");
 
         } catch (ParseException | KeyException | IOException e) {

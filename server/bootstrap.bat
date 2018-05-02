@@ -30,8 +30,7 @@ for /l %%x in (1, 1, %N%) do (
 	echo Generating a key pair for the following replica: %server_prefix%!i!
 	SET password=!aliasPrefixPw!%%x
 	:: generate server key pair on a new command line
-	start cmd /k mvn exec:java@GenerateKeyPair -Dexec.args="-n %server_prefix%!i! -pw !password!"
-	TIMEOUT /t 10 /nobreak
+	start /wait cmd /c mvn exec:java@GenerateKeyPair -Dexec.args="-n %server_prefix%!i! -pw !password!"
 
 	SET /a i=!i!+1
 	SET /a port=!port!+1
@@ -40,8 +39,8 @@ for /l %%x in (1, 1, %N%) do (
 SET i=1
 SET port=4570
 
-echo Wait until init the replicas
-TIMEOUT /t 15 /nobreak
+echo About to init the replicas
+TIMEOUT /t 5 /nobreak
 
 SET password=
 :: init repicas
@@ -49,6 +48,7 @@ for /l %%x in (1, 1, %N%) do (
 	echo Starting the following replica %server_prefix%!i!
 	SET password=!aliasPrefixPw!%%x
 	start cmd /k mvn exec:java@WebServer -Dexec.args="Server_!i! !port! %N% !password!"
+	:: waits 5 seconds so the replicas aren't initiated all at the same time
 	TIMEOUT /t 5 /nobreak
 	SET /a i=!i!+1
 	SET /a port=!port!+1

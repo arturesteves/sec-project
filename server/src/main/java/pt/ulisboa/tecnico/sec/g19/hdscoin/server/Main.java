@@ -62,17 +62,6 @@ public class Main {
             int numberOfServers = Integer.parseInt (args[2]);
             String password = args[3];
 
-            String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\common";
-            String filepath = root + Serialization.COMMON_PACKAGE_PATH + "\\" + Serialization.KEY_STORE_FILE_NAME;
-            Path path = Paths.get (filepath).normalize();
-
-            // init key store
-            KeyStore keyStore = Utils.initKeyStore (path.toString ());
-            // load keys
-            serverPublicKey = Utils.loadPublicKeyFromKeyStore (keyStore, serverName);
-            serverPrivateKey = Utils.loadPrivateKeyFromKeyStore (path.toString (), serverName, password);
-
-            Database.setDatabaseName(serverName + "_");
             log = Logger.getLogger(serverName + "_logs");
             Ledger.log = Logger.getLogger(serverName + "_" + Ledger.class.getName() + "_logs");
             Transaction.log = Logger.getLogger(serverName + "_" + Transaction.class.getName() + "_logs");
@@ -82,18 +71,37 @@ public class Main {
             Utils.initLogger(Ledger.log);
             Utils.initLogger(Transaction.log);
 
+            log.log(Level.INFO, "Server identification: " + serverName);
+            log.log(Level.INFO, "Using port number: " + port);
+            log.log(Level.INFO, "Number of replicas: " + numberOfServers);
+
+            String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\common";
+            String filepath = root + Serialization.COMMON_PACKAGE_PATH + "\\" + Serialization.KEY_STORE_FILE_NAME;
+            Path path = Paths.get (filepath).normalize();
+
+            // init key store
+            KeyStore keyStore = Utils.initKeyStore (path.toString ());
+
+            // load keys
+            serverPrivateKey = Utils.loadPrivateKeyFromKeyStore (path.toString (), serverName, password);
+            serverPublicKey = Utils.loadPublicKeyFromKeyStore (keyStore, serverName);
+                              Utils.loadPublicKeyFromKeyStore (keyStore, serverName);
+
+
+            // set dabase name
+            Database.setDatabaseName(serverName + "_");
+
             Security.addProvider(new BouncyCastleProvider());
             log.log(Level.CONFIG, "Added bouncy castle security provider.");
-            log.log(Level.INFO, "Loaded keys of the server.");
 
-            log.log(Level.INFO, "Server identification: " + serverName);
-            log.log(Level.INFO, "Using port number " + port);
             port(port);
 
             //Getting the replica servers information given by argument.
-            servers = getServersInfoFromKeyStore(new URL (GENERIC_URL), numberOfServers, path.toString ());
+            servers = getServersInfoFromKeyStore(new URL (GENERIC_URL), numberOfServers, path.toString (), serverName);
+            log.log(Level.INFO, "List of replicas: " + servers);
 
             System.out.println ("Replica listening on port: " + port);
+
         } catch (IOException e) {
             log.log(Level.SEVERE, "Failed to load keys from file. " + e);
             throw new FailedToLoadKeysException("Failed to load keys from file. " + e.getMessage(), e);
@@ -548,11 +556,14 @@ public class Main {
         return Serialization.serialize(response);
     }
 
-    private static List<ServerInfo> getServersInfoFromKeyStore (URL url, int numberOfServers, String keyStoreFilepath) {
+    private static List<ServerInfo> getServersInfoFromKeyStore (URL url, int numberOfServers, String keyStoreFilepath, String serverName) {
         List<ServerInfo> serverInfos = new ArrayList<> ();
         try {
             KeyStore keyStore = Utils.initKeyStore (keyStoreFilepath);
-            for (int i = 0; i < numberOfServers; i++) {
+            for (int i = 1; i < numberOfServers+1; i++) {
+                if (serverName.equals (SERVER_PREFIX + i)) {    // don't add it self to the list of replicas
+                    break;
+                }
                 ServerInfo serverInfo = new ServerInfo ();
                 serverInfo.serverUrl = new URL (url.getProtocol () + "://" + url.getHost () + url.getPort () + i);
                 serverInfo.publicKeyBase64 =
