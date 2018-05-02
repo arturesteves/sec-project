@@ -14,6 +14,7 @@ if not "%~1"=="" SET f=%~1
 SET /a N=(%f%*3)+1
 :: servers base info
 SET protocolHost=http://localhost
+:: don't change the port!, this port repeats itself at the server and client code multiples time for the sake of simplifying the bootstrap
 SET port=4570
 SET server_prefix=Server_
 SET aliasPrefixPw=ABCD
