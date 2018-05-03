@@ -540,7 +540,7 @@ public class Main {
             KeyStore keyStore = Utils.initKeyStore (keyStoreFilepath);
             for (int i = 0; i < numberOfServers; i++) {
                 if (serverName.equals (SERVER_PREFIX + i)) {    // don't add it self to the list of replicas
-                    break;
+                    continue;
                 }
                 ServerInfo serverInfo = new ServerInfo ();
                 serverInfo.serverUrl = new URL (url.getProtocol () + "://" + url.getHost () + (url.getPort () + i));

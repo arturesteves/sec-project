@@ -6,11 +6,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class Database {
-
-    private static String databaseName = "hdscoin.db";
+    private static final String SUFIX = "hdscoin";
+    private static String databaseName;
 
     public static void setDatabaseName(String dbName) {
-        databaseName = dbName + ".db";
+        databaseName = dbName + SUFIX + ".db";
     }
 
     public static Connection getConnection() throws SQLException {

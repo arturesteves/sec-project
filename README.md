@@ -13,9 +13,12 @@ At this stage the system will have to tolerate **f** number of faults and to acc
 a **N** number of replicas will initiated.
 The replicas will follow a Fail-Arbitrary Algorithm: Authenticated-Data Byzantine Quorum to ensure
 the synchronization between them and provide a reliable service when the number of faults are under **f**.
-To bootstrap the replicas simply call the **bootstrap.bat** batch file under the root server directory.
-args  
+To bootstrap the replicas simply call the **bootstrap.bat** batch file under the root server directory.  
+Args:  
 `1st arg` Specifies the number of failures to tolerate, the default value is 1, which will bootstrap a total of 4 replicas  
+`2nd arg` Pass the character '**c**' to remove the database and the keystore. To use it it's required to 
+pass the 1st arg.
+    
 Example:  
 `...\server>bootstrap.bat` Tolerate a maximum of 1 failure
 or  

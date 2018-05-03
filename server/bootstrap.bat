@@ -2,11 +2,13 @@
 setlocal enabledelayedexpansion
 echo.
 echo Bootstraping the servers...
-echo.
 
 :: set to a default number of failures to tolerate
 if "%~1"=="" SET f=1
 if not "%~1"=="" SET f=%~1
+
+SET dir=%cd%
+SET keystoreDir=%dir%\..\common\src\main\java\pt\ulisboa\tecnico\sec\g19\hdscoin\common
 
 
 :: number of replicas necessary to tolerate f failures, using a Fail-Arbitrary Algorithm: Authenticated-Data Byzantine Quorum
@@ -18,12 +20,14 @@ SET protocolHost=http://localhost
 SET port=4570
 SET server_prefix=Server_
 SET aliasPrefixPw=ABCD
+SET databaseNameSufix=hdscoin
+SET databaseExtension=db
 
+if "%~2" == "c" ( call :clean ) else ( echo. )
 
 SET i=1
 echo Number of supported failures: %f%
 echo Number of Replicas: %N%
-echo.
 
 :: generate keys
 for /l %%x in (1, 1, %N%) do (
@@ -55,5 +59,18 @@ for /l %%x in (1, 1, %N%) do (
 )
 
 echo All replicas initialized with success!
-echo.
+goto end
 
+:clean
+    echo Removing database and keystore
+    cd %keystoreDir%
+    del /Q keystore.ks
+    cd %dir%
+    :: for to remove the database files
+    for /l %%x in (1, 1, %N%) do (
+    	del /Q %server_prefix%%%x_%databaseNameSufix%.%databaseExtension%
+    )
+
+GOTO:EOF
+
+:end
