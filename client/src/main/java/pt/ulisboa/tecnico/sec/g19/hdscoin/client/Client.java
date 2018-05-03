@@ -42,11 +42,11 @@ public class Client implements IClient {
         List<ServerInfo> serverInfos = new ArrayList<> ();
         try {
             KeyStore keyStore = Utils.initKeyStore (keyStoreFilepath);
-            for (int i = 1; i < numberOfServers+1; i++) {
+            for (int i = 0; i < numberOfServers; i++) {
                 ServerInfo serverInfo = new ServerInfo ();
-                serverInfo.serverUrl = new URL (url.getProtocol () + "://" + url.getHost () + url.getPort () + i);
+                serverInfo.serverUrl = new URL (url.getProtocol () + "://" + url.getHost () + ":" + (url.getPort () + i));
                 serverInfo.publicKeyBase64 =
-                        Serialization.publicKeyToBase64 (Utils.loadPublicKeyFromKeyStore (keyStore, SERVER_PREFIX + i));
+                        Serialization.publicKeyToBase64 (Utils.loadPublicKeyFromKeyStore (keyStore, SERVER_PREFIX + (i + 1)));
                 serverInfos.add (serverInfo);
             }
             return serverInfos;
@@ -57,8 +57,12 @@ public class Client implements IClient {
     }
 
     @Override public void register (ECPublicKey publicKey, ECPrivateKey privateKey, int amount)
-            throws RegisterException {
+            throws RegisterException, KeyException {
         for (ServerInfo server : this.servers) {
+            System.out.println ("server: " + server);
+            System.out.println ("publicKey: " + Serialization.publicKeyToBase64 (publicKey));
+            System.out.println ("privateKey: " + Serialization.privateKeyToBase64 (privateKey));
+            System.out.println ("amount: " + amount);
             register (server, publicKey, privateKey, amount);
         }
     }

@@ -118,28 +118,6 @@ public class Main {
             System.exit(-1);
         }
 
-        get("/servers", "application/json", (req, res) -> {
-            try {
-                Serialization.ServerListResponse response = new Serialization.ServerListResponse();
-                response.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
-
-                log.log(Level.INFO, "Request received at: /servers \n" +
-                        "data on the request: \n" +
-                        "\tNONCE: " + req.headers(Serialization.NONCE_HEADER_NAME));
-
-                response.servers = Main.servers;
-                response.status = SUCCESS;
-                return prepareResponse(serverPrivateKey, req, res, response);
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                res.status(500);
-                Serialization.Response response = new Serialization.Response();
-                response.status = ERROR_SERVER_ERROR;
-                log.log(Level.SEVERE, "Error on processing a get servers request. " + ex);
-                return prepareResponse(serverPrivateKey, req, res, response);
-            }
-        });
-
         post("/register", "application/json", (req, res) -> {
 
             Serialization.RegisterRequest request = null;
@@ -560,14 +538,14 @@ public class Main {
         List<ServerInfo> serverInfos = new ArrayList<> ();
         try {
             KeyStore keyStore = Utils.initKeyStore (keyStoreFilepath);
-            for (int i = 1; i < numberOfServers+1; i++) {
+            for (int i = 0; i < numberOfServers; i++) {
                 if (serverName.equals (SERVER_PREFIX + i)) {    // don't add it self to the list of replicas
                     break;
                 }
                 ServerInfo serverInfo = new ServerInfo ();
-                serverInfo.serverUrl = new URL (url.getProtocol () + "://" + url.getHost () + url.getPort () + i);
+                serverInfo.serverUrl = new URL (url.getProtocol () + "://" + url.getHost () + (url.getPort () + i));
                 serverInfo.publicKeyBase64 =
-                        Serialization.publicKeyToBase64 (Utils.loadPublicKeyFromKeyStore (keyStore, SERVER_PREFIX + i));
+                        Serialization.publicKeyToBase64 (Utils.loadPublicKeyFromKeyStore (keyStore, SERVER_PREFIX + (i + 1)));
                 serverInfos.add (serverInfo);
             }
             return serverInfos;

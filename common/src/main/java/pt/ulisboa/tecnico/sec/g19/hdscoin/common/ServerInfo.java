@@ -23,5 +23,8 @@ public class ServerInfo implements Signable {
         return serverUrl.toString() + publicKeyBase64;
     }
 
+    @Override public String toString () {
+        return "ServerInfo{" + "serverUrl=" + serverUrl + ", publicKeyBase64='" + publicKeyBase64 + '\'' + '}';
+    }
 }
 

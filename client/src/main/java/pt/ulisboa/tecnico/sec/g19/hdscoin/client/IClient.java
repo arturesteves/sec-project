@@ -4,6 +4,7 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.AuditException;
 
+import java.security.KeyException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.util.List;
@@ -19,7 +20,7 @@ public interface IClient {
      * @param amount     Initial amount.
      * @throws RegisterException If there are any problems while trying to register a public key.
      */
-    void register(ECPublicKey publicKey, ECPrivateKey privateKey, int amount) throws RegisterException;
+    void register(ECPublicKey publicKey, ECPrivateKey privateKey, int amount) throws RegisterException, KeyException;
 
     /**
      * Submit the request for transferring a given amount from account

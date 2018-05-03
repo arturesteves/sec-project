@@ -32,6 +32,7 @@ public class Utils {
 
     private static final int NONCE_SIZE = 20;
     private static RandomString rndGen = new RandomString (NONCE_SIZE);
+    private static String KEY_STORE_INSTANCE = "BKS";
 
     static {
         Security.addProvider (new BouncyCastleProvider ());
@@ -52,6 +53,7 @@ public class Utils {
             ecdsaSign.update (hash.getBytes ("UTF-8"));
             return new String (Base64.getEncoder ().encode (ecdsaSign.sign ()), StandardCharsets.UTF_8);
         } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | UnsupportedEncodingException | java.security.SignatureException e) {
+            e.printStackTrace ();
             throw new SignatureException ("Couldn't sign the message. " + e.getMessage ());
         }
     }
@@ -90,21 +92,6 @@ public class Utils {
             throw new KeyGenerationException ("Couldn't generate a key pair. " + e.getMessage (), e);
         }
         return keyPairGenerator.generateKeyPair ();
-    }
-
-    public static void writeKeyPairToFile (String filepath, KeyPair keyPair) throws KeyException, IOException {
-        String publicKeyBase64 = Serialization.publicKeyToBase64 ((ECPublicKey) keyPair.getPublic ());
-        String privateKeyBase64 = Serialization.privateKeyToBase64 ((ECPrivateKey) keyPair.getPrivate ());
-
-        File file = new File (filepath);
-        FileWriter fw;
-        if (!file.createNewFile ()) {
-            fw = new FileWriter (file, false);//if file exists overwrite it
-        } else {
-            fw = new FileWriter (file);
-        }
-        fw.write (publicKeyBase64 + "\n" + privateKeyBase64);
-        fw.close ();
     }
 
     public static ECPublicKey readPublicKeyFromFile (String filepath) throws KeyException, IOException {
@@ -151,8 +138,9 @@ public class Utils {
     ////////////////////////////////////////////
 
     public static KeyStore initKeyStore (String filepath)
-            throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException {
-        KeyStore keyStore = KeyStore.getInstance ("JCEKS");
+            throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException{
+
+        KeyStore keyStore = KeyStore.getInstance (KEY_STORE_INSTANCE);
         File file = new File(filepath);
         if (file.exists ()) {
             FileInputStream fis = new FileInputStream(filepath);
@@ -161,19 +149,20 @@ public class Utils {
             // first time
             keyStore.load (null, KEY_STORE__PASSWORD.toCharArray ());
         }
-
         return keyStore;
     }
 
     public static void savePrivateKeyToKeyStore (KeyStore keyStore, String alias, String password,
                                                  ECPrivateKey privateKey, java.security.cert.Certificate cert)
             throws KeyStoreException {
+
         keyStore.setKeyEntry (alias, privateKey, password.toCharArray (), new Certificate[] { cert });
     }
 
     public static X509Certificate generateCertificate(KeyPair keyPair)
             throws NoSuchAlgorithmException, CertificateEncodingException, NoSuchProviderException, InvalidKeyException,
             java.security.SignatureException {
+
         X509V3CertificateGenerator cert = new X509V3CertificateGenerator();
         cert.setSerialNumber(BigInteger.valueOf(1));   //or generate a random number
         cert.setSubjectDN(new X509Principal ("CN=localhost"));  //see examples to add O,OU etc
@@ -200,13 +189,11 @@ public class Utils {
     public static ECPrivateKey loadPrivateKeyFromKeyStore(String filepath, String alias, String password)
             throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException,
             UnrecoverableKeyException {
+
         FileInputStream fis = new FileInputStream(filepath);
-        //Create an instance of KeyStore of type “JCEKS”
-        KeyStore keyStore = KeyStore.getInstance("JCEKS");
-        //Load the key entries from the file into the KeyStore object.
+        KeyStore keyStore = KeyStore.getInstance(KEY_STORE_INSTANCE);
         keyStore.load(fis, KEY_STORE__PASSWORD.toCharArray());
         fis.close();
-        //Get the key with the given alias.
         return (ECPrivateKey) keyStore.getKey(alias, password.toCharArray());
     }
 

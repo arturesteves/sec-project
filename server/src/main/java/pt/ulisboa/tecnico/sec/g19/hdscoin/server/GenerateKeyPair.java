@@ -71,6 +71,7 @@ public class GenerateKeyPair {
             System.out.println("-------------------------------------");
 
         } catch (ParseException | KeyException | IOException e) {
+            e.printStackTrace ();
             throw new KeyGenerationException("Failed to generate a key pair. " + e.getMessage(), e);
         }catch (Exception ex) {
             ex.printStackTrace ();
