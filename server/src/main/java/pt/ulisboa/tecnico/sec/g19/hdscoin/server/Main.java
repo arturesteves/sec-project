@@ -118,6 +118,7 @@ public class Main {
             System.exit(-1);
         }
 
+
         post("/register", "application/json", (req, res) -> {
 
             Serialization.RegisterRequest request = null;
@@ -205,6 +206,7 @@ public class Main {
             }
         });
 
+        // WRITE OPERATION
         post("/sendAmount", "application/json", (req, res) -> {
             try {
                 Serialization.SendAmountRequest request = Serialization.parse(req,
@@ -288,6 +290,7 @@ public class Main {
             }
         });
 
+        // READ OPERATION
         get("/checkAccount/:key", "application/json", (req, res) -> {
             try {
                 // init generic response to use when an error occur
@@ -344,6 +347,7 @@ public class Main {
             }
         });
 
+        // WRITE OPERATION
         post("/receiveAmount", "application/json", (req, res) -> {
             try {
                 Serialization.ReceiveAmountRequest request = Serialization.parse(req,
@@ -467,6 +471,7 @@ public class Main {
             }
         });
 
+        // READ OPERATION
         get("/audit/:key", "application/json", (req, res) -> {
             Serialization.Response errorResponse = new Serialization.Response();
             errorResponse.nonce = req.headers(Serialization.NONCE_HEADER_NAME);

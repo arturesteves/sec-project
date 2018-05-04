@@ -133,6 +133,10 @@ public class Utils {
         }
     }
 
+    public static int numberOfFaultsSupported(int numberOfReplicas) {
+        return (numberOfReplicas - 1) / 3;
+    }
+
     ////////////////////////////////////////////
     //// handle keystore
     ////////////////////////////////////////////

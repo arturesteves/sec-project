@@ -12,8 +12,6 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.SignatureException;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.interfaces.ECPrivateKey;
@@ -33,9 +31,14 @@ public class Client implements IClient {
     }
 
     private List<ServerInfo> servers;
+    private List<ServerInfo> ackList;
+    //private List<Ledger> readList;
+    private int numberOfMaxFaults;
 
     public Client (URL url, int numberOfServers, String keyStoreFilepath) {
         this.servers = getServersInfoFromKeyStore (url, numberOfServers, keyStoreFilepath);
+        this.numberOfMaxFaults = Utils.numberOfFaultsSupported (numberOfServers);
+        this.ackList = new ArrayList<> ();
     }
 
     private List<ServerInfo> getServersInfoFromKeyStore (URL url, int numberOfServers, String keyStoreFilepath) {
