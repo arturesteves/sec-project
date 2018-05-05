@@ -5,6 +5,7 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import java.util.List;
 
 public class CheckAccountResult {
+
     public int balance;
     public List<Serialization.Transaction> pendingTransactions;
 

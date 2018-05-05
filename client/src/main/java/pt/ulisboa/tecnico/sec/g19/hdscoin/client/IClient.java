@@ -3,6 +3,7 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.AuditException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.SignatureException;
 
 import java.security.KeyException;
 import java.security.interfaces.ECPrivateKey;
@@ -20,7 +21,8 @@ public interface IClient {
      * @param amount     Initial amount.
      * @throws RegisterException If there are any problems while trying to register a public key.
      */
-    void register(ECPublicKey publicKey, ECPrivateKey privateKey, int amount) throws RegisterException, KeyException;
+    void register(ECPublicKey publicKey, ECPrivateKey privateKey, int amount)
+            throws RegisterException, KeyException, SignatureException;
 
     /**
      * Submit the request for transferring a given amount from account
@@ -35,7 +37,8 @@ public interface IClient {
      * @throws SendAmountException If there are any problems while trying to create a transaction.
      */
     void sendAmount(ECPublicKey sourcePublicKey, ECPublicKey targetPublicKey, int amount,
-                    ECPrivateKey sourcePrivateKey, String previousSignature) throws SendAmountException;
+                    ECPrivateKey sourcePrivateKey, String previousSignature)
+            throws SendAmountException, CheckAccountException, AuditException, KeyException, SignatureException;
 
     /**
      * Obtain the balance of the account associated with key.
@@ -60,7 +63,7 @@ public interface IClient {
      */
     void receiveAmount(ECPublicKey sourcePublicKey, String targetPublicKey, int amount,
                        ECPrivateKey sourcePrivateKey, String previousSignature, String incomingSignature)
-            throws ReceiveAmountException;
+            throws ReceiveAmountException, KeyException, SignatureException, AuditException;
 
     /**
      * Obtain the full transaction history of the account associated with key.
@@ -68,6 +71,6 @@ public interface IClient {
      * @param publicKey The public key of the account to be audited
      * @throws AuditException If there is a problem validating the transaction history.
      */
-    List<Serialization.Transaction> audit(ECPublicKey publicKey) throws AuditException;
+    Serialization.AuditResponse audit(ECPublicKey publicKey) throws AuditException;
 
 }

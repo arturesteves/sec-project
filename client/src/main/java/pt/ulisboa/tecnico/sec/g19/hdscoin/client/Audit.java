@@ -63,8 +63,8 @@ public class Audit {
             ECPublicKey clientPublicKey = Utils.loadPublicKeyFromKeyStore (keyStore, clientName);
 
             IClient client = new Client(new URL(SERVER_URL), numberOfServers, path.toString ());
-            List<Serialization.Transaction> transactions = client.audit(clientPublicKey);
-
+            Serialization.AuditResponse auditResponse= client.audit(clientPublicKey);
+            List<Serialization.Transaction> transactions = auditResponse.ledger.transactions;
             System.out.println("Transactions:");
             for (Serialization.Transaction tx : transactions) {
                 System.out.println("  Signature: " + tx.signature);

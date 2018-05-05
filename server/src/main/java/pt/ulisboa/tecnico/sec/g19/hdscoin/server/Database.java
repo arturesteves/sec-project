@@ -33,7 +33,7 @@ public class Database {
             statement.executeUpdate("create table ledger (" +
                     "id integer primary key, " +
                     "public_key text not null, " +
-                    "balance integer not null" +
+                    "balance integer not null, " +
                     "timestamp integer not null)");
 
             statement.executeUpdate("create table tx (" + // "transaction" is a reserved SQLite keyword

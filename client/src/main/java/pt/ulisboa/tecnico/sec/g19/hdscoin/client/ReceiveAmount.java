@@ -6,15 +6,13 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CheckAccountExceptio
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.ReceiveAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.SignatureException;
 
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
+import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
@@ -98,7 +96,8 @@ public class ReceiveAmount {
 
             // get the hash of our last transaction, so we can include it in the new transaction
             // client.audit verifies the transaction chain for us
-            List<Serialization.Transaction> transactions = client.audit (sourcePublicKey);
+            Serialization.AuditResponse auditResponse = client.audit (sourcePublicKey);
+            List<Serialization.Transaction> transactions = auditResponse.ledger.transactions;
             // transactions.size() should always be > 0 because of the dummy transaction required to open an account
             if (transactions.size () == 0) {
                 throw new ReceiveAmountException (
@@ -115,6 +114,10 @@ public class ReceiveAmount {
         } catch (CertificateException | NoSuchAlgorithmException | KeyStoreException | IOException |
                 UnrecoverableKeyException | CheckAccountException e) {
             throw new ReceiveAmountException ("Failed to receive amount. " + e);
+        } catch (KeyException e) {
+            e.printStackTrace ();
+        } catch (SignatureException e) {
+            e.printStackTrace ();
         }
 
     }

@@ -43,8 +43,8 @@ for /l %%x in (1, 1, %N%) do (
 SET i=1
 SET port=4570
 
-echo About to init the replicas
-TIMEOUT /t 5 /nobreak
+echo Init replicas...
+TIMEOUT /t 2 /nobreak
 
 SET password=
 :: init repicas
@@ -53,7 +53,7 @@ for /l %%x in (1, 1, %N%) do (
 	SET password=!aliasPrefixPw!%%x
 	start cmd /k mvn exec:java@WebServer -Dexec.args="Server_!i! !port! %N% !password!"
 	:: waits 5 seconds so the replicas aren't initiated all at the same time
-	TIMEOUT /t 5 /nobreak
+	TIMEOUT /t 3 /nobreak
 	SET /a i=!i!+1
 	SET /a port=!port!+1
 )

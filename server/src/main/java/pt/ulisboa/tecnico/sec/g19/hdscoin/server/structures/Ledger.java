@@ -95,10 +95,6 @@ public final class Ledger {
         return this.timestamp;
     }
 
-    public void incrementTimeStamp() {
-        this.timestamp++;
-    }
-
     public void setTimestamp(int newTimestamp) {
         this.timestamp = newTimestamp;
     }
@@ -292,5 +288,10 @@ public final class Ledger {
             if (statement != null)
                 statement.close();
         }
+    }
+
+    @Override public String toString () {
+        return "Ledger{" + "id=" + id + ", publicKey=" + publicKey + ", amount=" + amount + ", timestamp=" + timestamp +
+                '}';
     }
 }

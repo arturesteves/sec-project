@@ -145,20 +145,26 @@ public class Serialization {
 
 
     public static class SendAmountRequest extends Transaction {
-
+        public Ledger ledger;
         public SendAmountRequest () {
             isSend = true;
         }
+
+        @Override @JsonIgnore public String getSignable () {
+            return super.getSignable () + ledger.getSignable ();
+        }
+
     }
 
 
     public static class ReceiveAmountRequest implements Signable, NonceContainer {
-
+        //public
         public String pendingTransactionHash;
         public Transaction transaction;
+        public Ledger ledger;
 
         @Override @JsonIgnore public String getSignable () {
-            return transaction.getSignable () + pendingTransactionHash;
+            return transaction.getSignable () + pendingTransactionHash + ledger.getSignable ();
         }
 
         @Override @JsonIgnore public String getNonce () {
@@ -184,9 +190,9 @@ public class Serialization {
 
 
     public static class CheckAccountResponse extends Response implements Signable {
-
         public int balance;
         public List<Transaction> pendingTransactions = new ArrayList<> ();
+
 
         @Override @JsonIgnore public String getSignable () {
             StringBuilder signable = new StringBuilder (super.getSignable ()).append (balance);
@@ -195,18 +201,18 @@ public class Serialization {
             }
             return signable.toString ();
         }
+
     }
 
 
     public static class AuditResponse extends Response implements Signable {
-
-        public List<Transaction> transactions = new ArrayList<> ();
+        public int timestamp;
+        public Ledger ledger;
 
         @Override @JsonIgnore public String getSignable () {
             StringBuilder signable = new StringBuilder (super.getSignable ());
-            for (Transaction tx : transactions) {
-                signable.append (tx.getSignable ());
-            }
+            signable.append (timestamp)
+                    .append (ledger.getSignable ());
             return signable.toString ();
         }
     }
@@ -233,16 +239,12 @@ public class Serialization {
 
 
     public static class Ledger implements Signable {
-        public String publicKeyBase64;
-        public int amount;
         public int timestamp;
         public List<Transaction> transactions = new ArrayList<> ();
 
         @Override @JsonIgnore public String getSignable () {
             StringBuilder signable = new StringBuilder ();
-            signable.append (timestamp)
-                    .append (publicKeyBase64)
-                    .append (amount);
+            signable.append (timestamp);
             for (Transaction tx : transactions) {
                 signable.append (tx.getSignable ());
             }

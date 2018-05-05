@@ -72,6 +72,11 @@ public final class Transaction {
                 throw new SignatureException("The previous signature does not match the correct one");
             }
 
+            log.log(Level.INFO, "ledger timestamp: " + source.getTimestamp ());
+            log.log(Level.INFO, "latestTransaction: " + latestTransaction);
+            log.log(Level.INFO, "previousHash: " + previousHash);
+            log.log(Level.INFO, "latestTransaction.getHash(): " + latestTransaction.getHash());
+
             if (latestTransaction == null && !previousHash.isEmpty()) {
                 throw new SignatureException("The previous signature is not empty as it should");
             } else if (latestTransaction != null && !previousHash.equals(latestTransaction.getHash())) {

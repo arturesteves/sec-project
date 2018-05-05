@@ -206,7 +206,10 @@ public class Main {
             }
         });
 
-        // WRITE OPERATION
+        ////////////////////////////////////////////////
+        //// WRITE OPERATIONS
+        ////////////////////////////////////////////////
+
         post("/sendAmount", "application/json", (req, res) -> {
             try {
                 Serialization.SendAmountRequest request = Serialization.parse(req,
@@ -243,8 +246,15 @@ public class Main {
                 try {
                     conn = Database.getConnection();
                     Ledger sourceLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.source));
-                    Ledger targetLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.target));
+                    if (sourceLedger.getTimestamp () >= request.ledger.timestamp) {
+                        res.status(401);
+                        log.log(Level.WARNING, "Older operation");
+                        response.status = ERROR_INVALID_LEDGER; // todo: change to another error
+                        return prepareResponse(serverPrivateKey, req, res, response);
+                    }
 
+                    Ledger targetLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.target));
+                    log.log(Level.INFO, "Load local ledger");
                     // mutual exclusion is necessary to ensure the new transaction ID obtained in "new Transaction"
                     // is still correct/"fresh" when "transaction.persist" is called, and also that the latest
                     // transaction is still the latest transaction
@@ -253,10 +263,19 @@ public class Main {
                                 request.nonce,
                                 request.signature,
                                 request.previousSignature, Transaction.TransactionTypes.SENDING);
+                        // update ledger
+                        sourceLedger.setTimestamp (request.ledger.timestamp);
+                        log.log(Level.INFO, "Ledger timestamp persisted");
                         // checkout the amount from the source ledger
                         sourceLedger.setAmount(sourceLedger.getAmount() - request.amount);
+                        log.log(Level.INFO, "Load local ledger");
                         transaction.persist(conn);
+                        log.log(Level.INFO, "Transaction persisted");
                         sourceLedger.persist(conn);
+                        log.log(Level.INFO, "ledger persisted");
+
+
+                        // todo: update the full ledger transactions (before persisting the transaction
                     }
                     conn.commit();
                     response.status = SUCCESS;
@@ -272,6 +291,7 @@ public class Main {
                 } catch (InvalidKeyException e) {
                     response.status = ERROR_INVALID_KEY;
                 } catch (SignatureException e) {
+                    e.printStackTrace ();
                     response.status = ERROR_NO_SIGNATURE_MATCH;
                 } finally {
                     if ((response.status == null || !response.status.equals(SUCCESS)) && conn != null) {
@@ -290,64 +310,6 @@ public class Main {
             }
         });
 
-        // READ OPERATION
-        get("/checkAccount/:key", "application/json", (req, res) -> {
-            try {
-                // init generic response to use when an error occur
-                Serialization.Response errorResponse = new Serialization.Response();
-                errorResponse.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
-                String pubKeyBase64 = req.params(":key");
-                if (pubKeyBase64 == null) {
-                    errorResponse.status = ERROR_MISSING_PARAMETER;
-                    return prepareResponse(serverPrivateKey, req, res, errorResponse);
-                }
-                log.log(Level.INFO, "Checking account with public key: " + pubKeyBase64);
-
-                Connection conn = null;
-                boolean committed = false;
-                try {
-                    Serialization.CheckAccountResponse response = new Serialization.CheckAccountResponse();
-                    ECPublicKey clientPublicKey = Serialization.base64toPublicKey(pubKeyBase64);
-                    conn = Database.getConnection();
-                    Ledger ledger = Ledger.load(conn, clientPublicKey);
-                    response.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
-                    System.out.println("Pending" + ledger.getPendingTransactions(conn, clientPublicKey));
-                    response.balance = ledger.getAmount();
-                    response.pendingTransactions = serializeTransactions(ledger.getPendingTransactions(conn, clientPublicKey));
-                    System.out.println("Balance: " + response.balance);
-
-                    response.status = SUCCESS;
-                    log.log(Level.INFO, "Successful check account operation of the ledger with " +
-                            "public key: " + pubKeyBase64);
-                    conn.commit();
-                    committed = true;
-                    return prepareResponse(serverPrivateKey, req, res, response);
-                } catch (SQLException e) {
-                    // servers fault
-                    log.log(Level.SEVERE, "Error related to the database. " + e);
-                    errorResponse.status = ERROR_SERVER_ERROR;
-                }
-                // these exceptions are the client's fault
-                catch (MissingLedgerException e) {
-                    errorResponse.status = ERROR_INVALID_LEDGER;
-                } catch (InvalidKeyException e) {
-                    errorResponse.status = ERROR_INVALID_KEY;
-                } finally {
-                    if (conn != null && !committed) {
-                        conn.rollback();
-                    }
-                }
-                return prepareResponse(serverPrivateKey, req, res, errorResponse);
-            } catch (Exception ex) {
-                res.status(500);
-                Serialization.Response response = new Serialization.Response();
-                response.status = ERROR_SERVER_ERROR;
-                log.log(Level.SEVERE, "Error on processing a check account request. " + ex);
-                return prepareResponse(serverPrivateKey, req, res, response);
-            }
-        });
-
-        // WRITE OPERATION
         post("/receiveAmount", "application/json", (req, res) -> {
             try {
                 Serialization.ReceiveAmountRequest request = Serialization.parse(req,
@@ -471,7 +433,66 @@ public class Main {
             }
         });
 
-        // READ OPERATION
+        ////////////////////////////////////////////////
+        //// READ OPERATIONS
+        ////////////////////////////////////////////////
+
+        get("/checkAccount/:key", "application/json", (req, res) -> {
+            try {
+                // init generic response to use when an error occur
+                Serialization.Response errorResponse = new Serialization.Response();
+                errorResponse.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
+                String pubKeyBase64 = req.params(":key");
+                if (pubKeyBase64 == null) {
+                    errorResponse.status = ERROR_MISSING_PARAMETER;
+                    return prepareResponse(serverPrivateKey, req, res, errorResponse);
+                }
+                log.log(Level.INFO, "Checking account with public key: " + pubKeyBase64);
+
+                Connection conn = null;
+                boolean committed = false;
+                try {
+                    Serialization.CheckAccountResponse response = new Serialization.CheckAccountResponse();
+                    ECPublicKey clientPublicKey = Serialization.base64toPublicKey(pubKeyBase64);
+                    conn = Database.getConnection();
+                    Ledger ledger = Ledger.load(conn, clientPublicKey);
+                    response.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
+                    System.out.println("Pending" + ledger.getPendingTransactions(conn, clientPublicKey));
+                    response.balance = ledger.getAmount();
+                    response.pendingTransactions = serializeTransactions(ledger.getPendingTransactions(conn, clientPublicKey));
+                    System.out.println("Balance: " + response.balance);
+
+                    response.status = SUCCESS;
+                    log.log(Level.INFO, "Successful check account operation of the ledger with " +
+                            "public key: " + pubKeyBase64);
+                    conn.commit();
+                    committed = true;
+                    return prepareResponse(serverPrivateKey, req, res, response);
+                } catch (SQLException e) {
+                    // servers fault
+                    log.log(Level.SEVERE, "Error related to the database. " + e);
+                    errorResponse.status = ERROR_SERVER_ERROR;
+                }
+                // these exceptions are the client's fault
+                catch (MissingLedgerException e) {
+                    errorResponse.status = ERROR_INVALID_LEDGER;
+                } catch (InvalidKeyException e) {
+                    errorResponse.status = ERROR_INVALID_KEY;
+                } finally {
+                    if (conn != null && !committed) {
+                        conn.rollback();
+                    }
+                }
+                return prepareResponse(serverPrivateKey, req, res, errorResponse);
+            } catch (Exception ex) {
+                res.status(500);
+                Serialization.Response response = new Serialization.Response();
+                response.status = ERROR_SERVER_ERROR;
+                log.log(Level.SEVERE, "Error on processing a check account request. " + ex);
+                return prepareResponse(serverPrivateKey, req, res, response);
+            }
+        });
+
         get("/audit/:key", "application/json", (req, res) -> {
             Serialization.Response errorResponse = new Serialization.Response();
             errorResponse.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
@@ -489,10 +510,13 @@ public class Main {
                 conn = Database.getConnection();
                 ECPublicKey publicKey = Serialization.base64toPublicKey(req.params(":key"));
                 Ledger ledger = Ledger.load(conn, publicKey);
-
-                response.transactions = serializeTransactions(ledger.getAllTransactions(conn));
+                //response.transactions = serializeTransactions(ledger.getAllTransactions(conn));
+                response.ledger = new Serialization.Ledger ();
+                response.ledger.transactions = serializeTransactions(ledger.getAllTransactions(conn));
+                response.ledger.timestamp = ledger.getTimestamp ();
                 conn.commit();
                 response.status = SUCCESS;
+                log.log(Level.INFO, "Audit transactions response: " + response.ledger.transactions +"\n");
                 return prepareResponse(serverPrivateKey, req, res, response);
             } catch (MissingLedgerException e) {
                 errorResponse.status = ERROR_INVALID_LEDGER;
@@ -514,6 +538,7 @@ public class Main {
             }
             return prepareResponse(serverPrivateKey, req, res, errorResponse);
         });
+
     }
 
     private static String prepareResponse(ECPrivateKey privateKey, Request sparkRequest, Response sparkResponse, Serialization.Response response) throws JsonProcessingException, SignatureException {
