@@ -189,10 +189,10 @@ public class Serialization {
     }
 
 
-    public static class CheckAccountResponse extends Response implements Signable {
+    public static class CheckAccountResponse extends Response implements Signable, Readable {
         public int balance;
         public List<Transaction> pendingTransactions = new ArrayList<> ();
-
+        public int timestamp;
 
         @Override @JsonIgnore public String getSignable () {
             StringBuilder signable = new StringBuilder (super.getSignable ()).append (balance);
@@ -202,10 +202,13 @@ public class Serialization {
             return signable.toString ();
         }
 
+        @Override public int getTimestamp () {
+            return timestamp;
+        }
     }
 
 
-    public static class AuditResponse extends Response implements Signable {
+    public static class AuditResponse extends Response implements Signable, Readable {
         public int timestamp;
         public Ledger ledger;
 
@@ -214,6 +217,10 @@ public class Serialization {
             signable.append (timestamp)
                     .append (ledger.getSignable ());
             return signable.toString ();
+        }
+
+        @Override public int getTimestamp () {
+            return timestamp;
         }
     }
 

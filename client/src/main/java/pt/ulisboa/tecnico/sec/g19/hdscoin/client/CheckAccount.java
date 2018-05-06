@@ -61,7 +61,7 @@ public class CheckAccount {
             ECPublicKey clientPublicKey = Utils.loadPublicKeyFromKeyStore (keyStore, clientName);
 
             IClient client = new Client(new URL(SERVER_URL), numberOfServers, path.toString ());
-            CheckAccountResult result = client.checkAccount(clientPublicKey);
+            Serialization.CheckAccountResponse result = client.checkAccount(clientPublicKey);
             System.out.println("Balance: " + result.balance);
             if(result.pendingTransactions.size() > 0) {
                 System.out.println("Pending incoming transactions:");

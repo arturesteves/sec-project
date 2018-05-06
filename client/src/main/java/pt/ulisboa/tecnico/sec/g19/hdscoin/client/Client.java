@@ -4,6 +4,7 @@ import com.github.kevinsawicki.http.HttpRequest;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.*;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Readable;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidKeyException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidLedgerException;
@@ -16,8 +17,7 @@ import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization.SERVER_PREFIX;
 import static pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization.StatusMessage.ERROR_NO_SIGNATURE_MATCH;
@@ -32,14 +32,12 @@ public class Client implements IClient {
 
     private List<ServerInfo> servers;
     private List<ServerInfo> ackList;
-    private List<Readable> readList;
     private int numberOfMaxFaults;
 
     public Client (URL url, int numberOfServers, String keyStoreFilepath) {
         this.servers = getServersInfoFromKeyStore (url, numberOfServers, keyStoreFilepath);
         this.numberOfMaxFaults = Utils.numberOfFaultsSupported (numberOfServers);
         this.ackList = new ArrayList<> ();
-        this.readList = new ArrayList<> ();
     }
 
     private List<ServerInfo> getServersInfoFromKeyStore (URL url, int numberOfServers, String keyStoreFilepath) {
@@ -193,8 +191,8 @@ public class Client implements IClient {
     }
 
     // read operation
-    @Override public CheckAccountResult checkAccount (ECPublicKey publicKey) throws CheckAccountException {
-        List<CheckAccountResult> checkAccountResults = new ArrayList<> ();
+    @Override public Serialization.CheckAccountResponse checkAccount (ECPublicKey publicKey) throws CheckAccountException {
+        List<Serialization.CheckAccountResponse> checkAccountResults = new ArrayList<> ();
         for (ServerInfo server : this.servers) {
             try {
                 checkAccountResults.add (checkAccount (server, publicKey));
@@ -208,7 +206,8 @@ public class Client implements IClient {
             System.out.println ("----------------------------------");
             System.out.println ("---Check account was successful---");
             System.out.println ("----------------------------------");
-            return checkAccountResults.get (0);  // choose anyone
+            //return checkAccountResults.get (0);  // choose anyone
+            return getValueWithMajorityTimestamp(checkAccountResults);
         } else {
             throw new CheckAccountException ("Failed to check account - not enough success responses!");
         }
@@ -231,7 +230,8 @@ public class Client implements IClient {
             System.out.println ("----------------------------------");
             System.out.println ("-------Audit was successful-------");
             System.out.println ("----------------------------------");
-            return auditResponses.get (0);  // choose anyone
+            //return auditResponses.get (0);  // choose anyone
+            return getValueWithMajorityTimestamp(auditResponses);
         } else {
             throw new AuditException ("Failed to audit account - not enough success responses!");
         }
@@ -361,7 +361,7 @@ public class Client implements IClient {
     //// READ OPERATIONS
     ////////////////////////////////////////////////
 
-    private CheckAccountResult checkAccount (ServerInfo server, ECPublicKey publicKey) throws CheckAccountException {
+    private Serialization.CheckAccountResponse checkAccount (ServerInfo server, ECPublicKey publicKey) throws CheckAccountException {
         try {
             String b64PublicKey = Serialization.publicKeyToBase64 (publicKey);
             String requestPath =
@@ -376,7 +376,7 @@ public class Client implements IClient {
 
             if (response.statusCode == 200) {
                 // the read list is not needed, because on the other check account we are storing the results
-                return new CheckAccountResult (response.balance, response.pendingTransactions);
+                return response; //new CheckAccountResult (response.balance, response.pendingTransactions);
 
             } else {
                 switch (response.status) {
@@ -539,6 +539,57 @@ public class Client implements IClient {
 
     private <T> boolean hasMajority (List<T> list) {
         return list.size () > (servers.size () + numberOfMaxFaults) / 2;
+    }
+
+    private <T> T getValueWithMajorityTimestamp(List<T> list) {
+        // get the occurrences of a timestamp in the list
+        HashMap<Integer, Integer> timestampsOccurrence = getTimestampsOccurrence (list);
+        // get the highest timestamp
+        int highestTimestamp = getHighestTimestampOccurrence (timestampsOccurrence);
+        // fetch the first value with the highest timestamp
+        return getValueWithHighestTimestampOccurrence (list, highestTimestamp);
+    }
+
+    private <T> HashMap<Integer, Integer> getTimestampsOccurrence (List<T> list) {
+        HashMap<Integer, Integer> timestampsOccurrence = new HashMap<> ();
+        for(T element : list) {
+            Readable readable = (Readable) element;
+            System.out.println ("Timestamp: " + readable.getTimestamp ());
+            if (timestampsOccurrence.containsKey (readable.getTimestamp ())) {
+                int occurrence = timestampsOccurrence.get (readable.getTimestamp ());
+                timestampsOccurrence.put (readable.getTimestamp (), occurrence+1);
+            } else {
+                timestampsOccurrence.put (readable.getTimestamp (), 1);
+            }
+        }
+        return timestampsOccurrence;
+    }
+
+    private int getHighestTimestampOccurrence (HashMap<Integer, Integer> occurrences) {
+        int highestTimestamp = 0;
+        int oldOccurence = 0;
+        Iterator it = occurrences.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            int value = (Integer) pair.getValue ();
+            if (value > oldOccurence) {
+                oldOccurence = value;
+                highestTimestamp = (Integer) pair.getKey ();
+                System.out.println ("New highest timestamp: " + highestTimestamp + "; occurred " + oldOccurence + " times.");
+            }
+            System.out.println(pair.getKey() + " = " + pair.getValue());
+        }
+        return highestTimestamp;
+    }
+
+    private <T> T getValueWithHighestTimestampOccurrence(List<T> list, int timestamp) {
+        for (T element : list) {
+            Readable readable = (Readable) element;
+            if (readable.getTimestamp () == timestamp) {
+                return element;
+            }
+        }
+        return null;
     }
 
 }

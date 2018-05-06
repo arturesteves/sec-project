@@ -46,7 +46,7 @@ public interface IClient {
      * @param publicKey Public key of the client
      * @return CheckAccountResult containing the balance and pending transactions of the account
      */
-    CheckAccountResult checkAccount(ECPublicKey publicKey) throws CheckAccountException;
+    Serialization.CheckAccountResponse checkAccount(ECPublicKey publicKey) throws CheckAccountException;
 
     /**
      * Used by recipient of a transfer to accept in a non-repudiable way

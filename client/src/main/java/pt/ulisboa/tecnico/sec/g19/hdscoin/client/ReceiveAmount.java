@@ -83,7 +83,7 @@ public class ReceiveAmount {
 
             // check account to get pending incoming transactions
             Serialization.Transaction pendingTx = null;
-            CheckAccountResult result = client.checkAccount (sourcePublicKey);
+            Serialization.CheckAccountResponse result = client.checkAccount (sourcePublicKey);
             for (Serialization.Transaction tx : result.pendingTransactions) {
                 if (tx.signature.equals (transactionSignature)) {
                     pendingTx = tx;
