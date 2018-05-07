@@ -17,6 +17,7 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.Ledger;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.*;
@@ -26,10 +27,12 @@ import java.security.interfaces.ECPublicKey;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.*;
 
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.Transaction;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.VerifiableLedger;
 import spark.Request;
 import spark.Response;
 
@@ -88,7 +91,7 @@ public class Main {
                               Utils.loadPublicKeyFromKeyStore (keyStore, serverName);
 
 
-            // set dabase name
+            // set database name
             Database.setDatabaseName(serverName + "_");
 
             Security.addProvider(new BouncyCastleProvider());
@@ -242,15 +245,103 @@ public class Main {
                 //We now know that the transaction was created by the owner of its respective private key.
                 ///////////////////////////////////////////////////
 
+                // now check the transaction itself
+                result = Utils.checkSignature(
+                        request.signature,
+                        request.getSignable(),
+                        request.source);
+
+                if (!result) {
+                    res.status(401);
+                    log.log(Level.WARNING, "Mismatch in transaction signatures");
+                    response.status = ERROR_NO_SIGNATURE_MATCH;
+                    return prepareResponse(serverPrivateKey, req, res, response);
+                }
+
                 Connection conn = null;
                 try {
                     conn = Database.getConnection();
                     Ledger sourceLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.source));
+
+                    // check the timestamp of the request
                     if (sourceLedger.getTimestamp () >= request.ledger.timestamp) {
                         res.status(401);
                         log.log(Level.WARNING, "Older operation");
-                        response.status = ERROR_INVALID_LEDGER; // todo: change to another error
+                        response.status = ERROR_INVALID_LEDGER;
                         return prepareResponse(serverPrivateKey, req, res, response);
+                    }
+
+
+                    //////////////////
+                    // verify if the hash of the ledger received match the ledger currently persisted
+                    //////////////////
+
+                    // hash the local ledger
+                    List<Transaction> localTransactions = sourceLedger.getAllTransactions (conn);
+                    List<Serialization.Transaction> localSerializableTransactions = serializeTransactions (localTransactions);
+                    VerifiableLedger localLedger = new VerifiableLedger (localSerializableTransactions);
+                    String localLedgerHash = Utils.generateHashBase64 (localLedger.getHashable ());
+
+                    // hash the ledger received
+                    VerifiableLedger receivedLedger = new VerifiableLedger (request.ledger.transactions);
+                    String receivedLedgerHash = Utils.generateHashBase64 (receivedLedger.getHashable ());
+
+                    if (localLedgerHash == null || receivedLedgerHash == null) {
+                        res.status(401);
+                        log.log(Level.WARNING, "Couldn't hash the transactions.");
+                        response.status = ERROR_SERVER_ERROR;   // could be better
+                        return prepareResponse(serverPrivateKey, req, res, response);
+                    }
+
+                    log.log(Level.INFO, "---------------------------");
+                    log.log(Level.INFO, "Ledger received:");
+                    log.log(Level.INFO, "timestamp: " + request.ledger.timestamp);
+                    log.log(Level.INFO, "signable: " + receivedLedger.getHashable ());
+                    log.log(Level.INFO, "Sign: " + receivedLedgerHash);
+                    log.log(Level.INFO, "---------------------------");
+                    log.log(Level.INFO, "\n");
+                    log.log(Level.INFO, "Local ledger: ");
+                    log.log(Level.INFO, "timestamp: " + sourceLedger.getTimestamp ());
+                    log.log(Level.INFO, "signable: " + localLedger.getHashable ());
+                    log.log(Level.INFO, "Sign: " + localLedgerHash);
+                    log.log(Level.INFO, "---------------------------");
+                    log.log(Level.INFO, "\n");
+
+
+                    // if not equal the local replica is ahead or behind the current agreed ledger by the majority of replicas
+                    if (!localLedgerHash.equals (receivedLedgerHash)) {
+
+                        int endIndex = localSerializableTransactions.size () - 1;
+                        // remove the last transaction from the last before hashing
+                        VerifiableLedger subLocalLedger = new VerifiableLedger (localSerializableTransactions.subList (endIndex - 1, endIndex));
+                        String subLocalLedgerHash = Utils.generateHashBase64 (subLocalLedger.getHashable ());
+
+                        // check if the ledger contained one operation that wasn't completed by a majority
+                        if (subLocalLedgerHash.equals (receivedLedgerHash)) {
+                            // remove the last transaction from the database
+                            Transaction.removeTransaction (conn, localTransactions.get (localTransactions.size () - 1).getId ());
+                            conn.commit (); // commit this change
+                            // continue, to try to perform the operation now on a update ledger which is agreed by the majority
+                        } else {
+                            /*
+                            has the ledger on a replica can only have at most a operation at the top of the ledger
+                            that wasn't completed by a majority when this stage is reached it means that the replica
+                            is behind the current agreed state of a ledger.
+                            So the replica must find out how many transactions it is behind so it can persist the missing
+                            transactions on its end and then try to fulfil the operation required on the update state.
+                            At this stage as the client isn't byzantine then the received ledger is assumed that it wasn't
+                            modified and is the result of the majority of the replicas.
+                            */
+                            ArrayList<Serialization.Transaction> copyReceivedTransactions = new ArrayList<> (request.ledger.transactions);
+                            int end = copyReceivedTransactions.size () - 1;
+                            int numberOfTransactionsBehind = getNumberOfTransactionsBehind(copyReceivedTransactions, new ArrayList<> (localSerializableTransactions));
+                            int start = end - numberOfTransactionsBehind;
+                            log.log(Level.INFO,"This replica contained a ledger that was " + numberOfTransactionsBehind + " transactions behind.");
+                            persistMissingTransactions(conn, new ArrayList<> (request.ledger.transactions).subList (start, end), sourceLedger);
+                            // continue, to try to perform the operation now on a updated ledger which is agreed by the majority
+                        }
+                    } else {
+                        log.log(Level.INFO,"Local ledger is already in sync with the ledger received");
                     }
 
                     Ledger targetLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.target));
@@ -263,11 +354,9 @@ public class Main {
                                 request.nonce,
                                 request.signature,
                                 request.previousSignature, Transaction.TransactionTypes.SENDING);
-                        // update ledger
-                        sourceLedger.setTimestamp (request.ledger.timestamp);
-                        log.log(Level.INFO, "Ledger timestamp persisted");
                         // checkout the amount from the source ledger
                         sourceLedger.setAmount(sourceLedger.getAmount() - request.amount);
+                        sourceLedger.setTimestamp (request.ledger.timestamp);   //update the timestamp
                         log.log(Level.INFO, "Load local ledger");
                         transaction.persist(conn);
                         log.log(Level.INFO, "Transaction persisted");
@@ -360,6 +449,70 @@ public class Main {
                 try {
                     conn = Database.getConnection();
                     Ledger sourceLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.transaction.source));
+
+                    // check the timestamp of the request
+                    if (sourceLedger.getTimestamp () >= request.ledger.timestamp) {
+                        res.status(401);
+                        log.log(Level.WARNING, "Older operation");
+                        response.status = ERROR_INVALID_LEDGER;
+                        return prepareResponse(serverPrivateKey, req, res, response);
+                    }
+
+                    //////////////////
+                    // verify if the hash of the ledger received match the ledger currently persisted
+                    //////////////////
+
+                    // hash the local ledger
+                    List<Transaction> localTransactions = sourceLedger.getAllTransactions (conn);
+                    List<Serialization.Transaction> localSerializableTransactions = serializeTransactions (localTransactions);
+                    VerifiableLedger localLedger = new VerifiableLedger (localSerializableTransactions);
+                    String localLedgerHash = Utils.generateHashBase64 (localLedger.getHashable ());
+
+                    // hash the ledger received
+                    VerifiableLedger receivedLedger = new VerifiableLedger (request.ledger.transactions);
+                    String receivedLedgerHash = Utils.generateHashBase64 (receivedLedger.getHashable ());
+
+                    if (localLedgerHash == null || receivedLedgerHash == null) {
+                        res.status(401);
+                        log.log(Level.WARNING, "Couldn't hash the transactions.");
+                        response.status = ERROR_SERVER_ERROR;   // could be better
+                        return prepareResponse(serverPrivateKey, req, res, response);
+                    }
+
+                    log.log(Level.INFO, "---------------------------");
+                    log.log(Level.INFO, "Ledger received:");
+                    log.log(Level.INFO, "timestamp: " + request.ledger.timestamp);
+                    log.log(Level.INFO, "signable: " + receivedLedger.getHashable ());
+                    log.log(Level.INFO, "Sign: " + receivedLedgerHash);
+                    log.log(Level.INFO, "---------------------------");
+                    log.log(Level.INFO, "\n");
+                    log.log(Level.INFO, "Local ledger: ");
+                    log.log(Level.INFO, "timestamp: " + sourceLedger.getTimestamp ());
+                    log.log(Level.INFO, "signable: " + localLedger.getHashable ());
+                    log.log(Level.INFO, "Sign: " + localLedgerHash);
+                    log.log(Level.INFO, "---------------------------");
+                    log.log(Level.INFO, "\n");
+
+                    if (!localLedgerHash.equals (receivedLedgerHash)) {
+                        int endIndex = localSerializableTransactions.size () - 1;
+                        VerifiableLedger subLocalLedger = new VerifiableLedger (localSerializableTransactions.subList (endIndex - 1, endIndex));
+                        String subLocalLedgerHash = Utils.generateHashBase64 (subLocalLedger.getHashable ());
+
+                        if (subLocalLedgerHash.equals (receivedLedgerHash)) {
+                            Transaction.removeTransaction (conn, localTransactions.get (localTransactions.size () - 1).getId ());
+                            conn.commit (); // commit this change
+                        } else {
+                            ArrayList<Serialization.Transaction> copyReceivedTransactions = new ArrayList<> (request.ledger.transactions);
+                            int end = copyReceivedTransactions.size () - 1;
+                            int numberOfTransactionsBehind = getNumberOfTransactionsBehind(copyReceivedTransactions, new ArrayList<> (localSerializableTransactions));
+                            int start = end - numberOfTransactionsBehind;
+                            log.log(Level.INFO,"This replica contained a ledger that was " + numberOfTransactionsBehind + " transactions behind.");
+                            persistMissingTransactions(conn, new ArrayList<> (request.ledger.transactions).subList (start, end), sourceLedger);
+                        }
+                    } else {
+                        log.log(Level.INFO,"Local ledger is already in sync with the ledger received");
+                    }
+
                     Ledger targetLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.transaction.target));
 
                     // mutual exclusion is necessary to ensure the new transaction ID obtained in "new Transaction"
@@ -390,6 +543,7 @@ public class Main {
                         }
                         // add the amount to the source ledger
                         sourceLedger.setAmount(sourceLedger.getAmount() + request.transaction.amount);
+                        sourceLedger.setTimestamp (request.ledger.timestamp);
 
                         // the sending transaction is not pending anymore
                         pendingTransaction.setPending(false);
@@ -494,49 +648,58 @@ public class Main {
         });
 
         get("/audit/:key", "application/json", (req, res) -> {
-            Serialization.Response errorResponse = new Serialization.Response();
-            errorResponse.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
-            String pubKeyBase64 = req.params(":key");
-            if (pubKeyBase64 == null) {
-                errorResponse.status = ERROR_MISSING_PARAMETER;
-                return prepareResponse(serverPrivateKey, req, res, errorResponse);
-            }
-            log.log(Level.INFO, "Going to send audit data for public key: " + pubKeyBase64);
-
-            Connection conn = null;
             try {
-                Serialization.AuditResponse response = new Serialization.AuditResponse();
-                response.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
-                conn = Database.getConnection();
-                ECPublicKey publicKey = Serialization.base64toPublicKey(req.params(":key"));
-                Ledger ledger = Ledger.load(conn, publicKey);
-                //response.transactions = serializeTransactions(ledger.getAllTransactions(conn));
-                response.ledger = new Serialization.Ledger ();
-                response.ledger.transactions = serializeTransactions(ledger.getAllTransactions(conn));
-                response.ledger.timestamp = ledger.getTimestamp ();
-                conn.commit();
-                response.status = SUCCESS;
-                log.log(Level.INFO, "Audit transactions response: " + response.ledger.transactions +"\n");
-                return prepareResponse(serverPrivateKey, req, res, response);
-            } catch (MissingLedgerException e) {
-                errorResponse.status = ERROR_INVALID_LEDGER;
-            } catch (InvalidKeyException e) {
-                errorResponse.status = ERROR_INVALID_KEY;
-            } catch (SQLException e) {
-                // servers fault
-                log.log(Level.SEVERE, "Error related with the database. " + e);
-                errorResponse.status = ERROR_SERVER_ERROR;
-            } finally {
-                if (conn != null) {
-                    try {
-                        conn.rollback();
-                    } catch (SQLException ex) {
-                        // if we can't even rollback, this is now a server error
-                        errorResponse.status = ERROR_SERVER_ERROR;
+                Serialization.Response errorResponse = new Serialization.Response ();
+                errorResponse.nonce = req.headers (Serialization.NONCE_HEADER_NAME);
+                String pubKeyBase64 = req.params (":key");
+                if (pubKeyBase64 == null) {
+                    errorResponse.status = ERROR_MISSING_PARAMETER;
+                    return prepareResponse (serverPrivateKey, req, res, errorResponse);
+                }
+                log.log (Level.INFO, "Going to send audit data for public key: " + pubKeyBase64);
+
+                Connection conn = null;
+                try {
+                    Serialization.AuditResponse response = new Serialization.AuditResponse ();
+                    response.nonce = req.headers (Serialization.NONCE_HEADER_NAME);
+                    conn = Database.getConnection ();
+                    ECPublicKey publicKey = Serialization.base64toPublicKey (req.params (":key"));
+                    Ledger ledger = Ledger.load (conn, publicKey);
+                    //response.transactions = serializeTransactions(ledger.getAllTransactions(conn));
+                    response.ledger = new Serialization.Ledger ();
+                    response.ledger.transactions = serializeTransactions (ledger.getAllTransactions (conn));
+                    response.ledger.timestamp = ledger.getTimestamp ();
+                    conn.commit ();
+                    response.status = SUCCESS;
+                    log.log (Level.INFO, "Audit ledger timestamp: " + response.ledger + "\n");
+                    log.log (Level.INFO, "Audit transactions response: " + response.ledger.transactions + "\n");
+                    return prepareResponse (serverPrivateKey, req, res, response);
+                } catch (MissingLedgerException e) {
+                    errorResponse.status = ERROR_INVALID_LEDGER;
+                } catch (InvalidKeyException e) {
+                    errorResponse.status = ERROR_INVALID_KEY;
+                } catch (SQLException e) {
+                    // servers fault
+                    log.log (Level.SEVERE, "Error related with the database. " + e);
+                    errorResponse.status = ERROR_SERVER_ERROR;
+                } finally {
+                    if (conn != null) {
+                        try {
+                            conn.rollback ();
+                        } catch (SQLException ex) {
+                            // if we can't even rollback, this is now a server error
+                            errorResponse.status = ERROR_SERVER_ERROR;
+                        }
                     }
                 }
+                return prepareResponse (serverPrivateKey, req, res, errorResponse);
+            }catch (Exception e) {
+                res.status(500);
+                Serialization.Response response = new Serialization.Response();
+                response.status = ERROR_SERVER_ERROR;
+                log.log(Level.SEVERE, "Error on processing a check account request. " + e);
+                return prepareResponse(serverPrivateKey, req, res, response);
             }
-            return prepareResponse(serverPrivateKey, req, res, errorResponse);
         });
 
     }
@@ -599,5 +762,44 @@ public class Main {
             serializedTransactions.add(serializedTx);
         }
         return serializedTransactions;
+    }
+
+    private static int getNumberOfTransactionsBehind(List<Serialization.Transaction> copyReceivedTransactions, List<Serialization.Transaction> localSerializableTransactions) {
+        String localLedgerHash = Utils.generateHashBase64 (new VerifiableLedger (localSerializableTransactions).getHashable ());
+        int maxLength = copyReceivedTransactions.size () - 1;
+        for (int i = copyReceivedTransactions.size() - 1; i >= 0; i--) {
+            VerifiableLedger receivedLedger = new VerifiableLedger (copyReceivedTransactions);
+            String receivedLedgerHash = Utils.generateHashBase64 (receivedLedger.getHashable ());
+            if(receivedLedgerHash.equals (localLedgerHash)) {
+                return maxLength - i;   // number of transactions behind
+            }
+        }
+        throw new RuntimeException ("Failed to detect the number of transactions behind...");
+    }
+
+    public static void correctAheadOrBehindLocalLedger() {
+
+    }
+
+    private static void persistMissingTransactions(Connection conn, List<Serialization.Transaction> missingTransactions, Ledger sourceLedger)
+            throws SQLException, InvalidLedgerException, SignatureException, InvalidAmountException,
+            InvalidValueException, KeyException, MissingLedgerException {
+        Transaction transaction;
+        Ledger targetLedger; // = Ledger.load(conn, Serialization.base64toPublicKey(request.source));
+        for (Serialization.Transaction missingTransaction : missingTransactions) {
+            targetLedger = Ledger.load (conn, Serialization.base64toPublicKey (missingTransaction.target));
+            transaction = new Transaction (conn, sourceLedger, targetLedger, missingTransaction.amount,
+                    missingTransaction.nonce, missingTransaction.signature, missingTransaction.previousSignature,
+                    missingTransaction.isSend ? Transaction.TransactionTypes.SENDING : Transaction.TransactionTypes.RECEIVING);
+
+            int amount = missingTransaction.isSend ?
+                    sourceLedger.getAmount () - missingTransaction.amount : // sending
+                    sourceLedger.getAmount () + missingTransaction.amount;  // receiving
+            sourceLedger.setAmount (amount);
+            synchronized (ledgerLock) {
+                transaction.persist (conn);
+                sourceLedger.persist (conn);
+            }
+        }
     }
 }

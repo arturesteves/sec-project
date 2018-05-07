@@ -209,18 +209,17 @@ public class Serialization {
 
 
     public static class AuditResponse extends Response implements Signable, Readable {
-        public int timestamp;
         public Ledger ledger;
 
         @Override @JsonIgnore public String getSignable () {
             StringBuilder signable = new StringBuilder (super.getSignable ());
-            signable.append (timestamp)
+            signable.append (ledger.timestamp)
                     .append (ledger.getSignable ());
             return signable.toString ();
         }
 
-        @Override public int getTimestamp () {
-            return timestamp;
+        @Override @JsonIgnore public int getTimestamp () {
+            return ledger.timestamp;
         }
     }
 

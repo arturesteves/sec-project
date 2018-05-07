@@ -112,7 +112,7 @@ public class Client implements IClient {
 
         Serialization.SendAmountRequest request = new Serialization.SendAmountRequest ();
         request.ledger = ledger;
-        request.ledger.timestamp++; // increment timestamp
+        request.ledger.timestamp++;
         request.source = b64SourcePublicKey;
         request.target = b64DestinationPublicKey;
         request.amount = amount;
@@ -159,6 +159,7 @@ public class Client implements IClient {
         Serialization.ReceiveAmountRequest request = new Serialization.ReceiveAmountRequest ();
         request.transaction = new Serialization.Transaction ();
         request.ledger = ledger;
+        request.ledger.timestamp++;
         request.transaction.source = b64SourcePublicKey;
         request.transaction.target = b64DestinationPublicKey;
         request.transaction.amount = amount;
@@ -398,6 +399,7 @@ public class Client implements IClient {
     private Serialization.AuditResponse audit (ServerInfo server, ECPublicKey publicKey) throws AuditException {
         try {
             String b64PublicKey = Serialization.publicKeyToBase64 (publicKey);
+            System.out.println ("base64 encoded: " + URLEncoder.encode (b64PublicKey, "UTF-8"));
             String requestPath = server.serverUrl.toString () + "/audit/" + URLEncoder.encode (b64PublicKey, "UTF-8");
 
             Serialization.AuditResponse response =
@@ -414,10 +416,12 @@ public class Client implements IClient {
                 for (Serialization.Transaction tx : response.ledger.transactions) {
                     System.out.println ("Checking signature: " + tx.signature);
                     if (!Utils.checkSignature (tx.signature, tx.getSignable (), publicKey)) {
+                        System.out.println ("Error checking signature of transaction");
                         throw new AuditException ("Error checking signature of transaction");
                     }
                     // now we know tx.signature is correct... but is it signing the right prevHash?
                     if (prevHash != null && !prevHash.equals (tx.previousSignature)) {
+                        System.out.println ("Transaction chain is broken");
                         throw new AuditException ("Transaction chain is broken: the previous signature contained in " +
                                 "one transaction does not match the signature of the transaction that precedes it");
                     }
@@ -426,6 +430,7 @@ public class Client implements IClient {
 
                 return response;
             }
+            System.out.println ("response error: " + response.status);
             switch (response.status) {
                 case ERROR_INVALID_KEY:
                     throw new InvalidKeyException ("The public key provided is not valid.");
@@ -436,6 +441,7 @@ public class Client implements IClient {
                     throw new ServerErrorException ("Error on the server side.");
             }
         } catch (InvalidKeyException | InvalidLedgerException | ServerErrorException | IOException | KeyException | InvalidServerResponseException | SignatureException e) {
+            e.printStackTrace ();
             throw new AuditException ("Failed to audit the account of the public key provided. " + e);
         }
     }

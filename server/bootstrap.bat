@@ -1,14 +1,23 @@
 @echo off
 setlocal enabledelayedexpansion
+
+SET dir=%cd%
+SET keystoreDir=%dir%\..\common\src\main\java\pt\ulisboa\tecnico\sec\g19\hdscoin\common
+
 echo.
+echo doing maven install...
+cd %dir%\..
+start /wait cmd /c mvn install
+cd %dir%
+
+echo good to go..
 echo Bootstraping the servers...
 
 :: set to a default number of failures to tolerate
 if "%~1"=="" SET f=1
 if not "%~1"=="" SET f=%~1
 
-SET dir=%cd%
-SET keystoreDir=%dir%\..\common\src\main\java\pt\ulisboa\tecnico\sec\g19\hdscoin\common
+
 
 
 :: number of replicas necessary to tolerate f failures, using a Fail-Arbitrary Algorithm: Authenticated-Data Byzantine Quorum

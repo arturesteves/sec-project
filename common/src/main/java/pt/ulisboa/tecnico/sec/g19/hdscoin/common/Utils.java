@@ -42,6 +42,16 @@ public class Utils {
         return rndGen.nextString ();
     }
 
+    public static String generateHashBase64(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance ("SHA-256");
+            byte[] hashedBytes = (digest.digest (input.getBytes (StandardCharsets.UTF_8)));
+            return Base64.getEncoder ().encodeToString (hashedBytes);
+        } catch (NoSuchAlgorithmException e) {
+            return null;
+        }
+    }
+
     //Returns a signature in base64 over an hash input
     public static String generateSignature (String hashInput, ECPrivateKey privateKey) throws SignatureException {
         try {
