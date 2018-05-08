@@ -108,6 +108,7 @@ public class SendAmount {
         } catch (AuditException e) {
             throw new SendAmountException("Self-auditing failed. " + e);
         } catch (Exception e) {
+            e.printStackTrace ();
             throw new SendAmountException("Failed to send amount. " + e);
         }
 

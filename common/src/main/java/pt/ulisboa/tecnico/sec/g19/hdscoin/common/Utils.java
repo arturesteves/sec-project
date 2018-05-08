@@ -20,10 +20,7 @@ import java.security.spec.ECGenParameterSpec;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Calendar;
-import java.util.logging.FileHandler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
+import java.util.logging.*;
 
 import static pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization.KEY_STORE__PASSWORD;
 
@@ -133,11 +130,25 @@ public class Utils {
 
     public static void initLogger (Logger log) {
         try {
+            Formatter formatter = new Formatter () {
+                @Override public String format (LogRecord record) {
+                    StringBuilder builder = new StringBuilder();
+                    builder.append(record.getLevel() + ": ");
+                    builder.append(formatMessage(record));
+                    builder.append(System.lineSeparator());
+                    return builder.toString();
+                }
+            };
+            ConsoleHandler consoleHandler = new ConsoleHandler();
             FileHandler fileHandler = new FileHandler ("logs/log-" + log.getName () + ".log");
             fileHandler.setEncoding ("UTF-8");
             fileHandler.setLevel (Level.ALL);
-            fileHandler.setFormatter (new SimpleFormatter ());
+            //fileHandler.setFormatter (new SimpleFormatter ());
+            fileHandler.setFormatter (formatter);
+            consoleHandler.setFormatter (formatter);
             log.addHandler (fileHandler);
+            log.addHandler(consoleHandler);
+            log.setUseParentHandlers(false);    // stop printing the date time line
         } catch (IOException e) {
             e.printStackTrace ();
         }

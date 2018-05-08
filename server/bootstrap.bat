@@ -3,6 +3,7 @@ setlocal enabledelayedexpansion
 
 SET dir=%cd%
 SET keystoreDir=%dir%\..\common\src\main\java\pt\ulisboa\tecnico\sec\g19\hdscoin\common
+SET logsDir=%dir%\logs
 
 echo.
 echo doing maven install...
@@ -79,6 +80,11 @@ goto end
     for /l %%x in (1, 1, %N%) do (
     	del /Q %server_prefix%%%x_%databaseNameSufix%.%databaseExtension%
     )
+    echo Cleaning older logs
+    cd %logsDir%
+    del /Q *.*
+    echo %logsDir%
+    cd %dir%
 
 GOTO:EOF
 

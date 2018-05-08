@@ -144,14 +144,21 @@ public class Serialization {
     ////////////////////////////////////////////////////////////////////////
 
 
-    public static class SendAmountRequest extends Transaction {
+    public static class SendAmountRequest implements Signable, NonceContainer {// extends Transaction {
         public Ledger ledger;
+        public Transaction transaction;
+
         public SendAmountRequest () {
-            isSend = true;
+            transaction = new Serialization.Transaction ();
+            transaction.isSend = true;
         }
 
         @Override @JsonIgnore public String getSignable () {
-            return super.getSignable () + ledger.getSignable ();
+            return transaction.getSignable () + ledger.getSignable ();
+        }
+
+        @Override @JsonIgnore public String getNonce () {
+            return transaction.getNonce ();
         }
 
     }
@@ -240,6 +247,22 @@ public class Serialization {
 
         @Override public String getNonce () {
             return nonce;
+        }
+
+        @Override @JsonIgnore public String toString() {
+            StringBuilder builder = new StringBuilder();
+            builder.append("\n-----------------------------\n");
+            builder.append("\t\tTransaction\n");
+            builder.append("\t\t-----------\n");
+            builder.append("Source: " + source).append ("\n");
+            builder.append("Target: " + target).append ("\n");
+            builder.append("Amount: ").append(this.amount).append(" HDS Coins\n");
+            builder.append("Nonce: ").append(this.nonce).append("\n");
+            builder.append("Signature prev. Transaction: ").append(this.previousSignature).append("\n");
+            builder.append("Signature: ").append(this.signature).append("\n");
+            builder.append("Get Signable: ").append(getSignable ()).append("\n");
+            builder.append("-----------------------------");
+            return builder.toString();
         }
     }
 

@@ -113,13 +113,13 @@ public class Client implements IClient {
         Serialization.SendAmountRequest request = new Serialization.SendAmountRequest ();
         request.ledger = ledger;
         request.ledger.timestamp++;
-        request.source = b64SourcePublicKey;
-        request.target = b64DestinationPublicKey;
-        request.amount = amount;
-        request.nonce = Utils.randomNonce ();
-        request.previousSignature = previousSignature;
-        request.signature = Utils.generateSignature (request.getSignable (), sourcePrivateKey);
-
+        request.transaction.isSend = true;
+        request.transaction.source = b64SourcePublicKey;
+        request.transaction.target = b64DestinationPublicKey;
+        request.transaction.amount = amount;
+        request.transaction.nonce = Utils.randomNonce ();
+        request.transaction.previousSignature = previousSignature;
+        request.transaction.signature = Utils.generateSignature (request.transaction.getSignable (), sourcePrivateKey);
 
         for (ServerInfo server : this.servers) {
             try {
@@ -298,11 +298,14 @@ public class Client implements IClient {
             System.out.println ();
             System.out.println ("---------------------");
             System.out.println ("---Sending Request---");
-            System.out.println ("Sending to: " + server.serverUrl.toString ());
+            System.out.println ("Sending to replica: " + server.serverUrl.toString ());
             System.out.println ("Ledger timestamp: " + request.ledger.timestamp);
-            System.out.println ("Nonce: " + request.nonce);
-            System.out.println ("Previous signature: " + request.previousSignature);
-            System.out.println ("Signature: " + request.signature);
+            System.out.println ("Source public key: " + request.transaction.source);
+            System.out.println ("Target public key: " + request.transaction.target);
+            System.out.println ("Amount: " + request.transaction.amount);
+            System.out.println ("Nonce: " + request.transaction.nonce);
+            System.out.println ("Previous signature: " + request.transaction.previousSignature);
+            System.out.println ("Signature: " + request.transaction.signature);
             System.out.println ("Get Signable: " + request.getSignable ());
             System.out.println ("Private key: " + sourcePrivateKey);
             System.out.println ("---------------------");
@@ -415,19 +418,19 @@ public class Client implements IClient {
                 String prevHash = null;
                 for (Serialization.Transaction tx : response.ledger.transactions) {
                     System.out.println ("Checking signature: " + tx.signature);
+                    System.out.println ("Signable: " + tx.getSignable ());
                     if (!Utils.checkSignature (tx.signature, tx.getSignable (), publicKey)) {
                         System.out.println ("Error checking signature of transaction");
                         throw new AuditException ("Error checking signature of transaction");
                     }
                     // now we know tx.signature is correct... but is it signing the right prevHash?
                     if (prevHash != null && !prevHash.equals (tx.previousSignature)) {
-                        System.out.println ("Transaction chain is broken");
+                        System.out.println ("Error transaction chain is broken");
                         throw new AuditException ("Transaction chain is broken: the previous signature contained in " +
                                 "one transaction does not match the signature of the transaction that precedes it");
                     }
                     prevHash = tx.signature;
                 }
-
                 return response;
             }
             System.out.println ("response error: " + response.status);

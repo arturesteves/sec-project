@@ -217,22 +217,23 @@ public class Main {
             try {
                 Serialization.SendAmountRequest request = Serialization.parse(req,
                         Serialization.SendAmountRequest.class);
-                log.log(Level.INFO, "Request received at: /sendAmount \n" +
-                        "data on the request:" +
+                log.log(Level.INFO, "\n\n------------------------------------");
+                log.log(Level.INFO, "Request received at: /sendAmount");
+                log.log(Level.INFO,"data on the request:\n" +
                         "SIGNATURE: " + req.headers(Serialization.SIGNATURE_HEADER_NAME) + "\n" +
-                        "NONCE: " + request.nonce + "\n" +
-                        "AMOUNT:" + request.amount + "\n" +
-                        "SOURCE CLIENT BASE 64 PUBLIC KEY: " + request.source + "\n" +
-                        "TARGET CLIENT BASE 64 PUBLIC KEY: " + request.target);
-
+                        "NONCE: " + request.transaction.nonce + "\n" +
+                        "AMOUNT:" + request.transaction.amount + "\n" +
+                        "SOURCE CLIENT BASE 64 PUBLIC KEY: " + request.transaction.source + "\n" +
+                        "TARGET CLIENT BASE 64 PUBLIC KEY: " + request.transaction.target);
+                log.log(Level.INFO, "\n");
                 Serialization.Response response = new Serialization.Response();
-                response.nonce = request.nonce;
+                response.nonce = request.transaction.nonce;
 
                 //Recreate the hash with the data received
                 boolean result = Utils.checkSignature(
                         req.headers(Serialization.SIGNATURE_HEADER_NAME),
                         request.getSignable(),
-                        request.source);
+                        request.transaction.source);
 
                 if (!result) {
                     res.status(401);
@@ -245,11 +246,12 @@ public class Main {
                 //We now know that the transaction was created by the owner of its respective private key.
                 ///////////////////////////////////////////////////
 
+                log.log(Level.INFO, "Transaction signature: " + request.transaction.getSignable());
                 // now check the transaction itself
                 result = Utils.checkSignature(
-                        request.signature,
-                        request.getSignable(),
-                        request.source);
+                        request.transaction.signature,
+                        request.transaction.getSignable(),
+                        request.transaction.source);
 
                 if (!result) {
                     res.status(401);
@@ -261,7 +263,7 @@ public class Main {
                 Connection conn = null;
                 try {
                     conn = Database.getConnection();
-                    Ledger sourceLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.source));
+                    Ledger sourceLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.transaction.source));
 
                     // check the timestamp of the request
                     if (sourceLedger.getTimestamp () >= request.ledger.timestamp) {
@@ -344,25 +346,24 @@ public class Main {
                         log.log(Level.INFO,"Local ledger is already in sync with the ledger received");
                     }
 
-                    Ledger targetLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.target));
+                    Ledger targetLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.transaction.target));
                     log.log(Level.INFO, "Load local ledger");
                     // mutual exclusion is necessary to ensure the new transaction ID obtained in "new Transaction"
                     // is still correct/"fresh" when "transaction.persist" is called, and also that the latest
                     // transaction is still the latest transaction
                     synchronized (ledgerLock) {
-                        Transaction transaction = new Transaction(conn, sourceLedger, targetLedger, request.amount,
-                                request.nonce,
-                                request.signature,
-                                request.previousSignature, Transaction.TransactionTypes.SENDING);
+                        Transaction transaction = new Transaction(conn, sourceLedger, targetLedger, request.transaction.amount,
+                                request.transaction.nonce,
+                                request.transaction.signature,
+                                request.transaction.previousSignature, Transaction.TransactionTypes.SENDING);
                         // checkout the amount from the source ledger
-                        sourceLedger.setAmount(sourceLedger.getAmount() - request.amount);
+                        sourceLedger.setAmount(sourceLedger.getAmount() - request.transaction.amount);
                         sourceLedger.setTimestamp (request.ledger.timestamp);   //update the timestamp
                         log.log(Level.INFO, "Load local ledger");
                         transaction.persist(conn);
                         log.log(Level.INFO, "Transaction persisted");
                         sourceLedger.persist(conn);
                         log.log(Level.INFO, "ledger persisted");
-
 
                         // todo: update the full ledger transactions (before persisting the transaction
                     }
@@ -404,7 +405,7 @@ public class Main {
                 Serialization.ReceiveAmountRequest request = Serialization.parse(req,
                         Serialization.ReceiveAmountRequest.class);
                 log.log(Level.INFO, "Request received at: /receiveAmount \n" +
-                        "data on the request:" +
+                        "data on the request:\n" +
                         "SIGNATURE: " + req.headers(Serialization.SIGNATURE_HEADER_NAME) + "\n" +
                         "NONCE: " + request.transaction.nonce + "\n" +
                         "AMOUNT:" + request.transaction.amount + "\n" +
@@ -666,12 +667,13 @@ public class Main {
                     ECPublicKey publicKey = Serialization.base64toPublicKey (req.params (":key"));
                     Ledger ledger = Ledger.load (conn, publicKey);
                     //response.transactions = serializeTransactions(ledger.getAllTransactions(conn));
+                    List<Transaction> transactions = ledger.getAllTransactions (conn);
                     response.ledger = new Serialization.Ledger ();
-                    response.ledger.transactions = serializeTransactions (ledger.getAllTransactions (conn));
+                    response.ledger.transactions = serializeTransactions (transactions);
                     response.ledger.timestamp = ledger.getTimestamp ();
                     conn.commit ();
                     response.status = SUCCESS;
-                    log.log (Level.INFO, "Audit ledger timestamp: " + response.ledger + "\n");
+                    log.log (Level.INFO, "Audit ledger timestamp: " + response.ledger.timestamp + "\n");
                     log.log (Level.INFO, "Audit transactions response: " + response.ledger.transactions + "\n");
                     return prepareResponse (serverPrivateKey, req, res, response);
                 } catch (MissingLedgerException e) {
@@ -777,10 +779,6 @@ public class Main {
         throw new RuntimeException ("Failed to detect the number of transactions behind...");
     }
 
-    public static void correctAheadOrBehindLocalLedger() {
-
-    }
-
     private static void persistMissingTransactions(Connection conn, List<Serialization.Transaction> missingTransactions, Ledger sourceLedger)
             throws SQLException, InvalidLedgerException, SignatureException, InvalidAmountException,
             InvalidValueException, KeyException, MissingLedgerException {
@@ -802,4 +800,5 @@ public class Main {
             }
         }
     }
+
 }
