@@ -19,14 +19,16 @@ public class InterceptorWithTamperingOnResponseCallback implements ExpectationCa
         if (httpRequest.getPath().getValue().endsWith("/register")) {
             try {
 
+                int destPort = new URL(httpRequest.getPath().getValue()).getPort() + 1000;
+
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
-                        .post(new URL("http://localhost:4567/register"));
+                        .post(new URL("http://localhost:" + destPort + "/register"));
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
 
                 //httpRequest.getBody().getValue().toString().getBytes();
-                Serialization.RegisterRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.RegisterRequest.class);
+                Serialization.RegisterRequest req = Serialization.parse(httpRequest.getBody().getValue().toString(), Serialization.RegisterRequest.class);
                 request.send(Serialization.serialize(req));
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
@@ -44,18 +46,19 @@ public class InterceptorWithTamperingOnResponseCallback implements ExpectationCa
                 e.printStackTrace();
             }
 
-        } else if(httpRequest.getPath().getValue().endsWith("/sendAmount")) {
+        } else if (httpRequest.getPath().getValue().endsWith("/sendAmount")) {
 
             try {
+                int destPort = new URL(httpRequest.getPath().getValue()).getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
-                        .post(new URL("http://localhost:4567/sendAmount"));
+                        .post(new URL("http://localhost:" + destPort + "/sendAmount"));
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
 
                 //httpRequest.getBody().getValue().toString().getBytes();
-                Serialization.SendAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.SendAmountRequest.class);
+                Serialization.SendAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString(), Serialization.SendAmountRequest.class);
                 Log.getLog().warn("SERI: " + Serialization.serialize(req));
                 request.send(Serialization.serialize(req));
 
@@ -74,16 +77,17 @@ public class InterceptorWithTamperingOnResponseCallback implements ExpectationCa
                 e.printStackTrace();
             }
 
-        } else if(httpRequest.getPath().getValue().endsWith("/receiveAmount")) {
+        } else if (httpRequest.getPath().getValue().endsWith("/receiveAmount")) {
             try {
+                int destPort = new URL(httpRequest.getPath().getValue()).getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
-                        .post(new URL("http://localhost:4567/receiveAmount"));
+                        .post(new URL("http://localhost:" + destPort + "/receiveAmount"));
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
                 //httpRequest.getBody().getValue().toString().getBytes();
-                Serialization.ReceiveAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.ReceiveAmountRequest.class);
+                Serialization.ReceiveAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString(), Serialization.ReceiveAmountRequest.class);
                 request.send(Serialization.serialize(req));
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);

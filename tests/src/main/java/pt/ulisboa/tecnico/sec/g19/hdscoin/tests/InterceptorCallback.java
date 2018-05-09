@@ -22,14 +22,15 @@ import static org.mockserver.model.HttpResponse.notFoundResponse;
 import static org.mockserver.model.HttpResponse.response;
 
 
-public class  InterceptorCallback implements ExpectationCallback {
+public class InterceptorCallback implements ExpectationCallback {
 
     public HttpResponse handle(HttpRequest httpRequest) {
         if (httpRequest.getPath().getValue().endsWith("/register")) {
             try {
+                int destPort = new URL(httpRequest.getPath().getValue()).getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
-                        .post(new URL("http://localhost:4567/register"));
+                        .post(new URL("http://localhost:" + destPort + "/register"));
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
@@ -51,9 +52,10 @@ public class  InterceptorCallback implements ExpectationCallback {
 
         } else if (httpRequest.getPath().getValue().endsWith("/sendAmount")) {
             try {
+                int destPort = new URL(httpRequest.getPath().getValue()).getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
-                        .post(new URL("http://localhost:4567/sendAmount"));
+                        .post(new URL("http://localhost:" + destPort + "/sendAmount"));
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));

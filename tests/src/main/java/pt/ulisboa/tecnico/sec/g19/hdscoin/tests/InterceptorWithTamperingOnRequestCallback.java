@@ -18,16 +18,17 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
     public HttpResponse handle(HttpRequest httpRequest) {
         if (httpRequest.getPath().getValue().endsWith("/register")) {
             try {
+                int destPort = new URL(httpRequest.getPath().getValue()).getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
-                        .post(new URL("http://localhost:4567/register"));
+                        .post(new URL("http://localhost:" + destPort + "/register"));
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
 
                 //httpRequest.getBody().getValue().toString().getBytes();
-                Serialization.RegisterRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.RegisterRequest.class);
-                req.initialTransaction.nonce  = "bananas";
+                Serialization.RegisterRequest req = Serialization.parse(httpRequest.getBody().getValue().toString(), Serialization.RegisterRequest.class);
+                req.initialTransaction.nonce = "bananas";
 
                 request.send(Serialization.serialize(req));
 
@@ -45,20 +46,20 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
                 e.printStackTrace();
             }
 
-        } else if(httpRequest.getPath().getValue().endsWith("/sendAmount")) {
+        } else if (httpRequest.getPath().getValue().endsWith("/sendAmount")) {
 
             try {
-
+                int destPort = new URL(httpRequest.getPath().getValue()).getPort() + 1000;
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
-                        .post(new URL("http://localhost:4567/sendAmount"));
+                        .post(new URL("http://localhost:" + destPort + "/sendAmount"));
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
 
                 //httpRequest.getBody().getValue().toString().getBytes();
-                Serialization.SendAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.SendAmountRequest.class);
+                Serialization.SendAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString(), Serialization.SendAmountRequest.class);
                 //Spend 20 units more
-                req.transaction.amount  = req.transaction.amount + 20;
+                req.transaction.amount = req.transaction.amount + 20;
                 Log.getLog().warn("SERI: " + Serialization.serialize(req));
                 request.send(Serialization.serialize(req));
 
@@ -76,18 +77,19 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
                 e.printStackTrace();
             }
 
-        } else if(httpRequest.getPath().getValue().endsWith("/receiveAmount")) {
+        } else if (httpRequest.getPath().getValue().endsWith("/receiveAmount")) {
             try {
+                int destPort = new URL(httpRequest.getPath().getValue()).getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
-                        .post(new URL("http://localhost:4567/receiveAmount"));
+                        .post(new URL("http://localhost:" + destPort + "/receiveAmount"));
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
                 //httpRequest.getBody().getValue().toString().getBytes();
-                Serialization.ReceiveAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.ReceiveAmountRequest.class);
+                Serialization.ReceiveAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString(), Serialization.ReceiveAmountRequest.class);
                 //Spend 20 units more
-                req.transaction.amount  = req.transaction.amount + 20;
+                req.transaction.amount = req.transaction.amount + 20;
 
                 request.send(Serialization.serialize(req));
 
