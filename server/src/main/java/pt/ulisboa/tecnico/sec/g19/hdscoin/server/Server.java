@@ -69,13 +69,13 @@ public class Server {
         Service http = Service.ignite();
         try {
             log = Logger.getLogger(serverName + "_logs");
-            Ledger.log = Logger.getLogger(serverName + "_" + Ledger.class.getName() + "_logs");
-            Transaction.log = Logger.getLogger(serverName + "_" + Transaction.class.getName() + "_logs");
+//            Ledger.log = Logger.getLogger(serverName + "_" + Ledger.class.getName() + "_logs");
+//            Transaction.log = Logger.getLogger(serverName + "_" + Transaction.class.getName() + "_logs");
 
             // set Loggers
             Utils.initLogger(log);
-            Utils.initLogger(Ledger.log);
-            Utils.initLogger(Transaction.log);
+//            Utils.initLogger(Ledger.log);
+//            Utils.initLogger(Transaction.log);
 
             log.log(Level.INFO, "Server identification: " + serverName);
             log.log(Level.INFO, "Using port number: " + port);
