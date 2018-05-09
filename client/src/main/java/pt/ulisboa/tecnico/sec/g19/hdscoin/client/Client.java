@@ -227,12 +227,32 @@ public class Client implements IClient {
         }
 
         if (receivedReadMajority (auditResponses)) {
+            // write-back
+            Serialization.AuditResponse majorityValue = getValueWithMajorityTimestamp(auditResponses);
+
+            Serialization.WriteBackRequest request = new Serialization.WriteBackRequest ();
+            request.ledger = majorityValue.ledger;
+            request.ledger.timestamp++;
+
+            // we're using this list literally as a counter...
+            List<Object> wbResponses = new ArrayList<> ();
+            for (ServerInfo server : this.servers) {
+                try {
+                    writeBack (server, request);
+                    wbResponses.add (new Object());
+                } catch (Exception e) {
+                    System.out.println ("Write-back to a replica failed...");
+                }
+            }
+
             System.out.println ("\n");
             System.out.println ("----------------------------------");
             System.out.println ("-------Audit was successful-------");
+            if (!receivedReadMajority (wbResponses)) {
+                System.out.println ("-----But write-back failed...-----");
+            }
             System.out.println ("----------------------------------");
-            //return auditResponses.get (0);  // choose anyone
-            return getValueWithMajorityTimestamp(auditResponses);
+            return majorityValue;
         } else {
             throw new AuditException ("Failed to audit account - not enough success responses!");
         }
@@ -450,6 +470,45 @@ public class Client implements IClient {
     }
 
 
+    ////////////////////////////////////////////////
+    //// WRITE-BACK OPERATION (for (1,N) atomic register)
+    ////////////////////////////////////////////////
+
+    private void writeBack (ServerInfo server, Serialization.WriteBackRequest request)
+            throws WriteBackException {
+        try {
+            // log
+            System.out.println ();
+            System.out.println ("---------------------");
+            System.out.println ("---Sending Request---");
+            System.out.println ("Sending to replica: " + server.serverUrl.toString ());
+            System.out.println ("Ledger timestamp: " + request.ledger.timestamp);
+            System.out.println ("---------------------");
+            System.out.println ();
+
+            Serialization.Response response = sendPostRequest (Serialization.base64toPublicKey (server.publicKeyBase64),
+                    server.serverUrl.toString () + "/writeBack", null, request,
+                    Serialization.Response.class);
+
+            if (response.statusCode == 200) {
+                this.ackList.add (server);
+
+            } else {
+                switch (response.status) {
+                    case ERROR_INVALID_LEDGER:
+                        throw new InvalidLedgerException ("Source or destination is invalid");
+                    case ERROR_INVALID_KEY:
+                        throw new InvalidLedgerException ("One of the keys provided is invalid");
+                    case ERROR_SERVER_ERROR:
+                        throw new ServerErrorException ("Error on the server side.");
+                }
+            }
+        } catch (HttpRequest.HttpRequestException | IOException | KeyException | SignatureException | InvalidServerResponseException | InvalidClientSignatureException | ServerErrorException | InvalidLedgerException e) {
+            throw new WriteBackException ("Failed to write back. " + e);
+        }
+    }
+
+
     private <T> T sendPostRequest (ECPublicKey serverPublicKey, String url, ECPrivateKey privateKey, Object payload,
                                    Class<T> responseValueType)
             throws HttpRequest.HttpRequestException, IOException, SignatureException, InvalidServerResponseException,
@@ -462,7 +521,7 @@ public class Client implements IClient {
         request.readTimeout(10);
         //.header(Serialization.NONCE_HEADER_NAME, nonce);
 
-        if (payload instanceof Signable) {
+        if (payload instanceof Signable && privateKey != null) {
             String toSign = ((Signable) payload).getSignable ();
             // added the nonce to the signable message on the request
             String s = Utils.generateSignature (toSign, privateKey);
