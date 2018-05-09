@@ -225,4 +225,13 @@ public class Utils {
     public static ECPublicKey loadPublicKeyFromKeyStore(KeyStore keyStore, String alias) throws KeyStoreException {
         return (ECPublicKey) keyStore.getCertificate (alias).getPublicKey ();
     }
+
+    public static ECPublicKey loadPublicKeyFromKeyStore(String filepath, String alias) throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException {
+        FileInputStream fis = new FileInputStream(filepath);
+        KeyStore keyStore = KeyStore.getInstance(KEY_STORE_INSTANCE);
+        keyStore.load(fis, KEY_STORE__PASSWORD.toCharArray());
+        fis.close();
+
+        return (ECPublicKey) keyStore.getCertificate (alias).getPublicKey ();
+    }
 }

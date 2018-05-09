@@ -42,31 +42,30 @@ import static spark.Spark.post;
 public class Server {
     // contains the protocol and host used and the initial port used
     private String genericUrl;
+    private String serverName;
+    private int port;
+    private int numberOfServers;
+    private String password;
 
     private Logger log;
 
-    private KeyStore keyStore;
-    private String password;
-    private ECPublicKey serverPublicKey;
     private ECPrivateKey serverPrivateKey;
 
     private Object ledgerLock = new Object();
 
     private List<ServerInfo> servers;
 
-    public Server(String baseURL) {
+    public Server(String baseURL, String serverName, int port, int numberOfServers, String password) {
         genericUrl = baseURL;
+        this.serverName = serverName;
+        this.port = port;
+        this.numberOfServers = numberOfServers;
+        this.password = password;
     }
 
-    public void run(String[] args) throws FailedToLoadKeysException {
+    public void run() throws FailedToLoadKeysException {
 
         try {
-            // fetch all relevant command line arguments
-            String serverName = args[0];
-            int port = Integer.parseInt (args[1]);
-            int numberOfServers = Integer.parseInt (args[2]);
-            String password = args[3];
-
             log = Logger.getLogger(serverName + "_logs");
             Ledger.log = Logger.getLogger(serverName + "_" + Ledger.class.getName() + "_logs");
             Transaction.log = Logger.getLogger(serverName + "_" + Transaction.class.getName() + "_logs");
@@ -89,8 +88,6 @@ public class Server {
 
             // load keys
             serverPrivateKey = Utils.loadPrivateKeyFromKeyStore (path.toString (), serverName, password);
-            serverPublicKey = Utils.loadPublicKeyFromKeyStore (keyStore, serverName);
-            Utils.loadPublicKeyFromKeyStore (keyStore, serverName);
 
 
             // set database name

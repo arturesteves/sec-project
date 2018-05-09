@@ -7,6 +7,12 @@ public class Main {
 
     
     public static void main(String[] args) throws FailedToLoadKeysException {
-        new Server("http://localhost:4570").run(args);
+        // fetch all relevant command line arguments
+        String serverName = args[0];
+        int port = Integer.parseInt (args[1]);
+        int numberOfServers = Integer.parseInt (args[2]);
+        String password = args[3];
+
+        new Server("http://localhost:4570", serverName, port, numberOfServers, password).run();
     }
 }
