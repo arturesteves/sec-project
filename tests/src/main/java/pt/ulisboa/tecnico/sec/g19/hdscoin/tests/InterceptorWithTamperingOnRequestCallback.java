@@ -58,7 +58,7 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
                 //httpRequest.getBody().getValue().toString().getBytes();
                 Serialization.SendAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.SendAmountRequest.class);
                 //Spend 20 units more
-                req.amount  = req.amount + 20;
+                req.transaction.amount  = req.transaction.amount + 20;
                 Log.getLog().warn("SERI: " + Serialization.serialize(req));
                 request.send(Serialization.serialize(req));
 

@@ -101,12 +101,12 @@ public class TestWebServerTest {
     /*
     Test if we can register an account using the wrong server public key
      */
-    @Test(expected = RegisterException.class)
+    /*@Test(expected = RegisterException.class)
     public void wrongServerPublicKeyTest() throws RegisterException, FailedToLoadKeysException {
         // TODO this test doesn't make sense anymore as it is, because now we have multiple servers and we no longer specify which server key to use directly to the client
         Main.main(new String[] {"Server_1"});
         Register.main(new String[] {"-n", "Client_1", "-s", "SERVER_KEYS_TEST", "-a", "10"});
-    }
+    }*/
 
     @Test
     public void simpleSendAmountTest() throws Exception {
