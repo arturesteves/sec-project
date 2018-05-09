@@ -486,8 +486,10 @@ public class Client implements IClient {
             System.out.println ("---------------------");
             System.out.println ();
 
+            request.nonce = Utils.randomNonce();
+
             Serialization.Response response = sendPostRequest (Serialization.base64toPublicKey (server.publicKeyBase64),
-                    server.serverUrl.toString () + "/writeBack", null, request,
+                    server.serverUrl.toString () + "/ledgerWriteback", null, request,
                     Serialization.Response.class);
 
             if (response.statusCode == 200) {
@@ -551,15 +553,15 @@ public class Client implements IClient {
         System.out.println ("Client NONCE: " + nonce);
         System.out.println ("Server NONCE: " + responseNonce);
         System.out.println ("Server SIGN : " + responseSignature);
-        if (!responseNonce.equals (nonce)) {
+        if (!nonce.equals (responseNonce)) {
             throw new InvalidServerResponseException (
-                    "The nonce received by the client do not match the one " + "he sent previously.");
+                    "The nonce received by the client do not match the one he sent previously.");
         }
 
         if (responseCode != 200) {
             if (((Serialization.Response) response).status.equals (ERROR_NO_SIGNATURE_MATCH)) {
                 throw new InvalidClientSignatureException (
-                        "The message was reject by the server, because the " + "client signature didn't match.");
+                        "The message was reject by the server, because the client signature didn't match.");
             }
         }
 

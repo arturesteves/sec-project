@@ -185,7 +185,7 @@ public class Serialization {
         public Ledger ledger;
         public String nonce;
 
-        @Override @JsonIgnore public String getNonce () {
+        @Override public String getNonce () {
             return nonce;
         }
 
