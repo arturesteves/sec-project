@@ -17,6 +17,7 @@ import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.Transaction;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.structures.VerifiableLedger;
 import spark.Request;
 import spark.Response;
+import spark.Service;
 
 import java.io.IOException;
 import java.net.URL;
@@ -48,6 +49,7 @@ public class Server {
     private String password;
 
     private Logger log;
+    private Database database;
 
     private ECPrivateKey serverPrivateKey;
 
@@ -63,8 +65,8 @@ public class Server {
         this.password = password;
     }
 
-    public void run() throws FailedToLoadKeysException {
-
+    public Service ignite() throws FailedToLoadKeysException {
+        Service http = Service.ignite();
         try {
             log = Logger.getLogger(serverName + "_logs");
             Ledger.log = Logger.getLogger(serverName + "_" + Ledger.class.getName() + "_logs");
@@ -91,12 +93,12 @@ public class Server {
 
 
             // set database name
-            Database.setDatabaseName(serverName + "_");
+            database = new Database(serverName);
 
             Security.addProvider(new BouncyCastleProvider());
             log.log(Level.CONFIG, "Added bouncy castle security provider.");
 
-            port(port);
+            http.port(port);
 
             //Getting the replica servers information given by argument.
             servers = getServersInfoFromKeyStore(new URL(genericUrl), numberOfServers, path.toString (), serverName);
@@ -112,7 +114,7 @@ public class Server {
         }
 
         try {
-            Database.recreateSchema();
+            database.recreateSchema();
             log.log(Level.INFO, "Recreate database schema.");
         } catch (SQLException e) {
             log.log(Level.SEVERE, "Failed to recreate database schema. " + e);
@@ -121,7 +123,7 @@ public class Server {
         }
 
 
-        post("/register", "application/json", (req, res) -> {
+        http.post("/register", "application/json", (req, res) -> {
 
             Serialization.RegisterRequest request = null;
             try {
@@ -167,7 +169,7 @@ public class Server {
 
                 Connection conn = null;
                 try {
-                    conn = Database.getConnection();
+                    conn = database.getConnection();
                     // mutual exclusion is necessary to ensure the new ledger ID obtained in "new Ledger"
                     // is still correct/"fresh" when "ledger.persist" is called.
                     synchronized (ledgerLock) {
@@ -212,7 +214,7 @@ public class Server {
         //// WRITE OPERATIONS
         ////////////////////////////////////////////////
 
-        post("/sendAmount", "application/json", (req, res) -> {
+        http.post("/sendAmount", "application/json", (req, res) -> {
             try {
                 Serialization.SendAmountRequest request = Serialization.parse(req,
                         Serialization.SendAmountRequest.class);
@@ -261,7 +263,7 @@ public class Server {
 
                 Connection conn = null;
                 try {
-                    conn = Database.getConnection();
+                    conn = database.getConnection();
                     Ledger sourceLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.transaction.source));
 
                     // check the timestamp of the request
@@ -399,7 +401,7 @@ public class Server {
             }
         });
 
-        post("/receiveAmount", "application/json", (req, res) -> {
+        http.post("/receiveAmount", "application/json", (req, res) -> {
             try {
                 Serialization.ReceiveAmountRequest request = Serialization.parse(req,
                         Serialization.ReceiveAmountRequest.class);
@@ -447,7 +449,7 @@ public class Server {
 
                 Connection conn = null;
                 try {
-                    conn = Database.getConnection();
+                    conn = database.getConnection();
                     Ledger sourceLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.transaction.source));
 
                     // check the timestamp of the request
@@ -591,7 +593,7 @@ public class Server {
         //// READ OPERATIONS
         ////////////////////////////////////////////////
 
-        get("/checkAccount/:key", "application/json", (req, res) -> {
+        http.get("/checkAccount/:key", "application/json", (req, res) -> {
             try {
                 // init generic response to use when an error occur
                 Serialization.Response errorResponse = new Serialization.Response();
@@ -608,7 +610,7 @@ public class Server {
                 try {
                     Serialization.CheckAccountResponse response = new Serialization.CheckAccountResponse();
                     ECPublicKey clientPublicKey = Serialization.base64toPublicKey(pubKeyBase64);
-                    conn = Database.getConnection();
+                    conn = database.getConnection();
                     Ledger ledger = Ledger.load(conn, clientPublicKey);
                     response.nonce = req.headers(Serialization.NONCE_HEADER_NAME);
                     System.out.println("Pending" + ledger.getPendingTransactions(conn, clientPublicKey));
@@ -647,7 +649,7 @@ public class Server {
             }
         });
 
-        get("/audit/:key", "application/json", (req, res) -> {
+        http.get("/audit/:key", "application/json", (req, res) -> {
             try {
                 Serialization.Response errorResponse = new Serialization.Response ();
                 errorResponse.nonce = req.headers (Serialization.NONCE_HEADER_NAME);
@@ -662,7 +664,7 @@ public class Server {
                 try {
                     Serialization.AuditResponse response = new Serialization.AuditResponse ();
                     response.nonce = req.headers (Serialization.NONCE_HEADER_NAME);
-                    conn = Database.getConnection ();
+                    conn = database.getConnection ();
                     ECPublicKey publicKey = Serialization.base64toPublicKey (req.params (":key"));
                     Ledger ledger = Ledger.load (conn, publicKey);
                     //response.transactions = serializeTransactions(ledger.getAllTransactions(conn));
@@ -707,7 +709,7 @@ public class Server {
         //// WRITE-BACK RECEIVERS (for (1,N) atomic register)
         ////////////////////////////////////////////////
 
-        post("/ledgerWriteback", "application/json", (req, res) -> {
+        http.post("/ledgerWriteback", "application/json", (req, res) -> {
             try {
                 Serialization.WriteBackRequest request = Serialization.parse(req,
                         Serialization.WriteBackRequest.class);
@@ -725,7 +727,7 @@ public class Server {
 
                 Connection conn = null;
                 try {
-                    conn = Database.getConnection();
+                    conn = database.getConnection();
                     Ledger sourceLedger = Ledger.load(conn, Serialization.base64toPublicKey(request.ledger.transactions.get(0).source));
 
                     // check the timestamp of the request
@@ -840,6 +842,8 @@ public class Server {
                 return prepareResponse(serverPrivateKey, req, res, response);
             }
         });
+
+        return http;
     }
 
     private static String prepareResponse(ECPrivateKey privateKey, Request sparkRequest, Response sparkResponse, Serialization.Response response) throws JsonProcessingException, SignatureException {

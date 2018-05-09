@@ -13,6 +13,6 @@ public class Main {
         int numberOfServers = Integer.parseInt (args[2]);
         String password = args[3];
 
-        new Server("http://localhost:4570", serverName, port, numberOfServers, password).run();
+        new Server("http://localhost:4570", serverName, port, numberOfServers, password).ignite();
     }
 }

@@ -83,6 +83,7 @@ public class Client implements IClient {
                 register (server, request, privateKey);
             } catch (Exception e) {
                 System.out.println ("Received a bad response from a replica...");
+                e.printStackTrace();
             }
         }
         if (receivedMajorityAcknowledge ()) {

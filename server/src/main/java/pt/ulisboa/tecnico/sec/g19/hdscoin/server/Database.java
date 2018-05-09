@@ -6,21 +6,20 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class Database {
-    private static final String SUFIX = "hdscoin";
-    private static String databaseName;
-
-    public static void setDatabaseName(String dbName) {
-        databaseName = dbName + SUFIX + ".db";
+    private static final String SUFIX = "_hdscoin";
+    private String databaseName;
+    public Database(String name) {
+        databaseName = name + SUFIX + ".db";
     }
 
-    public static Connection getConnection() throws SQLException {
+    public Connection getConnection() throws SQLException {
         Connection conn=  DriverManager.getConnection("jdbc:sqlite:" + databaseName);
         // we want explicit transactions and commits to avoid inconsistent states
         conn.setAutoCommit(false);
         return conn;
     }
 
-    public static void recreateSchema() throws SQLException {
+    public void recreateSchema() throws SQLException {
         Connection conn = null;
         try {
             conn = getConnection();
