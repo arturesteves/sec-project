@@ -517,8 +517,8 @@ public class Client implements IClient {
         String nonce = ((NonceContainer) payload).getNonce ();
 
         HttpRequest request = HttpRequest.post (url);
-        request.connectTimeout(5);
-        request.readTimeout(10);
+        request.connectTimeout(5000);
+        request.readTimeout(10000);
         //.header(Serialization.NONCE_HEADER_NAME, nonce);
 
         if (payload instanceof Signable && privateKey != null) {
@@ -570,8 +570,8 @@ public class Client implements IClient {
             throws HttpRequest.HttpRequestException, IOException, InvalidServerResponseException, SignatureException {
         String nonce = Utils.randomNonce ();
         HttpRequest request = HttpRequest.get (url);
-        request.connectTimeout(5);
-        request.readTimeout(10);
+        request.connectTimeout(5000);
+        request.readTimeout(10000);
         request.header (Serialization.NONCE_HEADER_NAME, nonce);
 
         int responseCode = request.code ();
