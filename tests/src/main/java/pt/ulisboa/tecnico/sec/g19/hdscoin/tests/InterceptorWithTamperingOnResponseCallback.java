@@ -19,7 +19,8 @@ public class InterceptorWithTamperingOnResponseCallback implements ExpectationCa
         if (httpRequest.getPath().getValue().endsWith("/register")) {
             try {
 
-                int destPort = new URL(httpRequest.getPath().getValue()).getPort() + 1000;
+                URL newURL = new URL("http://" + httpRequest.getHeader("Host").get(0));
+                int destPort = newURL.getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
                         .post(new URL("http://localhost:" + destPort + "/register"));
@@ -49,7 +50,8 @@ public class InterceptorWithTamperingOnResponseCallback implements ExpectationCa
         } else if (httpRequest.getPath().getValue().endsWith("/sendAmount")) {
 
             try {
-                int destPort = new URL(httpRequest.getPath().getValue()).getPort() + 1000;
+                URL newURL = new URL("http://" + httpRequest.getHeader("Host").get(0));
+                int destPort = newURL.getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
                         .post(new URL("http://localhost:" + destPort + "/sendAmount"));
@@ -79,7 +81,8 @@ public class InterceptorWithTamperingOnResponseCallback implements ExpectationCa
 
         } else if (httpRequest.getPath().getValue().endsWith("/receiveAmount")) {
             try {
-                int destPort = new URL(httpRequest.getPath().getValue()).getPort() + 1000;
+                URL newURL = new URL("http://" + httpRequest.getHeader("Host").get(0));
+                int destPort = newURL.getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
                         .post(new URL("http://localhost:" + destPort + "/receiveAmount"));

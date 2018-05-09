@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.mockserver.model.HttpClassCallback.callback;
-import static org.mockserver.model.HttpForward.forward;
 import static org.mockserver.model.HttpRequest.request;
 
 public class TestMitmTampering {
@@ -133,10 +132,9 @@ public class TestMitmTampering {
                 .when(
                         request()
                                 .withMethod("GET"))
-                .forward(
-                        forward()
-                                .withHost("localhost")
-                                .withPort(4567)
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
                 );
 
 
@@ -198,10 +196,9 @@ public class TestMitmTampering {
                 .when(
                         request()
                                 .withMethod("GET"))
-                .forward(
-                        forward()
-                                .withHost("localhost")
-                                .withPort(4567)
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
                 );
 
 
@@ -282,10 +279,9 @@ public class TestMitmTampering {
                 .when(
                         request()
                                 .withMethod("GET"))
-                .forward(
-                        forward()
-                                .withHost("localhost")
-                                .withPort(4567)
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
                 );
 
 
@@ -346,10 +342,9 @@ public class TestMitmTampering {
                 .when(
                         request()
                                 .withMethod("GET"))
-                .forward(
-                        forward()
-                                .withHost("localhost")
-                                .withPort(4567)
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
                 );
 
 
