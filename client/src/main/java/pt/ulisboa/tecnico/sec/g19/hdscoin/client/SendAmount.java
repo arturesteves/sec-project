@@ -94,7 +94,7 @@ public class SendAmount {
             IClient client = new Client(new URL(SERVER_URL), numberOfServers, path.toString ());
             // get the hash of our last transaction, so we can include it in the new transaction
             // client.audit verifies the transaction chain for us
-            Serialization.AuditResponse auditResponse = client.audit (sourcePublicKey);
+            Serialization.AuditResponse auditResponse = client.audit (sourcePublicKey, sourcePrivateKey);
             List<Serialization.Transaction> transactions = auditResponse.ledger.transactions;
             // transactions.size() should always be > 0 because of the dummy transaction required to open an account
             if(transactions.size() == 0) {

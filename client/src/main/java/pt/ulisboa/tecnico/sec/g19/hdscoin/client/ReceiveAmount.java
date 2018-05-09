@@ -4,6 +4,7 @@ import org.apache.commons.cli.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.AuditException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CheckAccountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.ReceiveAmountException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.RegisterException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.SignatureException;
@@ -83,7 +84,7 @@ public class ReceiveAmount {
 
             // check account to get pending incoming transactions
             Serialization.Transaction pendingTx = null;
-            Serialization.CheckAccountResponse result = client.checkAccount (sourcePublicKey);
+            Serialization.CheckAccountResponse result = client.checkAccount (sourcePublicKey, sourcePrivateKey);
             for (Serialization.Transaction tx : result.pendingTransactions) {
                 if (tx.signature.equals (transactionSignature)) {
                     pendingTx = tx;
@@ -96,7 +97,7 @@ public class ReceiveAmount {
 
             // get the hash of our last transaction, so we can include it in the new transaction
             // client.audit verifies the transaction chain for us
-            Serialization.AuditResponse auditResponse = client.audit (sourcePublicKey);
+            Serialization.AuditResponse auditResponse = client.audit (sourcePublicKey, sourcePrivateKey);
             List<Serialization.Transaction> transactions = auditResponse.ledger.transactions;
             // transactions.size() should always be > 0 because of the dummy transaction required to open an account
             if (transactions.size () == 0) {
@@ -117,6 +118,8 @@ public class ReceiveAmount {
         } catch (KeyException e) {
             e.printStackTrace ();
         } catch (SignatureException e) {
+            e.printStackTrace ();
+        } catch (RegisterException e) {
             e.printStackTrace ();
         }
 

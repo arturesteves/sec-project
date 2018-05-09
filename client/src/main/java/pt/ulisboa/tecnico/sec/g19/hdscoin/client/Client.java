@@ -34,7 +34,7 @@ public class Client implements IClient {
     private List<ServerInfo> ackList;
     private int numberOfMaxFaults;
 
-    public Client (URL url, int numberOfServers, String keyStoreFilepath) {
+    public Client (URL url, int numberOfServers, String keyStoreFilepath) throws RegisterException {
         this.servers = getServersInfoFromKeyStore (url, numberOfServers, keyStoreFilepath);
         this.numberOfMaxFaults = Utils.numberOfFaultsSupported (numberOfServers);
         this.ackList = new ArrayList<> ();
@@ -104,7 +104,7 @@ public class Client implements IClient {
             throws SendAmountException, AuditException, KeyException, SignatureException {
 
         // GET A LEDGER FIRST
-        Serialization.AuditResponse auditResponse = audit (sourcePublicKey);
+        Serialization.AuditResponse auditResponse = audit (sourcePublicKey, sourcePrivateKey);
         Serialization.Ledger ledger = auditResponse.ledger;
 
         String b64SourcePublicKey = Serialization.publicKeyToBase64 (sourcePublicKey);
@@ -150,7 +150,7 @@ public class Client implements IClient {
             throws ReceiveAmountException, KeyException, SignatureException, AuditException {
 
         // GET A LEDGER FIRST
-        Serialization.AuditResponse auditResponse = audit (sourcePublicKey);
+        Serialization.AuditResponse auditResponse = audit (sourcePublicKey, sourcePrivateKey);
         Serialization.Ledger ledger = auditResponse.ledger;
 
         String b64SourcePublicKey = Serialization.publicKeyToBase64 (sourcePublicKey);
@@ -192,47 +192,104 @@ public class Client implements IClient {
     }
 
     // read operation
-    @Override public Serialization.CheckAccountResponse checkAccount (ECPublicKey publicKey) throws CheckAccountException {
-        List<Serialization.CheckAccountResponse> checkAccountResults = new ArrayList<> ();
+    @Override public Serialization.CheckAccountResponse checkAccount (ECPublicKey publicKey, ECPrivateKey privateKey)
+            throws CheckAccountException, KeyException {
+
+        Map<String, Serialization.CheckAccountResponse> answers = new HashMap<> ();
+        Map<String, Integer> count =  new HashMap<> ();
         for (ServerInfo server : this.servers) {
             try {
-                checkAccountResults.add (checkAccount (server, publicKey));
+                Serialization.CheckAccountResponse response = checkAccount (server, publicKey);
+                String hash = Utils.generateHashBase64 (response.getSignable ());
+                answers.put (hash, response);
+                if(count.containsKey (hash)) {
+                    count.put (hash, count.get(hash) + 1);
+                } else {
+                    count.put (hash, 1);
+                }
+
             } catch (Exception e) {
                 System.out.println ("Received a bad response from a replica...");
             }
         }
 
-        if (receivedReadMajority (checkAccountResults)) {
+        int max = 0;
+        String maxHash = null;
+        for(String hash : count.keySet ()) {
+            if(count.get(hash) > max) {
+                maxHash = hash;
+                max = count.get(hash);
+            }
+        }
+
+        if(max > (servers.size () + numberOfMaxFaults) / 2) {
+            Serialization.CheckAccountResponse majorityResponse = answers.get (maxHash);
+
+            Serialization.ReadCompleteRequest request = new Serialization.ReadCompleteRequest ();
+            request.publicKeyBase64 = Serialization.publicKeyToBase64 (publicKey);
+            request.nonce = Utils.randomNonce ();
+            request.requestNonce = majorityResponse.nonce;  // read operation before this one
+
+            for (ServerInfo server : this.servers) {
+                /*
+                    this call needs to be a HTTP POST, because the user is giving is word that a read operation
+                    was completed, so a signature of the request is needed.
+
+                    // currently not checking if the response reached a majority of the replicas
+                 */
+                completeRead(server, request, privateKey);
+            }
+
             System.out.println ("\n");
             System.out.println ("----------------------------------");
             System.out.println ("---Check account was successful---");
             System.out.println ("----------------------------------");
-            //return checkAccountResults.get (0);  // choose anyone
-            return getValueWithMajorityTimestamp(checkAccountResults);
+            return majorityResponse;
         } else {
             throw new CheckAccountException ("Failed to check account - not enough success responses!");
         }
+
     }
 
     // read operation
-    @Override public Serialization.AuditResponse audit (ECPublicKey publicKey) throws AuditException {
-        List<Serialization.AuditResponse> auditResponses = new ArrayList<> ();
+    @Override public Serialization.AuditResponse audit (ECPublicKey publicKey, ECPrivateKey privateKey) throws AuditException {
+        //List<Serialization.AuditResponse> auditResponses = new ArrayList<> ();
+        Map<String, Serialization.AuditResponse> answers = new HashMap<> ();
+        Map<String, Integer> count =  new HashMap<> ();
         for (ServerInfo server : this.servers) {
             try {
-                auditResponses.add (audit (server, publicKey));
+                //auditResponses.add (audit (server, publicKey));
+                Serialization.AuditResponse response = audit (server, publicKey);
+                String hash = Utils.generateHashBase64 (response.getSignable ());
+                answers.put (hash, response);
+                if(count.containsKey (hash)) {
+                    count.put (hash, count.get(hash) + 1);
+                } else {
+                    count.put (hash, 1);
+                }
             } catch (Exception e) {
                 System.out.println ("Received a bad response from a replica...");
             }
 
         }
 
-        if (receivedReadMajority (auditResponses)) {
+        int max = 0;
+        String maxHash = null;
+        for(String hash : count.keySet ()) {
+            if(count.get(hash) > max) {
+                maxHash = hash;
+                max = count.get(hash);
+            }
+        }
+
+        if(max > (servers.size () + numberOfMaxFaults) / 2) {
+            Serialization.AuditResponse majorityResponse = answers.get (maxHash);
             System.out.println ("\n");
             System.out.println ("----------------------------------");
             System.out.println ("-------Audit was successful-------");
             System.out.println ("----------------------------------");
             //return auditResponses.get (0);  // choose anyone
-            return getValueWithMajorityTimestamp(auditResponses);
+            return majorityResponse;
         } else {
             throw new AuditException ("Failed to audit account - not enough success responses!");
         }
@@ -286,6 +343,38 @@ public class Client implements IClient {
         }
     }
 
+
+    private void completeRead (ServerInfo server, Serialization.ReadCompleteRequest request, ECPrivateKey privateKey) {
+        try {
+            // log
+            System.out.println ();
+            System.out.println ("---------------------");
+            System.out.println ("---Sending Read Complete---");
+            System.out.println ("Sending to: " + server.serverUrl.toString ());
+            System.out.println ("Base 64 Public Key: " + request.publicKeyBase64);
+            System.out.println ("Request nonce to clean value: " + request.requestNonce);
+            System.out.println ("Nonce: " + request.nonce);
+            System.out.println ("---------------------");
+            System.out.println ();
+
+            // http post request
+            Serialization.Response response = sendPostRequest (Serialization.base64toPublicKey (server.publicKeyBase64),
+                    server.serverUrl.toString () + "/completeRead", privateKey, request, Serialization.Response.class);
+
+            if (response.statusCode == 200) {
+                this.ackList.add (server);
+
+            } else {
+                switch (response.status) {
+                    default:
+                        throw new RuntimeException ("Error on complete read. " + response.status);
+                }
+            }
+
+        } catch (HttpRequest.HttpRequestException | IOException | KeyException | SignatureException | InvalidServerResponseException | InvalidClientSignatureException e) {
+            throw new RuntimeException ("Error on complete read " + e, e);
+        }
+    }
 
     ////////////////////////////////////////////////
     //// WRITE OPERATIONS

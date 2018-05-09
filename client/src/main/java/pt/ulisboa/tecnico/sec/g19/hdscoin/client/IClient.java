@@ -46,7 +46,7 @@ public interface IClient {
      * @param publicKey Public key of the client
      * @return CheckAccountResult containing the balance and pending transactions of the account
      */
-    Serialization.CheckAccountResponse checkAccount(ECPublicKey publicKey) throws CheckAccountException;
+    Serialization.CheckAccountResponse checkAccount(ECPublicKey publicKey, ECPrivateKey privateKey) throws CheckAccountException, KeyException;
 
     /**
      * Used by recipient of a transfer to accept in a non-repudiable way
@@ -71,6 +71,6 @@ public interface IClient {
      * @param publicKey The public key of the account to be audited
      * @throws AuditException If there is a problem validating the transaction history.
      */
-    Serialization.AuditResponse audit(ECPublicKey publicKey) throws AuditException;
+    Serialization.AuditResponse audit(ECPublicKey publicKey, ECPrivateKey privateKey) throws AuditException;
 
 }

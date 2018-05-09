@@ -3,6 +3,7 @@ package pt.ulisboa.tecnico.sec.g19.hdscoin.client;
 
 import org.apache.commons.cli.*;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.CheckAccountException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.RegisterException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 
@@ -10,11 +11,9 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.KeyException;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
+import java.security.*;
 import java.security.cert.CertificateException;
+import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 
 public class CheckAccount {
@@ -24,11 +23,13 @@ public class CheckAccount {
     public static void main(String[] args) throws CheckAccountException {
         String clientName;
         int numberOfServers;
+        String password;
 
         // create options
         Options registerOptions = new Options();
         registerOptions.addOption("n", true, "Client name");
         registerOptions.addOption("ns", true, "Number of servers");
+        registerOptions.addOption("pw", true, "Password");
 
         CommandLineParser parser = new BasicParser();
         CommandLine cmd = null;
@@ -51,6 +52,12 @@ public class CheckAccount {
             usage(registerOptions);
             throw new CheckAccountException ("Can't check account, number of servers available is missing.");
         }
+        if (cmd.hasOption("pw") && !cmd.getOptionValue("pw").trim().equals("")) {
+            password = cmd.getOptionValue("pw");
+        } else {
+            usage(registerOptions);
+            throw new CheckAccountException ("Can't check account, number of servers available is missing.");
+        }
 
         String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\common";
         String filepath = root + Serialization.COMMON_PACKAGE_PATH + "\\" + Serialization.KEY_STORE_FILE_NAME;
@@ -59,9 +66,10 @@ public class CheckAccount {
         try {
             KeyStore keyStore = Utils.initKeyStore (path.toString ());
             ECPublicKey clientPublicKey = Utils.loadPublicKeyFromKeyStore (keyStore, clientName);
+            ECPrivateKey clientPrivateKey = Utils.loadPrivateKeyFromKeyStore (path.toString (), clientName, password);
 
             IClient client = new Client(new URL(SERVER_URL), numberOfServers, path.toString ());
-            Serialization.CheckAccountResponse result = client.checkAccount(clientPublicKey);
+            Serialization.CheckAccountResponse result = client.checkAccount(clientPublicKey, clientPrivateKey);
             System.out.println("Balance: " + result.balance);
             if(result.pendingTransactions.size() > 0) {
                 System.out.println("Pending incoming transactions:");
@@ -76,6 +84,12 @@ public class CheckAccount {
 
         } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException e) {
             throw new CheckAccountException("Failed to check the account of the public key provided. " + e);
+        } catch (RegisterException e) {
+            e.printStackTrace ();
+        } catch (UnrecoverableKeyException e) {
+            e.printStackTrace ();
+        } catch (KeyException e) {
+            e.printStackTrace ();
         }
 
     }

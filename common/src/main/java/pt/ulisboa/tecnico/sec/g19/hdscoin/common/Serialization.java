@@ -179,6 +179,20 @@ public class Serialization {
         }
     }
 
+    public static class ReadCompleteRequest implements Signable, NonceContainer {
+        public String publicKeyBase64;
+        public String requestNonce;
+        public String nonce;
+
+
+        @Override @JsonIgnore public String getNonce () {
+            return nonce;
+        }
+
+        @Override @JsonIgnore public String getSignable () {
+            return requestNonce + nonce;
+        }
+    }
 
     public static class Response implements Signable, NonceContainer {
 
@@ -203,6 +217,7 @@ public class Serialization {
 
         @Override @JsonIgnore public String getSignable () {
             StringBuilder signable = new StringBuilder (super.getSignable ()).append (balance);
+            signable.append (timestamp);
             for (Transaction tx : pendingTransactions) {
                 signable.append (tx.getSignable ());
             }
@@ -213,7 +228,6 @@ public class Serialization {
             return timestamp;
         }
     }
-
 
     public static class AuditResponse extends Response implements Signable, Readable {
         public Ledger ledger;
@@ -230,6 +244,9 @@ public class Serialization {
         }
     }
 
+    public static class ReadCompleteResponse extends Response implements Signable {
+
+    }
 
     public static class Transaction implements Signable, NonceContainer {
 
