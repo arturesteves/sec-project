@@ -13,16 +13,39 @@ Open a terminal on the project root directory and then type:
 
 ### The following information is dedicated to the 1st Stage of the project
 #### Server Side
-1. First we need to generate a pair of keys (public and private key) which is based on the Elliptic-curve cryptography.
-2. We need to start the web server.
+At this stage the system will have to tolerate **f** number of faults and to accomplish that 
+a **N** number of replicas will initiated.
+The replicas will follow a Fail-Arbitrary Algorithm: Authenticated-Data Byzantine Quorum to ensure
+the synchronization between them and provide a reliable service when the number of faults are under **f**.
+To bootstrap the replicas simply call the **bootstrap.bat** batch file under the root server directory.  
+Args:  
+`1st arg` Specifies the number of failures to tolerate, the default value is 1, which will bootstrap a total of 4 replicas  
+`2nd arg` Pass the character '**c**' to remove the database and the keystore. To use it it's required to 
+pass the 1st arg.
+    
+Example:  
+`...\server>bootstrap.bat` Tolerate a maximum of 1 failure
+or  
+`...\server>bootstrap.bat 3` Tolerate a maximum of 3 failures
 
 ##### How to generate a key pair
-Open a terminal on the root directory of the server project and then type:  
-`mvn exec:java@GenerateKeyPair -Dexec.args="-n Server_1"`
-  
+Open a terminal on the root directory of the server project and then invoke the following java file `GenerateKeyPair`.  
+At this stage this process is executed automatically at the boostrap level.    
+Args:  
+`-n` Specifies the name of the server  
+`-pw` Specifies the password that will protect the keypair on the key store  
+Example:  
+`mvn exec:java@GenerateKeyPair -Dexec.args="-n Server_1 -pw abc"`
+
 ##### How to start the web server
-Open a terminal on the root directory of the server project and then type:  
-`mvn exec:java@WebServer -Dexec.args="Server_1"`
+Open a terminal on the root directory of the server project and then invoke the file `Main`
+Args:  
+`1st arg` Specifies the name of the server  
+`2nd arg` Specifies the port of the web server  
+`3rd arg` Specifies the number of servers available  
+`4th arg` Specifies the password to fetch the server private key from the key store  
+Example  
+`mvn exec:java@WebServer -Dexec.args="Server_1 4570 4 abc"`
 
 #### Client Side
 1. The client also requires a pair of keys (public and private key) which is based on the Elliptic-curve cryptography.  
@@ -30,37 +53,59 @@ Open a terminal on the root directory of the server project and then type:
 3. Use any of the other client side programs that uses the interfaces the server has made available to the public.
 
 ##### How to generate a key pair
-Open a terminal on the root directory of the client project and then type:  
-`mvn exec:java@GenerateKeyPair -Dexec.args="-n Client_1"`
+Open a terminal on the root directory of the client project and then invoke the following java file `GenerateKeyPair`.    
+Args:  
+`-n` Specifies the name of the client  
+`-pw` Specifies the password that will protect the keypair on the key store  
+Example:  
+`mvn exec:java@GenerateKeyPair -Dexec.args="-n Client_1 -pw abc"`
 
 ##### How to register a client
-Open a terminal on the root directory of the client project and then type:  
-`mvn exec:java@Register -Dexec.args="-n Client_1 -s Server_1 -a 10"`
+Open a terminal on the root directory of the client project and then invoke the following java file `Register`.  
+Args:  
+`n` Specifies the name of the client  
+`a` Specifies the amount to initialize the account  
+`ns` Specifies the number of servers available  
+`pw` Specifies the password to fetch the user private key from the key store  
+Example:    
+`mvn exec:java@Register -Dexec.args="-n Client_1 -a 10 -ns 4 -pw abc"`
 
 ##### How to check an account
-Open a terminal on the root directory of the client project and then type:  
-`mvn exec:java@CheckAccount -Dexec.args="-n Client_1 -s Server_1"`
+pen a terminal on the root directory of the client project and then invoke the following java file `CheckAccount`.    
+Args:  
+`n` Specifies the name of the client    
+`ns` Specifies the number of servers available  
+Example:  
+`mvn exec:java@CheckAccount -Dexec.args="-n Client_1 -ns 4"`
 
 ##### How to audit an account
-Open a terminal on the root directory of the client project and then type:  
-`mvn exec:java@Audit -Dexec.args="-n Client_1 -s Server_1"`
+Open a terminal on the root directory of the client project and then invoke the following java file `Audit`.  
+Args:  
+`n` Specifies the name of the client    
+`ns` Specifies the number of servers available  
+Example:  
+`mvn exec:java@Audit -Dexec.args="-n Client_1 -ns 4"`
 
 ##### How to send money
-`-ns` specifies the name of the client sending the amount
-
-`-nt` specifies the name of the client who will receive
-
-`-a` specifies the amount to send
-
-Example:
-
-`mvn exec:java@SendAmount -Dexec.args="-ns Client_1 -nt Client_2 -s Server_1 -a 1000"`
+Open a terminal on the root directory of the client project and then invoke the following java file `SendAmount`.  
+`-sn` specifies the name of the client sending the amount  
+`-tn` specifies the name of the client who will receive  the amount  
+`-a` specifies the amount to send  
+`ns` Specifies the number of servers available  
+`pw` Specifies the password to fetch the client, sending the amount, private key from the key store  
+Example:  
+`mvn exec:java@SendAmount -Dexec.args="-sn Client_1 -tn Client_2 -a 1000 -ns 4 -pw abc"`
 
 ##### How to accept a pending transaction
 First, use `CheckAccount` to obtain the list of pending transactions.
-Take the signature of the transaction you want to accept and use `ReceiveAmount`:
-
-`mvn exec:java@ReceiveAmount -Dexec.args="-n Client_2 -s Server_1 -ts MEYCIQDEe4XFwURKGMjC0ge7eVIT5B2/Rgp/R77m9t17sIVPugIhAIZCXzIO0GikCYAjYPjiuEUPs7K7xDn/3A4us+6UUqID"`
+Copy the signature of the transaction you want to accept and use `ReceiveAmount`.  
+Args:  
+`n` Specifies the name of the client that is receiving the amount  
+`ts` Specifies the signature of the transaction to the receive the amount  
+`ns` Specifies the number of servers available    
+`pw` Specifies the password to fetch the user private key from the key store  
+Example:  
+`mvn exec:java@ReceiveAmount -Dexec.args="-n Client_2 -ts MEYCIQDEe4XFwURKGMjC0ge7eVIT5B2/Rgp/R77m9t17sIVPugIhAIZCXzIO0GikCYAjYPjiuEUPs7K7xDn/3A4us+6UUqID -ns 4 -pw abc"`
 
 ## Tests
 

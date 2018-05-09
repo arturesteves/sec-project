@@ -10,17 +10,25 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyException;
 import java.security.KeyPair;
+import java.security.KeyStore;
+import java.security.cert.Certificate;
+import java.security.interfaces.ECPrivateKey;
 
 
 public class GenerateKeyPair {
-    public static final String ENTITY = "CLIENT";
+
+    private static KeyStore keyStore;
+
 
     public static void main(String[] args) throws KeyGenerationException {
         String clientName;
+        String password;
+        String alias;   // = serverIdentification
 
         // create options
         Options options = new Options ();
         options.addOption ("n", true, "Name of the client");
+        options.addOption ("pw", true, "Password to protect the client key pair");
 
         CommandLineParser parser = new BasicParser ();
         try {
@@ -28,26 +36,44 @@ public class GenerateKeyPair {
 
             if (cmd.hasOption("n") && !cmd.getOptionValue("n").trim().equals("")) {
                 clientName = cmd.getOptionValue("n");
+                alias = clientName;
             } else {
                 usage (options);
                 throw new KeyGenerationException("Failed to generate a key pair. Missing the -n option.");
             }
-            String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\client";
-            String filepath = root + Serialization.CLIENT_PACKAGE_PATH + "\\keys\\" + clientName + ".keys";
-            Path path = Paths.get (filepath).normalize(); // create path and normalize it
+            if (cmd.hasOption ("pw") && !cmd.getOptionValue ("pw").trim ().equals ("")) {
+                password = cmd.getOptionValue ("pw");
+            } else {
+                usage (options);
+                throw new KeyGenerationException ("Failed to generate a key pair. Missing the -pw option.");
+            }
+
+            String root = Paths.get(System.getProperty("user.dir")).getParent().toString() + "\\common";
+            String filepath = root + Serialization.COMMON_PACKAGE_PATH + "\\" + Serialization.KEY_STORE_FILE_NAME;
+            Path path = Paths.get (filepath).normalize();
 
             KeyPair keyPair = Utils.generateKeyPair ();
-            Utils.writeKeyPairToFile (path.toString(), keyPair);
+
+            Certificate certificate = Utils.generateCertificate(keyPair);
+            keyStore = Utils.initKeyStore (path.toString ());
+            Utils.savePrivateKeyToKeyStore(keyStore, alias, password, (ECPrivateKey) keyPair.getPrivate (), certificate);
+            Utils.storeKeyStore(keyStore, path.toString ());
 
             // everything ok
             System.out.println();
             System.out.println("-------------------------------------");
             System.out.println("---Key Pair Generated with Success---");
-            System.out.println("---Generated at: " + path.toString());
+            System.out.println("---Key Pair securely saved at a   ---");
+            System.out.println("--- keystore located  at:         ---");
+            System.out.println(path.toString());
+            System.out.println("--- Stored under the alias: " + alias);
             System.out.println("-------------------------------------");
 
         } catch (ParseException | KeyException | IOException e) {
             throw new KeyGenerationException("Failed to generate a key pair. " + e.getMessage(), e);
+        }catch (Exception ex) {
+            ex.printStackTrace ();
+            throw new KeyGenerationException("Failed to generate a key pair. " + ex.getMessage(), ex);
         }
     }
 

@@ -6,8 +6,15 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class Database {
+    private static final String SUFIX = "hdscoin";
+    private static String databaseName;
+
+    public static void setDatabaseName(String dbName) {
+        databaseName = dbName + SUFIX + ".db";
+    }
+
     public static Connection getConnection() throws SQLException {
-        Connection conn=  DriverManager.getConnection("jdbc:sqlite:hdscoin.db");
+        Connection conn=  DriverManager.getConnection("jdbc:sqlite:" + databaseName);
         // we want explicit transactions and commits to avoid inconsistent states
         conn.setAutoCommit(false);
         return conn;
@@ -26,7 +33,8 @@ public class Database {
             statement.executeUpdate("create table ledger (" +
                     "id integer primary key, " +
                     "public_key text not null, " +
-                    "balance integer not null)");
+                    "balance integer not null, " +
+                    "timestamp integer not null)");
 
             statement.executeUpdate("create table tx (" + // "transaction" is a reserved SQLite keyword
                     "id integer primary key, " +

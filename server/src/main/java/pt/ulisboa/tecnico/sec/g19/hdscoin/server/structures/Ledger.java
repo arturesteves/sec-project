@@ -23,26 +23,23 @@ import java.util.logging.Logger;
 
 
 public final class Ledger {
-    private final static Logger log = Logger.getLogger(Ledger.class.getName());
-
-    static {
-        Utils.initLogger(log);
-    }
+    public static Logger log;
 
     private int id;
     private ECPublicKey publicKey;    // can't change
-
     private int amount;
+    private int timestamp;
 
-    private Ledger(int id, ECPublicKey publicKey, int amount) {
+    private Ledger(int id, ECPublicKey publicKey, int amount, int timestamp) {
         this.publicKey = publicKey;
         this.amount = amount;
         this.id = id;
+        this.timestamp = timestamp;
     }
 
     public Ledger(Connection connection, ECPublicKey publicKey, Serialization.Transaction initialTransaction) throws KeyException, SQLException,
             InvalidValueException, InvalidAmountException, InvalidLedgerException, SignatureException {
-        this(-1, publicKey, initialTransaction.amount);
+        this(-1, publicKey, initialTransaction.amount, 0);
         if (publicKey == null) {
             log.log(Level.WARNING, "Null key when trying to initialize a ledger.");
             throw new InvalidKeyException("Null key when trying to initialize a ledger.");
@@ -94,13 +91,22 @@ public final class Ledger {
         this.amount = amount;
     }
 
+    public int getTimestamp () {
+        return this.timestamp;
+    }
+
+    public void setTimestamp(int newTimestamp) {
+        this.timestamp = newTimestamp;
+    }
+
     public void persist(Connection connection) throws SQLException, KeyException {
-        String stmt = "INSERT OR REPLACE INTO ledger (id, public_key, balance) VALUES (?, ?, ?)";
+        String stmt = "INSERT OR REPLACE INTO ledger (id, public_key, balance, timestamp) VALUES (?, ?, ?, ?)";
 
         PreparedStatement prepStmt = connection.prepareStatement(stmt);
         prepStmt.setInt(1, getId());
         prepStmt.setString(2, Serialization.publicKeyToBase64(getPublicKey()));
         prepStmt.setInt(3, getAmount());
+        prepStmt.setInt (4, getTimestamp ());
         prepStmt.executeUpdate();
         log.log(Level.INFO, "A ledger was persisted. Public key of that ledger: " + Serialization.publicKeyToBase64(getPublicKey()));
     }
@@ -242,7 +248,8 @@ public final class Ledger {
             int id = results.getInt(1);
             ECPublicKey pk = Serialization.base64toPublicKey(results.getString(2));
             int amount = results.getInt(3);
-            ret.add(new Ledger(id, pk, amount));
+            int timestamp = results.getInt(4);
+            ret.add(new Ledger(id, pk, amount, timestamp));
         }
         return ret;
     }
@@ -281,5 +288,10 @@ public final class Ledger {
             if (statement != null)
                 statement.close();
         }
+    }
+
+    @Override public String toString () {
+        return "Ledger{" + "id=" + id + ", publicKey=" + publicKey + ", amount=" + amount + ", timestamp=" + timestamp +
+                '}';
     }
 }

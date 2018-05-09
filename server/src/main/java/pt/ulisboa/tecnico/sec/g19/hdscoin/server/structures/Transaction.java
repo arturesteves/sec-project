@@ -18,11 +18,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class Transaction {
-    private final static Logger log = Logger.getLogger(Transaction.class.getName());
-
-    static {
-        Utils.initLogger(log);
-    }
+    public  static Logger log;
 
     public enum TransactionTypes implements TransactionType {SENDING, RECEIVING}
 
@@ -273,4 +269,22 @@ public final class Transaction {
         }
         return builder.toString();
     }
+
+    public static void removeTransaction(Connection connection, int id) throws SQLException {
+        String stmt = "DELETE FROM tx WHERE (id) VALUES (?)";
+        PreparedStatement prepStmt = null;
+        try {
+            prepStmt = connection.prepareStatement(stmt);
+            prepStmt.setInt(1, id);
+            prepStmt.executeUpdate();
+            log.log(Level.INFO, "The transaction with id '" + id + "' wasn't removed.");
+        } catch (SQLException e) {
+            e.printStackTrace ();
+        } finally {
+            if (prepStmt != null) {
+                prepStmt.close();
+            }
+        }
+    }
+
 }
