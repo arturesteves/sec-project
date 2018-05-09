@@ -283,6 +283,15 @@ public class TestMitmTampering {
                         callback()
                                 .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
                 );
+        // forward - no tampering
+        mockServerClient
+                .when(
+                        request()
+                                .withMethod("POST"))
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
+                );
 
 
         //Register.main(new String[] {"-n", "Client_1", "-s", "Server_1", "-a", "10", "-p", "3456"});

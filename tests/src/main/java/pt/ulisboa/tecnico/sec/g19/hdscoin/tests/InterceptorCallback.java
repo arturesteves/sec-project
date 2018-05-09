@@ -88,19 +88,20 @@ public class InterceptorCallback implements ExpectationCallback {
                     request = com.github.kevinsawicki.http.HttpRequest.get(newURL);
                 }
 
-                request.header(Serialization.SIGNATURE_HEADER_NAME,
-                        httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
+                if(httpRequest.containsHeader(Serialization.SIGNATURE_HEADER_NAME)) {
+                    request.header(Serialization.SIGNATURE_HEADER_NAME,
+                            httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
+                }
+
                 request.send(httpRequest.getBody().getValue().toString().getBytes());
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
                 String body = request.body();
 
-                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
-
                 return response()
                         .withStatusCode(request.code())
                         .withHeader(Serialization.SIGNATURE_HEADER_NAME, responseSignature)
-                        .withBody(Serialization.serialize(response));
+                        .withBody(body);
 
             } catch (IOException e) {
                 e.printStackTrace();
