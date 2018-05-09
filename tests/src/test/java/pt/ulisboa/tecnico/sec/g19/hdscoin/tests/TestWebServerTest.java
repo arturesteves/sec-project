@@ -7,6 +7,7 @@ import org.mockserver.junit.MockServerRule;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.Register;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.client.exceptions.RegisterException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.KeyGenerationException;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.SignatureException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.Main;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.server.exceptions.FailedToLoadKeysException;
 
@@ -59,8 +60,8 @@ public class TestWebServerTest {
     }
 
     private String getPreviousHash(Client client, ECPublicKey clientPublicKey) throws AuditException {
-        List<Serialization.Transaction> transactionsClient1 =  client.audit(clientPublicKey);
-        return transactionsClient1.get(transactionsClient1.size() - 1).signature;
+        Serialization.AuditResponse transactionsClient1 =  client.audit(clientPublicKey);
+        return transactionsClient1.ledger.transactions.get(transactionsClient1.ledger.transactions.size() - 1).signature;
     }
 
     private Bundle createTestBundle(String client1, String client2, String server) throws KeyException, IOException, KeyGenerationException {
@@ -101,7 +102,7 @@ public class TestWebServerTest {
     @Test
     public void simpleSendAmountTest() throws RegisterException,
             FailedToLoadKeysException, SendAmountException,
-            KeyException, IOException, AuditException, CheckAccountException, ReceiveAmountException, KeyGenerationException {
+            KeyException, IOException, AuditException, CheckAccountException, ReceiveAmountException, KeyGenerationException, SignatureException {
 
         Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
         Main.main(new String[] {"Server_1"});
@@ -114,14 +115,14 @@ public class TestWebServerTest {
         client.register(bundle.PublicKeyClient2, bundle.PrivateKeyClient2, 40); //Register client2
 
         client.sendAmount(bundle.PublicKeyClient1, bundle.PublicKeyClient2, 5, bundle.PrivateKeyClient1, prevHash);
-        CheckAccountResult result0 = client.checkAccount(bundle.PublicKeyClient2);
+        Serialization.CheckAccountResponse result0 = client.checkAccount(bundle.PublicKeyClient2);
         Serialization.Transaction transaction = result0.pendingTransactions.get(result0.pendingTransactions.size()-1);
         String prevHashClient2 = getPreviousHash(client, bundle.PublicKeyClient2);
         client.receiveAmount(bundle.PublicKeyClient2, transaction.source, transaction.amount, bundle.PrivateKeyClient2, prevHashClient2, transaction.signature);
 
         //Validate transfer result
-        CheckAccountResult result1 = client.checkAccount(bundle.PublicKeyClient1);
-        CheckAccountResult result2 = client.checkAccount(bundle.PublicKeyClient2);
+        Serialization.CheckAccountResponse result1 = client.checkAccount(bundle.PublicKeyClient1);
+        Serialization.CheckAccountResponse result2 = client.checkAccount(bundle.PublicKeyClient2);
         assert(result1.balance == 5);
         assert(result2.balance == 45);
     }
@@ -134,7 +135,7 @@ public class TestWebServerTest {
     // request
 
     @Test
-    public void testRegisterClient() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException {
+    public void testRegisterClient() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, SignatureException {
         Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
         Main.main(new String[] {"Server_1"});
 
@@ -158,7 +159,7 @@ public class TestWebServerTest {
     }
 
     @Test (expected = RegisterException.class)
-    public void testRegisterTamperingWithRequest() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException {
+    public void testRegisterTamperingWithRequest() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, SignatureException {
         Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
         Main.main(new String[] {"Server_1"});
 
@@ -185,7 +186,7 @@ public class TestWebServerTest {
 
 
     @Test (expected = SendAmountException.class)
-    public void testSendAmountTamperingWithRequest() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, AuditException, SendAmountException {
+    public void testSendAmountTamperingWithRequest() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, AuditException, SendAmountException, SignatureException {
         Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
         Main.main(new String[] {"Server_1"});
 
@@ -237,7 +238,7 @@ public class TestWebServerTest {
 
 
     @Test (expected = ReceiveAmountException.class)
-    public void testReceiveAmountTamperingWithRequest() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, AuditException, SendAmountException, CheckAccountException, ReceiveAmountException {
+    public void testReceiveAmountTamperingWithRequest() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, AuditException, SendAmountException, CheckAccountException, ReceiveAmountException, SignatureException {
         Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
         Main.main(new String[] {"Server_1"});
 
@@ -296,7 +297,7 @@ public class TestWebServerTest {
         client.register(bundle.PublicKeyClient2, bundle.PrivateKeyClient2, 40); //Register client2
         String prevHash = getPreviousHash(client, bundle.PublicKeyClient1);
         client.sendAmount(bundle.PublicKeyClient1, bundle.PublicKeyClient2, 30, bundle.PrivateKeyClient1, prevHash);
-        CheckAccountResult result0 = client.checkAccount(bundle.PublicKeyClient2);
+        Serialization.CheckAccountResponse result0 = client.checkAccount(bundle.PublicKeyClient2);
         Serialization.Transaction transaction = result0.pendingTransactions.get(result0.pendingTransactions.size()-1);
         String prevHashClient2 = getPreviousHash(client, bundle.PublicKeyClient2);
         client.receiveAmount(bundle.PublicKeyClient2, transaction.source, transaction.amount, bundle.PrivateKeyClient2, prevHashClient2, transaction.signature);
@@ -308,7 +309,7 @@ public class TestWebServerTest {
     /// Reponse
 
     @Test (expected = RegisterException.class)
-    public void testRegisterTamperingWithResponse() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException {
+    public void testRegisterTamperingWithResponse() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, SignatureException {
         Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
         Main.main(new String[] {"Server_1"});
 
@@ -335,7 +336,7 @@ public class TestWebServerTest {
 
 
     @Test (expected = SendAmountException.class)
-    public void testSendAmountTamperingWithResponse() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, AuditException, SendAmountException {
+    public void testSendAmountTamperingWithResponse() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, AuditException, SendAmountException, SignatureException {
         Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
         Main.main(new String[] {"Server_1"});
 
@@ -387,7 +388,7 @@ public class TestWebServerTest {
 
 
     @Test (expected = ReceiveAmountException.class)
-    public void testReceiveAmountTamperingWithResponse() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, AuditException, SendAmountException, CheckAccountException, ReceiveAmountException {
+    public void testReceiveAmountTamperingWithResponse() throws RegisterException, FailedToLoadKeysException, IOException, KeyException, KeyGenerationException, AuditException, SendAmountException, CheckAccountException, ReceiveAmountException, SignatureException {
         Bundle bundle = createTestBundle("Client_1", "Client_2", "Server_1");
         Main.main(new String[] {"Server_1"});
 
@@ -446,7 +447,7 @@ public class TestWebServerTest {
         client.register(bundle.PublicKeyClient2, bundle.PrivateKeyClient2, 40); //Register client2
         String prevHash = getPreviousHash(client, bundle.PublicKeyClient1);
         client.sendAmount(bundle.PublicKeyClient1, bundle.PublicKeyClient2, 30, bundle.PrivateKeyClient1, prevHash);
-        CheckAccountResult result0 = client.checkAccount(bundle.PublicKeyClient2);
+        Serialization.CheckAccountResponse result0 = client.checkAccount(bundle.PublicKeyClient2);
         Serialization.Transaction transaction = result0.pendingTransactions.get(result0.pendingTransactions.size()-1);
         String prevHashClient2 = getPreviousHash(client, bundle.PublicKeyClient2);
         client.receiveAmount(bundle.PublicKeyClient2, transaction.source, transaction.amount, bundle.PrivateKeyClient2, prevHashClient2, transaction.signature);
