@@ -39,13 +39,12 @@ public class InterceptorCallback implements ExpectationCallback {
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
                 String body = request.body();
-                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
 
                 Log.getLog().warn("BODYTESTE: " + body);
                 return response()
                         .withStatusCode(request.code())
-                        .withHeader("SIGNATURE", responseSignature)
-                        .withBody(Serialization.serialize(response));
+                        .withHeader(Serialization.SIGNATURE_HEADER_NAME, responseSignature)
+                        .withBody(body);
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -69,13 +68,12 @@ public class InterceptorCallback implements ExpectationCallback {
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
                 String body = request.body();
-                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
 
                 Log.getLog().warn("BODYTESTE: " + body);
                 return response()
                         .withStatusCode(request.code())
-                        .withHeader("SIGNATURE", responseSignature)
-                        .withBody(Serialization.serialize(response));
+                        .withHeader(Serialization.SIGNATURE_HEADER_NAME, responseSignature)
+                        .withBody(body);
 
             } catch (IOException e) {
                 e.printStackTrace();

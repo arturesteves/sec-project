@@ -27,21 +27,16 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
 
-                //httpRequest.getBody().getValue().toString().getBytes();
                 Serialization.RegisterRequest req = Serialization.parse(httpRequest.getBody().getValue().toString(), Serialization.RegisterRequest.class);
                 req.initialTransaction.nonce = "bananas";
 
                 request.send(Serialization.serialize(req));
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
-                String body = request.body();
-                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
-
-                //Log.getLog().warn("BODYTESTE: " + body);
                 return response()
                         .withStatusCode(request.code())
                         .withHeader("SIGNATURE", responseSignature)
-                        .withBody(Serialization.serialize(response));
+                        .withBody(request.body());
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -73,13 +68,11 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
                 String body = request.body();
-                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
 
-                Log.getLog().warn("BODYTESTE: " + body);
                 return response()
                         .withStatusCode(request.code())
-                        .withHeader("SIGNATURE", responseSignature)
-                        .withBody(Serialization.serialize(response));
+                        .withHeader(Serialization.SIGNATURE_HEADER_NAME, responseSignature)
+                        .withBody(body);
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -109,13 +102,11 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
                 request.send(Serialization.serialize(req));
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
-                String body = request.body();
-                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
 
                 return response()
                         .withStatusCode(request.code())
                         .withHeader("SIGNATURE", responseSignature)
-                        .withBody(Serialization.serialize(response));
+                        .withBody(request.body());
 
             } catch (IOException e) {
                 e.printStackTrace();

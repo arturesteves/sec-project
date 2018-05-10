@@ -69,8 +69,6 @@ public class TestMitmTampering {
 
         Client client = new Client(Helpers.getBaseServerURL(), Helpers.getNumberOfServers(), Helpers.getKeyStoreFilePath());
         client.register(client1pubKey, client1privKey, 234); //Register client1
-
-
     }
 
     @Test(expected = RegisterException.class)
@@ -88,9 +86,6 @@ public class TestMitmTampering {
                         callback()
                                 .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorWithTamperingOnRequestCallback")
                 );
-
-
-        //Register.main(new String[] {"-n", "Client_1", "-s", "Server_1", "-a", "10", "-p", "3456"});
 
         Client client = new Client(Helpers.getBaseServerURL(), Helpers.getNumberOfServers(), Helpers.getKeyStoreFilePath());
         client.register(client1pubKey, client1privKey, 340); //Register client1
@@ -137,10 +132,7 @@ public class TestMitmTampering {
                                 .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
                 );
 
-
-        //Register.main(new String[] {"-n", "Client_1", "-s", "Server_1", "-a", "10", "-p", "3456"});
         Client client = new Client(Helpers.getBaseServerURL(), Helpers.getNumberOfServers(), Helpers.getKeyStoreFilePath());
-        client.register(client1pubKey, client1privKey, 234); //Register client1
 
         client.register(client1pubKey, client1privKey, 1000); //Register client1
         client.register(client2pubKey, client2privKey, 40); //Register client2
@@ -201,8 +193,6 @@ public class TestMitmTampering {
                                 .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
                 );
 
-
-        //Register.main(new String[] {"-n", "Client_1", "-s", "Server_1", "-a", "10", "-p", "3456"});
         URL serverURL = new URL("http://localhost:3456");
 
         Client client = new Client(Helpers.getBaseServerURL(), Helpers.getNumberOfServers(), Helpers.getKeyStoreFilePath());
@@ -236,8 +226,6 @@ public class TestMitmTampering {
                                 .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorWithTamperingOnResponseCallback")
                 );
 
-
-        //Register.main(new String[] {"-n", "Client_1", "-s", "Server_1", "-a", "10", "-p", "3456"});
         Client client = new Client(Helpers.getBaseServerURL(), Helpers.getNumberOfServers(), Helpers.getKeyStoreFilePath());
         client.register(client1pubKey, client1privKey, 340); //Register client1
 
@@ -293,8 +281,6 @@ public class TestMitmTampering {
                                 .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
                 );
 
-
-        //Register.main(new String[] {"-n", "Client_1", "-s", "Server_1", "-a", "10", "-p", "3456"});
         Client client = new Client(Helpers.getBaseServerURL(), Helpers.getNumberOfServers(), Helpers.getKeyStoreFilePath());
         client.register(client1pubKey, client1privKey, 1000); //Register client1
         client.register(client2pubKey, client2privKey, 40); //Register client2
@@ -356,8 +342,6 @@ public class TestMitmTampering {
                                 .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
                 );
 
-
-        //Register.main(new String[] {"-n", "Client_1", "-s", "Server_1", "-a", "10", "-p", "3456"});
         Client client = new Client(Helpers.getBaseServerURL(), Helpers.getNumberOfServers(), Helpers.getKeyStoreFilePath());
         client.register(client1pubKey, client1privKey, 1000); //Register client1
         client.register(client2pubKey, client2privKey, 40); //Register client2

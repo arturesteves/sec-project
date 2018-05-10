@@ -71,14 +71,19 @@ public class InterceptorWithTamperingOnResponseCallback implements ExpectationCa
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
                 String body = request.body();
-                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
-                response.nonce = "banana4";
+                Serialization.Response response = null;
+                try {
+                    response = Serialization.parse(body, Serialization.Response.class);
+                    response.nonce = "banana4";
+                } catch (Exception ex) {
+                    // we might not be able to intercept this as a Serialization.Response because it might be a Serialization.SignedEchoResponse
+                }
 
                 Log.getLog().warn("BODYTESTE: " + body);
                 return response()
                         .withStatusCode(request.code())
                         .withHeader("SIGNATURE", responseSignature)
-                        .withBody(Serialization.serialize(response));
+                        .withBody(response == null ? body : Serialization.serialize(response));
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -105,12 +110,17 @@ public class InterceptorWithTamperingOnResponseCallback implements ExpectationCa
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
                 String body = request.body();
-                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
-                response.nonce = "banana4";
+                Serialization.Response response = null;
+                try {
+                    response = Serialization.parse(body, Serialization.Response.class);
+                    response.nonce = "banana4";
+                } catch (Exception ex) {
+                    // we might not be able to intercept this as a Serialization.Response because it might be a Serialization.SignedEchoResponse
+                }
                 return response()
                         .withStatusCode(request.code())
                         .withHeader("SIGNATURE", responseSignature)
-                        .withBody(Serialization.serialize(response));
+                        .withBody(response == null ? body : Serialization.serialize(response));
 
             } catch (IOException e) {
                 e.printStackTrace();
