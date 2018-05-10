@@ -180,11 +180,13 @@ public class Serialization {
         }
     }
 
-    // this is NOT Signable, so that audits can be performed without the private key of the ledger
-    // transactions in the ledger have signatures that can be verified independently by who receives the request (server)
-    public static class WriteBackRequest implements NonceContainer {
+    public static class WriteBackRequest implements Signable, NonceContainer {
         public Ledger ledger;
         public String nonce;
+
+        @Override @JsonIgnore public String getSignable () {
+            return ledger.getSignable ();
+        }
 
         @Override public String getNonce () {
             return nonce;

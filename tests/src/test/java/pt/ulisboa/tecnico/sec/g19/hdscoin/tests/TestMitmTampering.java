@@ -110,6 +110,17 @@ public class TestMitmTampering {
                                 .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
                 );
 
+        // no tampering
+        mockServerClient
+                .when(
+                        request()
+                                .withMethod("POST")
+                                .withPath("/ledgerWriteback"))
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
+                );
+
         // tampering
         mockServerClient
                 .when(
@@ -154,6 +165,17 @@ public class TestMitmTampering {
                         request()
                                 .withMethod("POST")
                                 .withPath("/register"))
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
+                );
+
+        // no tampering
+        mockServerClient
+                .when(
+                        request()
+                                .withMethod("POST")
+                                .withPath("/ledgerWriteback"))
                 .callback(
                         callback()
                                 .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
@@ -250,6 +272,17 @@ public class TestMitmTampering {
                                 .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
                 );
 
+        // no tampering
+        mockServerClient
+                .when(
+                        request()
+                                .withMethod("POST")
+                                .withPath("/ledgerWriteback"))
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
+                );
+
         // tampering
         mockServerClient
                 .when(
@@ -303,6 +336,17 @@ public class TestMitmTampering {
                         request()
                                 .withMethod("POST")
                                 .withPath("/register"))
+                .callback(
+                        callback()
+                                .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")
+                );
+
+        // no tampering
+        mockServerClient
+                .when(
+                        request()
+                                .withMethod("POST")
+                                .withPath("/ledgerWriteback"))
                 .callback(
                         callback()
                                 .withCallbackClass("pt.ulisboa.tecnico.sec.g19.hdscoin.tests.InterceptorCallback")

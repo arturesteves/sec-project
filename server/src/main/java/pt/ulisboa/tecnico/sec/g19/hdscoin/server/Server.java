@@ -736,10 +736,21 @@ public class Server {
             try {
                 Serialization.WriteBackRequest request = Serialization.parse(req,
                         Serialization.WriteBackRequest.class);
-                log.log(Level.INFO, "\n\n------------------------------------");
-                log.log(Level.INFO, "Request received at: /ledgerWriteback\n");
+
                 Serialization.Response response = new Serialization.Response();
                 response.nonce = request.nonce;
+
+                if(!req.headers().contains(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
+                    return signEcho(serverPrivateKey, res, request, request.getNonce());
+                } else if(!verifySignedEchos(req.headers(Serialization.ECHO_SIGNATURES_HEADER_NAME), request)) {
+                    res.status(401);
+                    log.log(Level.WARNING, "Mismatch in request signatures");
+                    response.status = ERROR_NO_SIGNATURE_MATCH;
+                    return prepareResponse(serverPrivateKey, res, response);
+                }
+
+                log.log(Level.INFO, "\n\n------------------------------------");
+                log.log(Level.INFO, "Request received at: /ledgerWriteback\n");
 
                 if(request.ledger.transactions == null || request.ledger.transactions.size() == 0) {
                     res.status(400);

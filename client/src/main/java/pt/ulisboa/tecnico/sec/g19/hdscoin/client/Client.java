@@ -265,12 +265,28 @@ public class Client implements IClient {
             Serialization.WriteBackRequest request = new Serialization.WriteBackRequest ();
             request.ledger = majorityValue.ledger;
             request.ledger.timestamp++;
+            request.nonce = Utils.randomNonce();
+
+            List<String> signedEchos = new ArrayList<>();
+            this.ackList.clear();
+            for (ServerInfo server : this.servers) {
+                try {
+                    signedEchos.add(writeBackGetEcho(server, request));
+                } catch (Exception e) {
+                    System.out.println ("Write-back echo signing request to a replica failed...");
+                }
+            }
+
+            if (!receivedMajorityAcknowledge ()) {
+                throw new AuditException("Failed to audit account - not enough success responses to write-back signed echo!");
+            }
+            this.ackList.clear();
 
             // we're using this list literally as a counter...
             List<Object> wbResponses = new ArrayList<> ();
             for (ServerInfo server : this.servers) {
                 try {
-                    writeBack (server, request);
+                    writeBack (server, request, signedEchos);
                     wbResponses.add (new Object());
                 } catch (Exception e) {
                     System.out.println ("Write-back to a replica failed...");
@@ -558,7 +574,7 @@ public class Client implements IClient {
     //// WRITE-BACK OPERATION (for (1,N) atomic register)
     ////////////////////////////////////////////////
 
-    private void writeBack (ServerInfo server, Serialization.WriteBackRequest request)
+    private void writeBack (ServerInfo server, Serialization.WriteBackRequest request, List<String> signedEchos)
             throws WriteBackException {
         try {
             // log
@@ -570,11 +586,10 @@ public class Client implements IClient {
             System.out.println ("---------------------");
             System.out.println ();
 
-            request.nonce = Utils.randomNonce();
 
             Serialization.Response response = sendPostRequest (Serialization.base64toPublicKey (server.publicKeyBase64),
                     server.serverUrl.toString () + "/ledgerWriteback", null, request,
-                    Serialization.Response.class, null);
+                    Serialization.Response.class, signedEchos);
 
             if (response.statusCode == 200) {
                 this.ackList.add (server);
@@ -589,6 +604,33 @@ public class Client implements IClient {
                         throw new ServerErrorException ("Error on the server side.");
                 }
             }
+        } catch (HttpRequest.HttpRequestException | IOException | KeyException | SignatureException | InvalidServerResponseException | InvalidClientSignatureException | ServerErrorException | InvalidLedgerException e) {
+            throw new WriteBackException ("Failed to write back. " + e);
+        }
+    }
+
+    private String writeBackGetEcho(ServerInfo server, Serialization.WriteBackRequest request)
+            throws WriteBackException {
+        try {
+
+            Serialization.SignedEchoResponse response = sendPostRequest (Serialization.base64toPublicKey (server.publicKeyBase64),
+                    server.serverUrl.toString () + "/ledgerWriteback", null, request,
+                    Serialization.SignedEchoResponse.class, null);
+
+            if (response.statusCode == 200) {
+                this.ackList.add (server);
+
+            } else {
+                switch (response.status) {
+                    case ERROR_INVALID_LEDGER:
+                        throw new InvalidLedgerException ("Source or destination is invalid");
+                    case ERROR_INVALID_KEY:
+                        throw new InvalidLedgerException ("One of the keys provided is invalid");
+                    case ERROR_SERVER_ERROR:
+                        throw new ServerErrorException ("Error on the server side.");
+                }
+            }
+            return response.echo;
         } catch (HttpRequest.HttpRequestException | IOException | KeyException | SignatureException | InvalidServerResponseException | InvalidClientSignatureException | ServerErrorException | InvalidLedgerException e) {
             throw new WriteBackException ("Failed to write back. " + e);
         }
