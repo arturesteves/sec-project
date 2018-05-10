@@ -61,6 +61,10 @@ public class InterceptorCallback implements ExpectationCallback {
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
+                if (httpRequest.containsHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
+                    request.header(Serialization.ECHO_SIGNATURES_HEADER_NAME,
+                            httpRequest.getHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME).get(0));
+                }
                 request.send(httpRequest.getBody().getValue().toString().getBytes());
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
@@ -95,6 +99,10 @@ public class InterceptorCallback implements ExpectationCallback {
                 if (httpRequest.containsHeader(Serialization.NONCE_HEADER_NAME)) {
                     request.header(Serialization.NONCE_HEADER_NAME,
                             httpRequest.getHeader(Serialization.NONCE_HEADER_NAME).get(0));
+                }
+                if (httpRequest.containsHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
+                    request.header(Serialization.ECHO_SIGNATURES_HEADER_NAME,
+                            httpRequest.getHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME).get(0));
                 }
 
                 if (httpRequest.getMethod().getValue().equals("POST")) {

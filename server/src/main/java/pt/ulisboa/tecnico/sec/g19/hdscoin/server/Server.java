@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Serialization;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.ServerInfo;
+import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Signable;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.Utils;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidAmountException;
 import pt.ulisboa.tecnico.sec.g19.hdscoin.common.exceptions.InvalidLedgerException;
@@ -30,7 +31,9 @@ import java.security.interfaces.ECPublicKey;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -52,6 +55,7 @@ public class Server {
     private Database database;
 
     private ECPrivateKey serverPrivateKey;
+    private ECPublicKey serverPublicKey;
 
     private Object ledgerLock = new Object();
 
@@ -89,8 +93,8 @@ public class Server {
             KeyStore keyStore = Utils.initKeyStore (path.toString ());
 
             // load keys
-            serverPrivateKey = Utils.loadPrivateKeyFromKeyStore (path.toString (), serverName, password);
-
+            serverPrivateKey = Utils.loadPrivateKeyFromKeyStore (keyStore, serverName, password);
+            serverPublicKey = Utils.loadPublicKeyFromKeyStore (keyStore, serverName);
 
             // set database name
             database = new Database(serverName);
@@ -101,7 +105,7 @@ public class Server {
             http.port(port);
 
             //Getting the replica servers information given by argument.
-            servers = getServersInfoFromKeyStore(new URL(genericUrl), numberOfServers, path.toString (), serverName);
+            servers = getServersInfoFromKeyStore(new URL(genericUrl), numberOfServers, keyStore);
             log.log(Level.INFO, "List of replicas: " + servers);
 
             System.out.println ("Replica listening on port: " + port);
@@ -133,7 +137,7 @@ public class Server {
                 if (request.initialTransaction == null) {
                     response.status = ERROR_MISSING_PARAMETER;
                     log.log(Level.WARNING, "Missing initial transaction on register request.");
-                    return prepareResponse(serverPrivateKey, req, res, response);
+                    return prepareResponse(serverPrivateKey, res, response);
                 }
                 log.log(Level.INFO, "Request received at: /register \n" +
                         "data on the request: \n" +
@@ -160,7 +164,7 @@ public class Server {
                     res.status(401);
                     response.status = ERROR_NO_SIGNATURE_MATCH;
                     log.log(Level.WARNING, "Client signature not verified.");
-                    return prepareResponse(serverPrivateKey, req, res, response);
+                    return prepareResponse(serverPrivateKey, res, response);
                 }
 
                 ///////////////////////////////////////////////////
@@ -199,14 +203,14 @@ public class Server {
                     }
                 }
 
-                return prepareResponse(serverPrivateKey, req, res, response);
+                return prepareResponse(serverPrivateKey, res, response);
             } catch (Exception ex) {
                 res.status(500);
                 Serialization.Response response = new Serialization.Response();
                 response.nonce = (request != null && request.initialTransaction != null ? request.initialTransaction.nonce : "");
                 response.status = ERROR_SERVER_ERROR;
                 log.log(Level.SEVERE, "Error on processing a register request. " + ex);
-                return prepareResponse(serverPrivateKey, req, res, response);
+                return prepareResponse(serverPrivateKey, res, response);
             }
         });
 
@@ -218,6 +222,17 @@ public class Server {
             try {
                 Serialization.SendAmountRequest request = Serialization.parse(req,
                         Serialization.SendAmountRequest.class);
+                Serialization.Response response = new Serialization.Response();
+                response.nonce = request.transaction.nonce;
+
+                if(!req.headers().contains(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
+                    return signEcho(serverPrivateKey, res, request, request.getNonce());
+                } else if(!verifySignedEchos(req.headers(Serialization.ECHO_SIGNATURES_HEADER_NAME), request)) {
+                    res.status(401);
+                    log.log(Level.WARNING, "Mismatch in request signatures");
+                    response.status = ERROR_NO_SIGNATURE_MATCH;
+                    return prepareResponse(serverPrivateKey, res, response);
+                }
                 log.log(Level.INFO, "\n\n------------------------------------");
                 log.log(Level.INFO, "Request received at: /sendAmount");
                 log.log(Level.INFO,"data on the request:\n" +
@@ -227,8 +242,6 @@ public class Server {
                         "SOURCE CLIENT BASE 64 PUBLIC KEY: " + request.transaction.source + "\n" +
                         "TARGET CLIENT BASE 64 PUBLIC KEY: " + request.transaction.target);
                 log.log(Level.INFO, "\n");
-                Serialization.Response response = new Serialization.Response();
-                response.nonce = request.transaction.nonce;
 
                 //Recreate the hash with the data received
                 boolean result = Utils.checkSignature(
@@ -240,7 +253,7 @@ public class Server {
                     res.status(401);
                     log.log(Level.WARNING, "Mismatch in request signatures");
                     response.status = ERROR_NO_SIGNATURE_MATCH;
-                    return prepareResponse(serverPrivateKey, req, res, response);
+                    return prepareResponse(serverPrivateKey, res, response);
                 }
 
                 ///////////////////////////////////////////////////
@@ -258,7 +271,7 @@ public class Server {
                     res.status(401);
                     log.log(Level.WARNING, "Mismatch in transaction signatures");
                     response.status = ERROR_NO_SIGNATURE_MATCH;
-                    return prepareResponse(serverPrivateKey, req, res, response);
+                    return prepareResponse(serverPrivateKey, res, response);
                 }
 
                 Connection conn = null;
@@ -271,7 +284,7 @@ public class Server {
                         res.status(401);
                         log.log(Level.WARNING, "Older operation");
                         response.status = ERROR_INVALID_LEDGER;
-                        return prepareResponse(serverPrivateKey, req, res, response);
+                        return prepareResponse(serverPrivateKey, res, response);
                     }
 
 
@@ -293,7 +306,7 @@ public class Server {
                         res.status(401);
                         log.log(Level.WARNING, "Couldn't hash the transactions.");
                         response.status = ERROR_SERVER_ERROR;   // could be better
-                        return prepareResponse(serverPrivateKey, req, res, response);
+                        return prepareResponse(serverPrivateKey, res, response);
                     }
 
                     log.log(Level.INFO, "---------------------------");
@@ -391,13 +404,13 @@ public class Server {
                     }
                 }
 
-                return prepareResponse(serverPrivateKey, req, res, response);
+                return prepareResponse(serverPrivateKey, res, response);
             } catch (Exception ex) {
                 res.status(500);
                 Serialization.Response response = new Serialization.Response();
                 response.status = ERROR_SERVER_ERROR;
                 log.log(Level.SEVERE, "Error on processing a send amount request. " + ex);
-                return prepareResponse(serverPrivateKey, req, res, response);
+                return prepareResponse(serverPrivateKey, res, response);
             }
         });
 
@@ -405,6 +418,19 @@ public class Server {
             try {
                 Serialization.ReceiveAmountRequest request = Serialization.parse(req,
                         Serialization.ReceiveAmountRequest.class);
+
+                Serialization.Response response = new Serialization.Response();
+                response.nonce = request.transaction.nonce;
+
+                if(!req.headers().contains(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
+                    return signEcho(serverPrivateKey, res, request, request.getNonce());
+                } else if(!verifySignedEchos(req.headers(Serialization.ECHO_SIGNATURES_HEADER_NAME), request)) {
+                    res.status(401);
+                    log.log(Level.WARNING, "Mismatch in request signatures");
+                    response.status = ERROR_NO_SIGNATURE_MATCH;
+                    return prepareResponse(serverPrivateKey, res, response);
+                }
+
                 log.log(Level.INFO, "Request received at: /receiveAmount \n" +
                         "data on the request:\n" +
                         "SIGNATURE: " + req.headers(Serialization.SIGNATURE_HEADER_NAME) + "\n" +
@@ -413,9 +439,6 @@ public class Server {
                         "SOURCE PUBLIC KEY: " + request.transaction.source + "\n" +
                         "TARGET PUBLIC KEY: " + request.transaction.target + "\n" +
                         "PENDING TRANSACTION: " + request.pendingTransactionHash);
-
-                Serialization.Response response = new Serialization.Response();
-                response.nonce = request.transaction.nonce;
 
                 //Recreate the hash with the data received
                 boolean result = Utils.checkSignature(
@@ -427,7 +450,7 @@ public class Server {
                     res.status(401);
                     log.log(Level.WARNING, "Mismatch in request signatures");
                     response.status = ERROR_NO_SIGNATURE_MATCH;
-                    return prepareResponse(serverPrivateKey, req, res, response);
+                    return prepareResponse(serverPrivateKey, res, response);
                 }
 
                 ///////////////////////////////////////////////////
@@ -444,7 +467,7 @@ public class Server {
                     res.status(401);
                     log.log(Level.WARNING, "Mismatch in transaction signatures");
                     response.status = ERROR_NO_SIGNATURE_MATCH;
-                    return prepareResponse(serverPrivateKey, req, res, response);
+                    return prepareResponse(serverPrivateKey, res, response);
                 }
 
                 Connection conn = null;
@@ -457,7 +480,7 @@ public class Server {
                         res.status(401);
                         log.log(Level.WARNING, "Older operation");
                         response.status = ERROR_INVALID_LEDGER;
-                        return prepareResponse(serverPrivateKey, req, res, response);
+                        return prepareResponse(serverPrivateKey, res, response);
                     }
 
                     //////////////////
@@ -478,7 +501,7 @@ public class Server {
                         res.status(401);
                         log.log(Level.WARNING, "Couldn't hash the transactions.");
                         response.status = ERROR_SERVER_ERROR;   // could be better
-                        return prepareResponse(serverPrivateKey, req, res, response);
+                        return prepareResponse(serverPrivateKey, res, response);
                     }
 
                     log.log(Level.INFO, "---------------------------");
@@ -579,13 +602,13 @@ public class Server {
                     }
                 }
 
-                return prepareResponse(serverPrivateKey, req, res, response);
+                return prepareResponse(serverPrivateKey, res, response);
             } catch (Exception ex) {
                 res.status(500);
                 Serialization.Response response = new Serialization.Response();
                 response.status = ERROR_SERVER_ERROR;
                 log.log(Level.SEVERE, "Error on processing a send amount request. " + ex);
-                return prepareResponse(serverPrivateKey, req, res, response);
+                return prepareResponse(serverPrivateKey, res, response);
             }
         });
 
@@ -601,7 +624,7 @@ public class Server {
                 String pubKeyBase64 = req.params(":key");
                 if (pubKeyBase64 == null) {
                     errorResponse.status = ERROR_MISSING_PARAMETER;
-                    return prepareResponse(serverPrivateKey, req, res, errorResponse);
+                    return prepareResponse(serverPrivateKey, res, errorResponse);
                 }
                 log.log(Level.INFO, "Checking account with public key: " + pubKeyBase64);
 
@@ -623,7 +646,7 @@ public class Server {
                             "public key: " + pubKeyBase64);
                     conn.commit();
                     committed = true;
-                    return prepareResponse(serverPrivateKey, req, res, response);
+                    return prepareResponse(serverPrivateKey, res, response);
                 } catch (SQLException e) {
                     // servers fault
                     log.log(Level.SEVERE, "Error related to the database. " + e);
@@ -639,13 +662,13 @@ public class Server {
                         conn.rollback();
                     }
                 }
-                return prepareResponse(serverPrivateKey, req, res, errorResponse);
+                return prepareResponse(serverPrivateKey, res, errorResponse);
             } catch (Exception ex) {
                 res.status(500);
                 Serialization.Response response = new Serialization.Response();
                 response.status = ERROR_SERVER_ERROR;
                 log.log(Level.SEVERE, "Error on processing a check account request. " + ex);
-                return prepareResponse(serverPrivateKey, req, res, response);
+                return prepareResponse(serverPrivateKey, res, response);
             }
         });
 
@@ -656,7 +679,7 @@ public class Server {
                 String pubKeyBase64 = req.params (":key");
                 if (pubKeyBase64 == null) {
                     errorResponse.status = ERROR_MISSING_PARAMETER;
-                    return prepareResponse (serverPrivateKey, req, res, errorResponse);
+                    return prepareResponse (serverPrivateKey, res, errorResponse);
                 }
                 log.log (Level.INFO, "Going to send audit data for public key: " + pubKeyBase64);
 
@@ -676,7 +699,7 @@ public class Server {
                     response.status = SUCCESS;
                     log.log (Level.INFO, "Audit ledger timestamp: " + response.ledger.timestamp + "\n");
                     log.log (Level.INFO, "Audit transactions response: " + response.ledger.transactions + "\n");
-                    return prepareResponse (serverPrivateKey, req, res, response);
+                    return prepareResponse (serverPrivateKey, res, response);
                 } catch (MissingLedgerException e) {
                     errorResponse.status = ERROR_INVALID_LEDGER;
                 } catch (InvalidKeyException e) {
@@ -695,13 +718,13 @@ public class Server {
                         }
                     }
                 }
-                return prepareResponse (serverPrivateKey, req, res, errorResponse);
+                return prepareResponse (serverPrivateKey, res, errorResponse);
             }catch (Exception e) {
                 res.status(500);
                 Serialization.Response response = new Serialization.Response();
                 response.status = ERROR_SERVER_ERROR;
                 log.log(Level.SEVERE, "Error on processing a check account request. " + e);
-                return prepareResponse(serverPrivateKey, req, res, response);
+                return prepareResponse(serverPrivateKey, res, response);
             }
         });
 
@@ -722,7 +745,7 @@ public class Server {
                     res.status(400);
                     log.log(Level.WARNING, "Empty ledger on writeback");
                     response.status = ERROR_INVALID_LEDGER;
-                    return prepareResponse(serverPrivateKey, req, res, response);
+                    return prepareResponse(serverPrivateKey, res, response);
                 }
 
                 Connection conn = null;
@@ -735,7 +758,7 @@ public class Server {
                         res.status(401);
                         log.log(Level.WARNING, "Older operation");
                         response.status = ERROR_INVALID_LEDGER;
-                        return prepareResponse(serverPrivateKey, req, res, response);
+                        return prepareResponse(serverPrivateKey, res, response);
                     }
 
                     //////////////////
@@ -756,7 +779,7 @@ public class Server {
                         res.status(401);
                         log.log(Level.WARNING, "Couldn't hash the transactions.");
                         response.status = ERROR_SERVER_ERROR;   // could be better
-                        return prepareResponse(serverPrivateKey, req, res, response);
+                        return prepareResponse(serverPrivateKey, res, response);
                     }
 
                     log.log(Level.INFO, "---------------------------");
@@ -833,20 +856,20 @@ public class Server {
                     }
                 }
 
-                return prepareResponse(serverPrivateKey, req, res, response);
+                return prepareResponse(serverPrivateKey, res, response);
             } catch (Exception ex) {
                 res.status(500);
                 Serialization.Response response = new Serialization.Response();
                 response.status = ERROR_SERVER_ERROR;
                 log.log(Level.SEVERE, "Error on processing a write-back request. " + ex);
-                return prepareResponse(serverPrivateKey, req, res, response);
+                return prepareResponse(serverPrivateKey, res, response);
             }
         });
 
         return http;
     }
 
-    private static String prepareResponse(ECPrivateKey privateKey, Request sparkRequest, Response sparkResponse, Serialization.Response response) throws JsonProcessingException, SignatureException {
+    private static String prepareResponse(ECPrivateKey privateKey, Response sparkResponse, Serialization.Response response) throws JsonProcessingException, SignatureException {
 
         if (response.statusCode < 0) {
             // try to guess a status code from the status string
@@ -869,22 +892,19 @@ public class Server {
         return Serialization.serialize(response);
     }
 
-    private static List<ServerInfo> getServersInfoFromKeyStore (URL url, int numberOfServers, String keyStoreFilepath, String serverName) {
+    private static List<ServerInfo> getServersInfoFromKeyStore (URL url, int numberOfServers, KeyStore keyStore) {
         List<ServerInfo> serverInfos = new ArrayList<> ();
         try {
-            KeyStore keyStore = Utils.initKeyStore (keyStoreFilepath);
             for (int i = 0; i < numberOfServers; i++) {
-                if (serverName.equals (SERVER_PREFIX + i)) {    // don't add it self to the list of replicas
-                    continue;
-                }
                 ServerInfo serverInfo = new ServerInfo ();
                 serverInfo.serverUrl = new URL (url.getProtocol () + "://" + url.getHost () + (url.getPort () + i));
                 serverInfo.publicKeyBase64 =
                         Serialization.publicKeyToBase64 (Utils.loadPublicKeyFromKeyStore (keyStore, SERVER_PREFIX + (i + 1)));
+                serverInfo.serverName = SERVER_PREFIX + (i + 1);
                 serverInfos.add (serverInfo);
             }
             return serverInfos;
-        } catch(CertificateException | NoSuchAlgorithmException | KeyStoreException | IOException | KeyException e) {
+        } catch(KeyStoreException | IOException | KeyException e) {
             e.printStackTrace ();
             throw new RuntimeException (e);
         }
@@ -939,5 +959,56 @@ public class Server {
                 sourceLedger.persist (conn);
             }
         }
+    }
+
+    private String signEcho(ECPrivateKey privateKey, Response sparkResponse, Signable request, String nonce) throws JsonProcessingException, SignatureException {
+        String signedEcho = Utils.generateSignature(request.getSignable(), privateKey);
+
+        Serialization.SignedEchoResponse response = new Serialization.SignedEchoResponse();
+        response.nonce = nonce;
+        response.echo = serverName + ";" + signedEcho;
+        response.status = SUCCESS;
+
+        return prepareResponse(privateKey, sparkResponse, response);
+    }
+
+    private boolean verifySignedEchos(String echoSignatures, Signable request) throws SignatureException, KeyException {
+        String[] arrSig = echoSignatures.split("#");
+        if(arrSig.length <= (servers.size () + Utils.numberOfFaultsSupported (numberOfServers)) / 2) {
+            // we don't have a byzantine majority of echos
+            log.log(Level.WARNING, "SIGECHO FAIL: no majority");
+            return false;
+        }
+        Set<String> seen = new HashSet<>();
+        for(String sigLine : arrSig) {
+            String[] parts = sigLine.split(";");
+            if(parts.length != 2) {
+                log.log(Level.WARNING, "SIGECHO FAIL: wrong format");
+                return false;
+            }
+            if(seen.contains(parts[0])) {
+                // repeated echo in signature list...
+                log.log(Level.WARNING, "SIGECHO FAIL: repeated server");
+                return false;
+            }
+            seen.add(parts[0]);
+
+            String otherServerPublicKey = null;
+            for (ServerInfo info : servers) {
+                if (info.serverName.equals(parts[0])) {
+                    otherServerPublicKey = info.publicKeyBase64;
+                }
+            }
+
+            if(otherServerPublicKey == null) {
+                log.log(Level.WARNING, "SIGECHO FAIL: pubkey null");
+                return false;
+            }
+            if (!Utils.checkSignature(parts[1], request.getSignable(), otherServerPublicKey)) {
+                log.log(Level.WARNING, "SIGECHO FAIL: mismatch on signature from " + parts[0]);
+                return false;
+            }
+        }
+        return true;
     }
 }

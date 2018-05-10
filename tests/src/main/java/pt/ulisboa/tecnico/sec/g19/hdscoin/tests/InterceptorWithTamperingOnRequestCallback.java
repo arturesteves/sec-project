@@ -59,6 +59,11 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
 
+                if (httpRequest.containsHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
+                    request.header(Serialization.ECHO_SIGNATURES_HEADER_NAME,
+                            httpRequest.getHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME).get(0));
+                }
+
                 //httpRequest.getBody().getValue().toString().getBytes();
                 Serialization.SendAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString(), Serialization.SendAmountRequest.class);
                 //Spend 20 units more
@@ -90,6 +95,12 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
+
+                if (httpRequest.containsHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
+                    request.header(Serialization.ECHO_SIGNATURES_HEADER_NAME,
+                            httpRequest.getHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME).get(0));
+                }
+
                 //httpRequest.getBody().getValue().toString().getBytes();
                 Serialization.ReceiveAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString(), Serialization.ReceiveAmountRequest.class);
                 //Spend 20 units more

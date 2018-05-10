@@ -83,7 +83,6 @@ public class Client implements IClient {
                 register (server, request, privateKey);
             } catch (Exception e) {
                 System.out.println ("Received a bad response from a replica...");
-                e.printStackTrace();
             }
         }
         if (receivedMajorityAcknowledge ()) {
@@ -122,9 +121,26 @@ public class Client implements IClient {
         request.transaction.previousSignature = previousSignature;
         request.transaction.signature = Utils.generateSignature (request.transaction.getSignable (), sourcePrivateKey);
 
+        this.ackList.clear ();
+
+        List<String> signedEchos = new ArrayList<>();
         for (ServerInfo server : this.servers) {
             try {
-                sendAmount (server, request, sourcePrivateKey);
+                signedEchos.add(sendAmountGetEcho(server, request, sourcePrivateKey));
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.out.println ("Received a bad signed echo response from a replica...");
+            }
+        }
+
+        if (!receivedMajorityAcknowledge ()) {
+            throw new SendAmountException ("Failed to send amount - not enough success responses to signed echo!");
+        }
+
+        this.ackList.clear();
+        for (ServerInfo server : this.servers) {
+            try {
+                sendAmount (server, request, sourcePrivateKey, signedEchos);
             } catch (Exception e) {
                 System.out.println ("Received a bad response from a replica...");
             }
@@ -169,11 +185,26 @@ public class Client implements IClient {
         // signature for just the transaction:
         request.transaction.signature = Utils.generateSignature (request.transaction.getSignable (), sourcePrivateKey);
         request.pendingTransactionHash = incomingSignature;
-        // signature for the whole request (including transaction):
 
+        this.ackList.clear ();
+
+        List<String> signedEchos = new ArrayList<>();
         for (ServerInfo server : this.servers) {
             try {
-                receiveAmount (server, request, sourcePrivateKey);
+                signedEchos.add(receiveAmountGetEcho(server, request, sourcePrivateKey));
+            } catch (Exception e) {
+                System.out.println ("Received a bad signed echo response from a replica...");
+            }
+        }
+
+        if (!receivedMajorityAcknowledge ()) {
+            throw new ReceiveAmountException("Failed to receive amount - not enough success responses to signed echo!");
+        }
+
+        this.ackList.clear();
+        for (ServerInfo server : this.servers) {
+            try {
+                receiveAmount (server, request, sourcePrivateKey, signedEchos);
             } catch (Exception e) {
                 System.out.println ("Received a bad response from a replica...");
             }
@@ -281,7 +312,7 @@ public class Client implements IClient {
 
             // http post request
             Serialization.Response response = sendPostRequest (Serialization.base64toPublicKey (server.publicKeyBase64),
-                    server.serverUrl.toString () + "/register", privateKey, request, Serialization.Response.class);
+                    server.serverUrl.toString () + "/register", privateKey, request, Serialization.Response.class, null);
 
             if (response.statusCode == 200) {
                 this.ackList.add (server);
@@ -312,7 +343,7 @@ public class Client implements IClient {
     //// WRITE OPERATIONS
     ////////////////////////////////////////////////
 
-    private void sendAmount (ServerInfo server, Serialization.SendAmountRequest request, ECPrivateKey sourcePrivateKey)
+    private void sendAmount (ServerInfo server, Serialization.SendAmountRequest request, ECPrivateKey sourcePrivateKey, List<String> signedEchos)
             throws SendAmountException {
         try {
             // log
@@ -334,7 +365,7 @@ public class Client implements IClient {
 
             Serialization.Response response = sendPostRequest (Serialization.base64toPublicKey (server.publicKeyBase64),
                     server.serverUrl.toString () + "/sendAmount", sourcePrivateKey, request,
-                    Serialization.Response.class);
+                    Serialization.Response.class, signedEchos);
 
             if (response.statusCode == 200) {
                 this.ackList.add (server);
@@ -354,17 +385,41 @@ public class Client implements IClient {
         }
     }
 
+    private String sendAmountGetEcho(ServerInfo server, Serialization.SendAmountRequest request, ECPrivateKey sourcePrivateKey)
+            throws SendAmountException {
+        try {
+            Serialization.SignedEchoResponse response = sendPostRequest (Serialization.base64toPublicKey (server.publicKeyBase64),
+                    server.serverUrl.toString () + "/sendAmount", sourcePrivateKey, request,
+                    Serialization.SignedEchoResponse.class, null);
+
+            if (response.statusCode == 200) {
+                this.ackList.add (server);
+            } else {
+                switch (response.status) {
+                    case ERROR_INVALID_LEDGER:
+                        throw new InvalidLedgerException ("Source or destination is invalid");
+                    case ERROR_INVALID_KEY:
+                        throw new InvalidLedgerException ("One of the keys provided is invalid");
+                    case ERROR_SERVER_ERROR:
+                        throw new ServerErrorException ("Error on the server side.");
+                }
+            }
+            return response.echo;
+        } catch (HttpRequest.HttpRequestException | IOException | KeyException | SignatureException | InvalidServerResponseException | InvalidClientSignatureException | ServerErrorException | InvalidLedgerException e) {
+            throw new SendAmountException ("Failed to create a transaction. " + e);
+        }
+    }
+
     private void receiveAmount (ServerInfo server, Serialization.ReceiveAmountRequest request,
-                                ECPrivateKey sourcePrivateKey) throws ReceiveAmountException {
+                                ECPrivateKey sourcePrivateKey, List<String> signedEchos) throws ReceiveAmountException {
         try {
 
             Serialization.Response response = sendPostRequest (Serialization.base64toPublicKey (server.publicKeyBase64),
                     server.serverUrl.toString () + "/receiveAmount", sourcePrivateKey, request,
-                    Serialization.Response.class);
+                    Serialization.Response.class, signedEchos);
 
             if (response.statusCode == 200) {
                 this.ackList.add (server);
-
             } else {
                 switch (response.status) {
                     case ERROR_INVALID_LEDGER:
@@ -377,6 +432,34 @@ public class Client implements IClient {
                         throw new ServerErrorException ("Error on the server side.");
                 }
             }
+        } catch (HttpRequest.HttpRequestException | IOException | KeyException | SignatureException | InvalidServerResponseException | InvalidClientSignatureException | ServerErrorException | InvalidLedgerException e) {
+            throw new ReceiveAmountException ("Failed to create a receiving transaction. " + e);
+        }
+    }
+
+    private String receiveAmountGetEcho(ServerInfo server, Serialization.ReceiveAmountRequest request,
+                                ECPrivateKey sourcePrivateKey) throws ReceiveAmountException {
+        try {
+
+            Serialization.SignedEchoResponse response = sendPostRequest (Serialization.base64toPublicKey (server.publicKeyBase64),
+                    server.serverUrl.toString () + "/receiveAmount", sourcePrivateKey, request,
+                    Serialization.SignedEchoResponse.class, null);
+
+            if (response.statusCode == 200) {
+                this.ackList.add (server);
+            } else {
+                switch (response.status) {
+                    case ERROR_INVALID_LEDGER:
+                        throw new InvalidLedgerException ("Source or destination is invalid");
+                    case ERROR_INVALID_KEY:
+                        throw new InvalidLedgerException ("One of the keys provided is invalid");
+                    case ERROR_INVALID_VALUE:
+                        throw new InvalidLedgerException ("One of the values provided is invalid");
+                    case ERROR_SERVER_ERROR:
+                        throw new ServerErrorException ("Error on the server side.");
+                }
+            }
+            return response.echo;
         } catch (HttpRequest.HttpRequestException | IOException | KeyException | SignatureException | InvalidServerResponseException | InvalidClientSignatureException | ServerErrorException | InvalidLedgerException e) {
             throw new ReceiveAmountException ("Failed to create a receiving transaction. " + e);
         }
@@ -491,7 +574,7 @@ public class Client implements IClient {
 
             Serialization.Response response = sendPostRequest (Serialization.base64toPublicKey (server.publicKeyBase64),
                     server.serverUrl.toString () + "/ledgerWriteback", null, request,
-                    Serialization.Response.class);
+                    Serialization.Response.class, null);
 
             if (response.statusCode == 200) {
                 this.ackList.add (server);
@@ -513,7 +596,7 @@ public class Client implements IClient {
 
 
     private <T> T sendPostRequest (ECPublicKey serverPublicKey, String url, ECPrivateKey privateKey, Object payload,
-                                   Class<T> responseValueType)
+                                   Class<T> responseValueType, List<String> signedEchos)
             throws HttpRequest.HttpRequestException, IOException, SignatureException, InvalidServerResponseException,
             InvalidClientSignatureException {
         String payloadJson = Serialization.serialize (payload);
@@ -530,6 +613,10 @@ public class Client implements IClient {
             String s = Utils.generateSignature (toSign, privateKey);
             request = request.header (Serialization.SIGNATURE_HEADER_NAME, s);
             System.out.println ("REQUEST SIGNATURE: " + s);
+        }
+
+        if (signedEchos != null) {
+            request = request.header(Serialization.ECHO_SIGNATURES_HEADER_NAME, String.join("#", signedEchos));
         }
 
         request.send (payloadJson);

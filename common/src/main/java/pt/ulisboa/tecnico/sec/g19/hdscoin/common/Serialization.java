@@ -35,6 +35,7 @@ public class Serialization {
     public static final String SERVER_PREFIX = "Server_";
     public static final String CLIENT_PREFIX = "Client_";
     public static final String SIGNATURE_HEADER_NAME = "SIGNATURE";
+    public static final String ECHO_SIGNATURES_HEADER_NAME = "ECHOS";
     public static final String NONCE_HEADER_NAME = "NONCE";
     private static ObjectMapper mapper = new ObjectMapper ();
 
@@ -242,6 +243,15 @@ public class Serialization {
         }
     }
 
+    public static class SignedEchoResponse extends Response implements Signable {
+        public String echo;
+
+        @Override @JsonIgnore public String getSignable () {
+            StringBuilder signable = new StringBuilder (super.getSignable ());
+            signable.append (echo);
+            return signable.toString ();
+        }
+    }
 
     public static class Transaction implements Signable, NonceContainer {
 

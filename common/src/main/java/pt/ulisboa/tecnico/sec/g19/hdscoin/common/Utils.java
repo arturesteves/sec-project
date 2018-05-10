@@ -211,6 +211,10 @@ public class Utils {
         fos.close ();
     }
 
+    public static ECPrivateKey loadPrivateKeyFromKeyStore(KeyStore keyStore, String alias, String password) throws KeyStoreException, UnrecoverableKeyException, NoSuchAlgorithmException {
+        return (ECPrivateKey) keyStore.getKey(alias, password.toCharArray());
+    }
+
     public static ECPrivateKey loadPrivateKeyFromKeyStore(String filepath, String alias, String password)
             throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException,
             UnrecoverableKeyException {
