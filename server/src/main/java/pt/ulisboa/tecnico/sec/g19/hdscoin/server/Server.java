@@ -30,10 +30,7 @@ import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -226,8 +223,8 @@ public class Server {
                 response.nonce = request.transaction.nonce;
 
                 if(!req.headers().contains(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
-                    return signEcho(serverPrivateKey, res, request, request.getNonce());
-                } else if(!verifySignedEchos(req.headers(Serialization.ECHO_SIGNATURES_HEADER_NAME), request)) {
+                    return signEcho(serverPrivateKey, res, request, request.getNonce(), request.transaction.source);
+                } else if(!verifySignedEchos(req.headers(Serialization.ECHO_SIGNATURES_HEADER_NAME), request, request.transaction.source)) {
                     res.status(401);
                     log.log(Level.WARNING, "Mismatch in request signatures");
                     response.status = ERROR_NO_SIGNATURE_MATCH;
@@ -423,8 +420,8 @@ public class Server {
                 response.nonce = request.transaction.nonce;
 
                 if(!req.headers().contains(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
-                    return signEcho(serverPrivateKey, res, request, request.getNonce());
-                } else if(!verifySignedEchos(req.headers(Serialization.ECHO_SIGNATURES_HEADER_NAME), request)) {
+                    return signEcho(serverPrivateKey, res, request, request.getNonce(), request.transaction.source);
+                } else if(!verifySignedEchos(req.headers(Serialization.ECHO_SIGNATURES_HEADER_NAME), request, request.transaction.source)) {
                     res.status(401);
                     log.log(Level.WARNING, "Mismatch in request signatures");
                     response.status = ERROR_NO_SIGNATURE_MATCH;
@@ -740,9 +737,16 @@ public class Server {
                 Serialization.Response response = new Serialization.Response();
                 response.nonce = request.nonce;
 
+                if(request.ledger.transactions == null || request.ledger.transactions.size() == 0) {
+                    res.status(400);
+                    log.log(Level.WARNING, "Empty ledger on writeback");
+                    response.status = ERROR_INVALID_LEDGER;
+                    return prepareResponse(serverPrivateKey, res, response);
+                }
+
                 if(!req.headers().contains(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
-                    return signEcho(serverPrivateKey, res, request, request.getNonce());
-                } else if(!verifySignedEchos(req.headers(Serialization.ECHO_SIGNATURES_HEADER_NAME), request)) {
+                    return signEcho(serverPrivateKey, res, request, request.getNonce(), request.ledger.transactions.get(0).source);
+                } else if(!verifySignedEchos(req.headers(Serialization.ECHO_SIGNATURES_HEADER_NAME), request, request.ledger.transactions.get(0).source)) {
                     res.status(401);
                     log.log(Level.WARNING, "Mismatch in request signatures");
                     response.status = ERROR_NO_SIGNATURE_MATCH;
@@ -751,13 +755,6 @@ public class Server {
 
                 log.log(Level.INFO, "\n\n------------------------------------");
                 log.log(Level.INFO, "Request received at: /ledgerWriteback\n");
-
-                if(request.ledger.transactions == null || request.ledger.transactions.size() == 0) {
-                    res.status(400);
-                    log.log(Level.WARNING, "Empty ledger on writeback");
-                    response.status = ERROR_INVALID_LEDGER;
-                    return prepareResponse(serverPrivateKey, res, response);
-                }
 
                 Connection conn = null;
                 try {
@@ -972,7 +969,15 @@ public class Server {
         }
     }
 
-    private String signEcho(ECPrivateKey privateKey, Response sparkResponse, Signable request, String nonce) throws JsonProcessingException, SignatureException {
+    private Map<String, String> pendingOperations = new HashMap<>();
+
+    private String signEcho(ECPrivateKey privateKey, Response sparkResponse, Signable request, String nonce, String requestAuthor) throws JsonProcessingException, SignatureException {
+        if(pendingOperations.containsKey(requestAuthor)) {
+            Serialization.Response response = new Serialization.Response();
+            response.nonce = nonce;
+            response.status = ERROR_INVALID_VALUE;
+            return prepareResponse(privateKey, sparkResponse, response);
+        }
         String signedEcho = Utils.generateSignature(request.getSignable(), privateKey);
 
         Serialization.SignedEchoResponse response = new Serialization.SignedEchoResponse();
@@ -980,10 +985,17 @@ public class Server {
         response.echo = serverName + ";" + signedEcho;
         response.status = SUCCESS;
 
+        pendingOperations.put(requestAuthor, request.getSignable());
+
         return prepareResponse(privateKey, sparkResponse, response);
     }
 
-    private boolean verifySignedEchos(String echoSignatures, Signable request) throws SignatureException, KeyException {
+    private boolean verifySignedEchos(String echoSignatures, Signable request, String requestAuthor) throws SignatureException, KeyException {
+        if(!request.getSignable().equals(pendingOperations.get(requestAuthor))) {
+            return false;
+        }
+        pendingOperations.remove(requestAuthor);
+
         String[] arrSig = echoSignatures.split("#");
         if(arrSig.length <= (servers.size () + Utils.numberOfFaultsSupported (numberOfServers)) / 2) {
             // we don't have a byzantine majority of echos
