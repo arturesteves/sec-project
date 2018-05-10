@@ -79,29 +79,40 @@ public class InterceptorCallback implements ExpectationCallback {
         } else {
             try {
                 URL newURL = new URL("http://" + httpRequest.getHeader("Host").get(0));
-                newURL = new URL("http", newURL.getHost(), newURL.getPort() + 1000, newURL.getFile());
+                newURL = new URL("http", newURL.getHost(), newURL.getPort() + 1000, httpRequest.getPath().getValue());
 
                 com.github.kevinsawicki.http.HttpRequest request;
-                if(httpRequest.getMethod().getValue().equals("POST")) {
+                if (httpRequest.getMethod().getValue().equals("POST")) {
                     request = com.github.kevinsawicki.http.HttpRequest.post(newURL);
                 } else {
                     request = com.github.kevinsawicki.http.HttpRequest.get(newURL);
                 }
 
-                if(httpRequest.containsHeader(Serialization.SIGNATURE_HEADER_NAME)) {
+                if (httpRequest.containsHeader(Serialization.SIGNATURE_HEADER_NAME)) {
                     request.header(Serialization.SIGNATURE_HEADER_NAME,
                             httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
                 }
+                if (httpRequest.containsHeader(Serialization.NONCE_HEADER_NAME)) {
+                    request.header(Serialization.NONCE_HEADER_NAME,
+                            httpRequest.getHeader(Serialization.NONCE_HEADER_NAME).get(0));
+                }
 
-                request.send(httpRequest.getBody().getValue().toString().getBytes());
+                if (httpRequest.getMethod().getValue().equals("POST")) {
+                    request.send(httpRequest.getBody().getValue().toString().getBytes());
+                }
 
-                String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
                 String body = request.body();
+                String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
 
-                return response()
+                HttpResponse response = response()
                         .withStatusCode(request.code())
-                        .withHeader(Serialization.SIGNATURE_HEADER_NAME, responseSignature)
                         .withBody(body);
+
+                if (responseSignature != null) {
+                    response = response.withHeader(Serialization.SIGNATURE_HEADER_NAME, responseSignature);
+                }
+
+                return response;
 
             } catch (IOException e) {
                 e.printStackTrace();
