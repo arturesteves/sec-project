@@ -18,7 +18,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class Transaction {
-    public  static Logger log;
+//    public  static Logger log;
 
     public enum TransactionTypes implements TransactionType {SENDING, RECEIVING}
 
@@ -170,7 +170,7 @@ public final class Transaction {
             prepStmt.setInt(9, this.pending ? 1 : 0);
 
             prepStmt.executeUpdate();
-            log.log(Level.INFO, "The following transaction was persisted. " + this.toString());
+//            log.log(Level.INFO, "The following transaction was persisted. " + this.toString());
         } finally {
             if (prepStmt != null) {
                 prepStmt.close();
@@ -199,7 +199,7 @@ public final class Transaction {
 
             List<Transaction> results = loadResults(connection, prepStmt);
             if (results.size() == 0) {
-                log.log(Level.WARNING, "A transaction with the specified hash was not found. Hash: " + hash);
+//                log.log(Level.WARNING, "A transaction with the specified hash was not found. Hash: " + hash);
                 throw new MissingTransactionException("A transaction with the specified hash was not found.");
             }
             return results.get(0);
@@ -277,7 +277,7 @@ public final class Transaction {
             prepStmt = connection.prepareStatement(stmt);
             prepStmt.setInt(1, id);
             prepStmt.executeUpdate();
-            log.log(Level.INFO, "The transaction with id '" + id + "' wasn't removed.");
+//            log.log(Level.INFO, "The transaction with id '" + id + "' wasn't removed.");
         } catch (SQLException e) {
             e.printStackTrace ();
         } finally {

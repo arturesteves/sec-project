@@ -18,87 +18,95 @@ public class InterceptorWithTamperingOnRequestCallback implements ExpectationCal
     public HttpResponse handle(HttpRequest httpRequest) {
         if (httpRequest.getPath().getValue().endsWith("/register")) {
             try {
+                URL newURL = new URL("http://" + httpRequest.getHeader("Host").get(0));
+                int destPort = newURL.getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
-                        .post(new URL("http://localhost:4567/register"));
+                        .post(new URL("http://localhost:" + destPort + "/register"));
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
 
-                //httpRequest.getBody().getValue().toString().getBytes();
-                Serialization.RegisterRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.RegisterRequest.class);
-                req.initialTransaction.nonce  = "bananas";
+                Serialization.RegisterRequest req = Serialization.parse(httpRequest.getBody().getValue().toString(), Serialization.RegisterRequest.class);
+                req.initialTransaction.nonce = "bananas";
 
                 request.send(Serialization.serialize(req));
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
-                String body = request.body();
-                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
-
-                //Log.getLog().warn("BODYTESTE: " + body);
                 return response()
                         .withStatusCode(request.code())
                         .withHeader("SIGNATURE", responseSignature)
-                        .withBody(Serialization.serialize(response));
+                        .withBody(request.body());
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
-        } else if(httpRequest.getPath().getValue().endsWith("/sendAmount")) {
+        } else if (httpRequest.getPath().getValue().endsWith("/sendAmount")) {
 
             try {
+                URL newURL = new URL("http://" + httpRequest.getHeader("Host").get(0));
+                int destPort = newURL.getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
-                        .post(new URL("http://localhost:4567/sendAmount"));
+                        .post(new URL("http://localhost:" + destPort + "/sendAmount"));
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
 
+                if (httpRequest.containsHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
+                    request.header(Serialization.ECHO_SIGNATURES_HEADER_NAME,
+                            httpRequest.getHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME).get(0));
+                }
+
                 //httpRequest.getBody().getValue().toString().getBytes();
-                Serialization.SendAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.SendAmountRequest.class);
+                Serialization.SendAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString(), Serialization.SendAmountRequest.class);
                 //Spend 20 units more
-                req.amount  = req.amount + 20;
+                req.transaction.amount = req.transaction.amount + 20;
                 Log.getLog().warn("SERI: " + Serialization.serialize(req));
                 request.send(Serialization.serialize(req));
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
                 String body = request.body();
-                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
 
-                Log.getLog().warn("BODYTESTE: " + body);
                 return response()
                         .withStatusCode(request.code())
-                        .withHeader("SIGNATURE", responseSignature)
-                        .withBody(Serialization.serialize(response));
+                        .withHeader(Serialization.SIGNATURE_HEADER_NAME, responseSignature)
+                        .withBody(body);
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
-        } else if(httpRequest.getPath().getValue().endsWith("/receiveAmount")) {
+        } else if (httpRequest.getPath().getValue().endsWith("/receiveAmount")) {
             try {
+                URL newURL = new URL("http://" + httpRequest.getHeader("Host").get(0));
+                int destPort = newURL.getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
-                        .post(new URL("http://localhost:4567/receiveAmount"));
+                        .post(new URL("http://localhost:" + destPort + "/receiveAmount"));
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
+
+                if (httpRequest.containsHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
+                    request.header(Serialization.ECHO_SIGNATURES_HEADER_NAME,
+                            httpRequest.getHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME).get(0));
+                }
+
                 //httpRequest.getBody().getValue().toString().getBytes();
-                Serialization.ReceiveAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString() , Serialization.ReceiveAmountRequest.class);
+                Serialization.ReceiveAmountRequest req = Serialization.parse(httpRequest.getBody().getValue().toString(), Serialization.ReceiveAmountRequest.class);
                 //Spend 20 units more
-                req.transaction.amount  = req.transaction.amount + 20;
+                req.transaction.amount = req.transaction.amount + 20;
 
                 request.send(Serialization.serialize(req));
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
-                String body = request.body();
-                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
 
                 return response()
                         .withStatusCode(request.code())
                         .withHeader("SIGNATURE", responseSignature)
-                        .withBody(Serialization.serialize(response));
+                        .withBody(request.body());
 
             } catch (IOException e) {
                 e.printStackTrace();

@@ -10,6 +10,7 @@ import java.security.interfaces.ECPublicKey;
 public class ServerInfo implements Signable {
     public URL serverUrl;
     public String publicKeyBase64;
+    public String serverName;
 
     public ServerInfo() {}
     public ServerInfo(URL serverUrl, String publicKeyBase64) {

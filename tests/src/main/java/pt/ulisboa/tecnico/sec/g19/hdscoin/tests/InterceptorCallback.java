@@ -22,14 +22,16 @@ import static org.mockserver.model.HttpResponse.notFoundResponse;
 import static org.mockserver.model.HttpResponse.response;
 
 
-public class  InterceptorCallback implements ExpectationCallback {
+public class InterceptorCallback implements ExpectationCallback {
 
     public HttpResponse handle(HttpRequest httpRequest) {
         if (httpRequest.getPath().getValue().endsWith("/register")) {
             try {
+                URL newURL = new URL("http://" + httpRequest.getHeader("Host").get(0));
+                int destPort = newURL.getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
-                        .post(new URL("http://localhost:4567/register"));
+                        .post(new URL("http://localhost:" + destPort + "/register"));
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
@@ -37,13 +39,12 @@ public class  InterceptorCallback implements ExpectationCallback {
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
                 String body = request.body();
-                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
 
                 Log.getLog().warn("BODYTESTE: " + body);
                 return response()
                         .withStatusCode(request.code())
-                        .withHeader("SIGNATURE", responseSignature)
-                        .withBody(Serialization.serialize(response));
+                        .withHeader(Serialization.SIGNATURE_HEADER_NAME, responseSignature)
+                        .withBody(body);
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -51,23 +52,73 @@ public class  InterceptorCallback implements ExpectationCallback {
 
         } else if (httpRequest.getPath().getValue().endsWith("/sendAmount")) {
             try {
+                URL newURL = new URL("http://" + httpRequest.getHeader("Host").get(0));
+                int destPort = newURL.getPort() + 1000;
 
                 com.github.kevinsawicki.http.HttpRequest request = com.github.kevinsawicki.http.HttpRequest
-                        .post(new URL("http://localhost:4567/sendAmount"));
+                        .post(new URL("http://localhost:" + destPort + "/sendAmount"));
 
                 request.header(Serialization.SIGNATURE_HEADER_NAME,
                         httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
+                if (httpRequest.containsHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
+                    request.header(Serialization.ECHO_SIGNATURES_HEADER_NAME,
+                            httpRequest.getHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME).get(0));
+                }
                 request.send(httpRequest.getBody().getValue().toString().getBytes());
 
                 String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
                 String body = request.body();
-                Serialization.Response response = Serialization.parse(body, Serialization.Response.class);
 
                 Log.getLog().warn("BODYTESTE: " + body);
                 return response()
                         .withStatusCode(request.code())
-                        .withHeader("SIGNATURE", responseSignature)
-                        .withBody(Serialization.serialize(response));
+                        .withHeader(Serialization.SIGNATURE_HEADER_NAME, responseSignature)
+                        .withBody(body);
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            try {
+                URL newURL = new URL("http://" + httpRequest.getHeader("Host").get(0));
+                newURL = new URL("http", newURL.getHost(), newURL.getPort() + 1000, httpRequest.getPath().getValue());
+
+                com.github.kevinsawicki.http.HttpRequest request;
+                if (httpRequest.getMethod().getValue().equals("POST")) {
+                    request = com.github.kevinsawicki.http.HttpRequest.post(newURL);
+                } else {
+                    request = com.github.kevinsawicki.http.HttpRequest.get(newURL);
+                }
+
+                if (httpRequest.containsHeader(Serialization.SIGNATURE_HEADER_NAME)) {
+                    request.header(Serialization.SIGNATURE_HEADER_NAME,
+                            httpRequest.getHeader(Serialization.SIGNATURE_HEADER_NAME).get(0));
+                }
+                if (httpRequest.containsHeader(Serialization.NONCE_HEADER_NAME)) {
+                    request.header(Serialization.NONCE_HEADER_NAME,
+                            httpRequest.getHeader(Serialization.NONCE_HEADER_NAME).get(0));
+                }
+                if (httpRequest.containsHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME)) {
+                    request.header(Serialization.ECHO_SIGNATURES_HEADER_NAME,
+                            httpRequest.getHeader(Serialization.ECHO_SIGNATURES_HEADER_NAME).get(0));
+                }
+
+                if (httpRequest.getMethod().getValue().equals("POST")) {
+                    request.send(httpRequest.getBody().getValue().toString().getBytes());
+                }
+
+                String body = request.body();
+                String responseSignature = request.header(Serialization.SIGNATURE_HEADER_NAME);
+
+                HttpResponse response = response()
+                        .withStatusCode(request.code())
+                        .withBody(body);
+
+                if (responseSignature != null) {
+                    response = response.withHeader(Serialization.SIGNATURE_HEADER_NAME, responseSignature);
+                }
+
+                return response;
 
             } catch (IOException e) {
                 e.printStackTrace();

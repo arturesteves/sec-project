@@ -23,7 +23,7 @@ import java.util.logging.Logger;
 
 
 public final class Ledger {
-    public static Logger log;
+//    public static Logger log;
 
     private int id;
     private ECPublicKey publicKey;    // can't change
@@ -41,14 +41,14 @@ public final class Ledger {
             InvalidValueException, InvalidAmountException, InvalidLedgerException, SignatureException {
         this(-1, publicKey, initialTransaction.amount, 0);
         if (publicKey == null) {
-            log.log(Level.WARNING, "Null key when trying to initialize a ledger.");
+//            log.log(Level.WARNING, "Null key when trying to initialize a ledger.");
             throw new InvalidKeyException("Null key when trying to initialize a ledger.");
         }
 
         // check if a ledger with this public key already exists. If yes, this ledger can't be created
         try {
             load(connection, publicKey);
-            log.log(Level.WARNING, "A ledger with this public key already exists.");
+//            log.log(Level.WARNING, "A ledger with this public key already exists.");
             throw new InvalidLedgerException("A ledger with this public key already exists.");
         } catch (MissingLedgerException ex) {
             // it's ok, go on
@@ -57,15 +57,15 @@ public final class Ledger {
         }
 
         if (amount < 1) {
-            log.log(Level.WARNING, "Insufficient amount to setup a ledger.");
+//            log.log(Level.WARNING, "Insufficient amount to setup a ledger.");
             throw new InvalidAmountException("Insufficient amount to setup a ledger.", amount);
         }
         // generate new ID for ledger based on highest ID in the database
         setId(getNextId(connection));
 
         storeFirstTransaction(connection, initialTransaction);
-        log.log(Level.INFO, "The first transaction was generated to the ledger with the following " +
-                "public key base 64: " + Serialization.publicKeyToBase64(publicKey));
+//        log.log(Level.INFO, "The first transaction was generated to the ledger with the following " +
+//                "public key base 64: " + Serialization.publicKeyToBase64(publicKey));
     }
 
     public int getId() {
@@ -108,7 +108,7 @@ public final class Ledger {
         prepStmt.setInt(3, getAmount());
         prepStmt.setInt (4, getTimestamp ());
         prepStmt.executeUpdate();
-        log.log(Level.INFO, "A ledger was persisted. Public key of that ledger: " + Serialization.publicKeyToBase64(getPublicKey()));
+//        log.log(Level.INFO, "A ledger was persisted. Public key of that ledger: " + Serialization.publicKeyToBase64(getPublicKey()));
     }
 
     // useful for the audit
@@ -218,7 +218,7 @@ public final class Ledger {
 
             List<Ledger> results = loadResults(prepStmt);
             if (results.size() == 0) {
-                log.log(Level.WARNING, "A ledger with the specified public key was not found. Public Key: " + pk);
+//                log.log(Level.WARNING, "A ledger with the specified public key was not found. Public Key: " + pk);
                 throw new MissingLedgerException("A ledger with the specified public key was not found.");
             }
             return results.get(0);
